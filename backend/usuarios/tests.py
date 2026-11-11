@@ -6,6 +6,7 @@ from django.urls import reverse
 
 from rest_framework import status
 from rest_framework.test import APITestCase
+from usuarios.models import PerfilCliente, Tecnico, Piloto, Vendedor
 
 
 Usuario = get_user_model()
@@ -365,3 +366,72 @@ class AutenticacionAPITests(APITestCase):
         for campo in campos_prohibidos:
             with self.subTest(campo=campo):
                 self.assertNotIn(campo, perfil.data)
+
+
+# ============================================================
+# 3. PRUEBAS DE RESTRICCIONES DE LOS PERFILES
+# ============================================================
+
+class PerfilesModelTests(TestCase):
+
+    def crear_usuario(self, numero):
+        return Usuario.objects.create_user(
+            email=f"perfil{numero}@example.com",
+            password="ClavePrueba123!",
+            no_identificacion=f"08011999{numero:05d}",
+            first_name="Usuario",
+            last_name="Prueba"
+        )
+
+    def test_cliente_no_permite_puntos_negativos(self):
+        usuario = self.crear_usuario(1)
+
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                PerfilCliente.objects.create(
+                    usuario=usuario,
+                    saldo_puntos=-10
+                )
+
+    def test_piloto_no_permite_horas_negativas(self):
+        usuario = self.crear_usuario(2)
+
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                Piloto.objects.create(
+                    usuario=usuario,
+                    numero_licencia_aeronautica="LIC-001",
+                    horas_vuelo_acumuladas=-5
+                )
+
+    def test_vendedor_no_permite_comision_superior_a_100(self):
+        usuario = self.crear_usuario(3)
+
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                Vendedor.objects.create(
+                    usuario=usuario,
+                    rtn_empresa="RTN-001",
+                    nombre_comercial="Empresa Prueba",
+                    comision_pactada=101
+                )
+
+    def test_tecnico_no_permite_especialidad_vacia(self):
+        usuario = self.crear_usuario(4)
+
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                Tecnico.objects.create(
+                    usuario=usuario,
+                    especialidad_tecnica=""
+                )
+
+    def test_cliente_permite_puntos_validos(self):
+        usuario = self.crear_usuario(5)
+
+        cliente = PerfilCliente.objects.create(
+            usuario=usuario,
+            saldo_puntos=100
+        )
+
+        self.assertEqual(cliente.saldo_puntos, 100)
