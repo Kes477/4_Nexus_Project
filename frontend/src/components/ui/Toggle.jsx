@@ -1,5 +1,3 @@
-import React from 'react';
-
 const Toggle = ({ checked, onChange, disabled }) => {
     return (
         <label className="toggle">

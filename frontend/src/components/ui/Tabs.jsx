@@ -1,5 +1,3 @@
-import React from 'react';
-
 const Tabs = ({ tabs, activeTab, onChange }) => {
     return (
         <div className="tabs">

@@ -1,5 +1,3 @@
-import React from 'react';
-
 const ProgressBar = ({ current, max, markerPosition }) => {
     const percentage = Math.min((current / max) * 100, 100); // Evita pasar del 100%
     
