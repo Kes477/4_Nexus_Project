@@ -62,4 +62,4 @@ jobs:
         run: python manage.py check
 
       - name: Ejecutar pruebas automatizadas
-        run: python manage.py test usuarios --verbosity 1
+        run: python manage.py test --verbosity 1
