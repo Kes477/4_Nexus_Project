@@ -29,7 +29,7 @@ DEBUG = os.environ.get('DJANGO_DEBUG', 'False') == 'True'
 ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+
 
 # Application definition
 
@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'django_filters',
     # Aplicaciones dep Proyecto
     'usuarios',
+    'catalogo',
 
 ]
 
@@ -152,6 +153,12 @@ REST_FRAMEWORK = {
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
+    ),
+
+    'DEFAULT_FILTER_BACKENDS':(
+        'django_filters.rest_framework.DjangoFilterBackend',
+        'rest_framework.filters.SearchFilter',
+        'rest_framework.filters.OrderingFilter',
     ),
 }
 
