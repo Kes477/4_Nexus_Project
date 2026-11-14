@@ -1,7 +1,6 @@
 import { Check } from "lucide-react";
 import { Button } from "../ui/Button";
 
-/* TARJETA DE SERVICIO / SUSCRIPCIÓN (ServiceCard) */
 export const ServiceCard = ({ service }) => {
     const Icon = service.icon;
 
@@ -85,7 +84,6 @@ export const ServiceCard = ({ service }) => {
     );
 };
 
-/* TARJETA DE PRODUCTO / DRON (ProductCard) */
 export const ProductCard = ({ product }) => {
     const Icon = product.icon;
 

@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { Navbar, Footer } from '../components/layout';
 import { Button } from '../components/ui';
-import { MapPinOff } from 'lucide-react'; // Icono de mapa perdido
+import { MapPinOff } from 'lucide-react';
 
 const NotFound = () => {
     const navigate = useNavigate();
@@ -32,7 +32,6 @@ const NotFound = () => {
                     <MapPinOff size={64} strokeWidth={1.5} />
                 </div>
 
-                {/* Número 404 Grande */}
                 <h1 style={{ 
                     fontSize: '80px', 
                     fontWeight: '900', 
@@ -43,7 +42,6 @@ const NotFound = () => {
                     404
                 </h1>
 
-                {/* Título */}
                 <h2 style={{ 
                     fontSize: '28px', 
                     color: 'var(--color-dark)', 
@@ -52,7 +50,6 @@ const NotFound = () => {
                     Página no encontrada
                 </h2>
 
-                {/* Descripción */}
                 <p style={{ 
                     fontSize: '16px', 
                     color: 'var(--text-light)', 
@@ -63,7 +60,6 @@ const NotFound = () => {
                     Lo sentimos, parece que has volado fuera de ruta. La página que estás buscando no existe o ha sido movida.
                 </p>
 
-                {/* Botones de Acción */}
                 <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', justifyContent: 'center' }}>
                     <Button 
                         variant="primary" 
@@ -73,7 +69,7 @@ const NotFound = () => {
                     </Button>
                     <Button 
                         variant="outline-dark" 
-                        onClick={() => navigate(-1)} // Vuelve a la página anterior
+                        onClick={() => navigate(-1)}
                     >
                         Regresar
                     </Button>

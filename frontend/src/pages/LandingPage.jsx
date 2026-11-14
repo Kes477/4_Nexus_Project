@@ -1,12 +1,10 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Wrench, Cpu, Plane, User, Shield, Zap, Crown, Package, Battery, Camera } from 'lucide-react';
+import { Wrench, Cpu, Plane, User, Shield, Zap, Crown, Package, Battery, Camera, Drone } from 'lucide-react';
 import { Navbar, Footer } from '../components/layout';
 import { Button } from '../components/ui';
 import { ServiceCard, ProductCard } from '../components/domain/Card'; 
 
 const LandingPage = () => {
-    const navigate = useNavigate();
     const [pestanaCatalogo, setPestanaCatalogo] = useState('subs');
 
     useEffect(() => {
@@ -26,6 +24,13 @@ const LandingPage = () => {
         return () => window.removeEventListener('hashchange', handleHashChange);
     }, []);
 
+    const scrollToSection = (id) => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.scrollIntoView({ behavior: 'smooth' });
+        }
+    };
+
     const datosSuscripciones = [
         { number: '01', icon: Shield, title: 'Plan Básico', description: 'Ideal para pequeños productores que inician en la agricultura de precisión.', price: 'L 1,200', period: '/mes', destacado: false, features: ['2 vuelos de monitoreo', 'Reportes analíticos PDF', 'Cobertura hasta 10 mz'] },
         { number: '02', icon: Zap, title: 'Plan Profesional', description: 'Diseñado para fincas comerciales que requieren seguimiento constante.', price: 'L 2,800', period: '/mes', destacado: true, features: ['10 vuelos mensuales', 'Analítica NDVI / SAVI', 'Cobertura hasta 50 mz', 'Soporte prioritario'] },
@@ -42,9 +47,8 @@ const LandingPage = () => {
 
     const scrollAnchorStyle = { scrollMarginTop: '80px' };
     
-    // Tamaños de secciones
     const paddingLarge = { padding: '120px 20px', width: '100%' }; 
-    const paddingCatalog = { padding: '20px 20px', width: '100%' }; // Tamaño intermedio para catálogo
+    const paddingCatalog = { padding: '20px 20px', width: '100%' }; 
     const paddingNormal = { padding: '30px 20px', width: '100%' }; 
     
     const containerStyle = { maxWidth: '1400px', margin: '0 auto', padding: '0 20px' }; 
@@ -55,7 +59,6 @@ const LandingPage = () => {
         <div style={{ background: 'var(--bg-color)', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
             <Navbar />
 
-            {/* ─── 1. HERO ─── */}
             <section id="inicio" style={{ ...paddingLarge, background: 'var(--white)', ...scrollAnchorStyle }}>
                 <div style={{ ...containerStyle, display: 'flex', flexWrap: 'wrap', gap: '50px', alignItems: 'center' }}>
                     <div style={{ flex: '1 1 500px' }}>
@@ -72,8 +75,12 @@ const LandingPage = () => {
                             Soluciones técnicas para drones profesionales. Diagnóstico, mantenimiento especializado y equipos para llevar cada operación más lejos.
                         </p>
                         <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', marginTop: '40px' }}>
-                            <Button variant="primary" onClick={() => navigate('/contacto')}>Solicitar servicio</Button>
-                            <Button variant="outline-dark" onClick={() => { window.location.hash = '#equipos'; }}>Explorar equipos</Button>
+                            <Button variant="primary" onClick={() => scrollToSection('contacto')}>
+                                Solicitar servicio
+                            </Button>
+                            <Button variant="outline-dark" onClick={() => { window.location.hash = '#equipos'; }}>
+                                Explorar equipos
+                            </Button>
                         </div>
                     </div>
                     
@@ -97,7 +104,6 @@ const LandingPage = () => {
                 </div>
             </section>
 
-            {/* ─── 2. NOSOTROS ─── */}
             <section id="nosotros" style={{ ...paddingLarge, background: 'var(--bg-color)', borderTop: '1px solid var(--light-gray)', ...scrollAnchorStyle }}>
                 <div style={containerStyle}>
                     <div style={{ textAlign: 'center', marginBottom: '60px' }}>
@@ -124,10 +130,8 @@ const LandingPage = () => {
                 </div>
             </section>
 
-            {/* ─── 3. CATÁLOGO (Tamaño ajustado) ─── */}
             <section id="catalogo" style={{ ...paddingCatalog, background: 'var(--white)', ...scrollAnchorStyle }}>
                 <div style={containerStyle}>
-                    {/* Margen inferior reducido a 30px */}
                     <div style={{ textAlign: 'center', marginBottom: '30px' }}>
                         <h2 style={titleStyle}>Nuestros Planes y Equipos</h2>
                         
@@ -157,7 +161,6 @@ const LandingPage = () => {
                 </div>
             </section>
 
-            {/* ─── 4. PROCESO ─── */}
             <section id="proceso" style={{ ...paddingLarge, background: 'var(--bg-color)', borderTop: '1px solid var(--light-gray)', ...scrollAnchorStyle }}>
                 <div style={containerStyle}>
                     <div style={{ textAlign: 'center', marginBottom: '60px' }}>
@@ -187,24 +190,27 @@ const LandingPage = () => {
                 </div>
             </section>
 
-            {/* ─── 5. CONTACTO ─── */}
             <section id="contacto" style={{ ...paddingNormal, background: 'var(--white)', ...scrollAnchorStyle }}>
                 <div style={{ ...containerStyle, display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '30px' }}>
                     <div style={{ flex: '1 1 500px' }}>
                         <span style={{ color: 'var(--color-primary)', fontSize: '13px', letterSpacing: '1.5px', fontWeight: 'bold', display: 'block', marginBottom: '15px' }}>HABLEMOS DE TU PROYECTO</span>
+                        
                         <h2 style={titleStyle}>
-                            Tu próximo vuelo<br />empieza con una <span style={{ color: 'var(--color-primary)' }}>buena decisión.</span>
+                            Tu próximo vuelo<br />empieza con una <span style={{ color: 'var(--color-primary)', fontSize: 'inherit' }}>buena decisión.</span>
                         </h2>
+                        
                         <p style={{ ...subtitleStyle, maxWidth: '500px' }}>
                             Cuéntanos qué necesitas. Estamos listos para orientarte y llevar tu operación al siguiente nivel.
                         </p>
-                        <Button variant="primary" onClick={() => navigate('/contacto')}>Contactar con 4 Nexus</Button>
+                        <Button variant="primary" onClick={() => window.location.href = "mailto:soporte@4nexus.com"}>
+                            Contactar con 4 Nexus
+                        </Button>
                     </div>
                     
                     <div style={{ flex: '1 1 300px', display: 'flex', justifyContent: 'center' }}>
                         <div style={{ width: '200px', height: '200px', borderRadius: '50%', border: '2px solid var(--light-gray)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <div style={{ width: '120px', height: '120px', borderRadius: '50%', border: '2px solid var(--light-gray)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <i className="fas fa-broadcast-tower" style={{ fontSize: '40px', color: 'var(--color-primary)', opacity: 0.8 }}></i>
+                                <Drone size={50} color="var(--color-primary)" style={{ opacity: 0.8 }} />
                             </div>
                         </div>
                     </div>
