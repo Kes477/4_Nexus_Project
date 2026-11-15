@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { Layers, Navigation, Wrench, Shield, ChevronLeft, ArrowRight, Check, Home } from 'lucide-react';
-import { Input, Button, Alert } from '../components/ui'; 
+import { Input, Button, Alert } from '../components/ui';
 
 const carouselImages = [
     "https://images.unsplash.com/photo-1508614589041-895b88991e3e?q=80&w=1000&auto=format&fit=crop",
@@ -11,16 +11,20 @@ const carouselImages = [
 
 const Login = () => {
     const navigate = useNavigate();
+    const location = useLocation();
 
-    const [step, setStep] = useState('login'); 
-    const [regSubStep, setRegSubStep] = useState(1); 
+    const redirectTo = location.state?.from || '/cliente';
+    const loginMessage = location.state?.message;
+
+    const [step, setStep] = useState('login');
+    const [regSubStep, setRegSubStep] = useState(1);
     const [isLoading, setIsLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState(null);
 
     const [selectedRole, setSelectedRole] = useState('cliente');
     const [recoverMethod, setRecoverMethod] = useState('email');
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
-    
+
     const [mostrarPassword, setMostrarPassword] = useState(false);
     const [mostrarConfirmarPassword, setMostrarConfirmarPassword] = useState(false);
     const [codeDigits, setCodeDigits] = useState(["", "", "", "", "", ""]);
@@ -31,7 +35,7 @@ const Login = () => {
     const [nombres, setNombres] = useState('');
     const [apellidos, setApellidos] = useState('');
     const [telefono, setTelefono] = useState('');
-    const [identificacion, setIdentificacion] = useState(''); 
+    const [identificacion, setIdentificacion] = useState('');
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -54,16 +58,21 @@ const Login = () => {
     };
 
     const submitLogin = async (e) => {
-        if(e) e.preventDefault();
+        if (e) e.preventDefault();
         setErrorMsg(null);
         setIsLoading(true);
 
         setTimeout(() => {
             setIsLoading(false);
-            
-            localStorage.setItem('user_role', 'cliente'); 
-            
-            navigate('/cliente'); 
+
+            localStorage.setItem('user_role', 'cliente');
+
+            navigate(redirectTo, {
+                replace: true,
+                state: location.state?.selectedDrone
+                    ? { selectedDrone: location.state.selectedDrone }
+                    : undefined,
+            });
         }, 1200);
     };
 
@@ -107,16 +116,16 @@ const Login = () => {
 
     return (
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', background: 'var(--bg-color)', padding: '30px 20px' }}>
-            
+
             <style>{`.hide-scrollbar::-webkit-scrollbar { display: none; }`}</style>
 
-            <div style={{ 
-                background: 'var(--white)', border: '1px solid var(--light-gray)', 
-                borderRadius: '12px', overflow: 'hidden', 
+            <div style={{
+                background: 'var(--white)', border: '1px solid var(--light-gray)',
+                borderRadius: '12px', overflow: 'hidden',
                 display: 'flex', width: '100%', maxWidth: '1000px', height: '620px',
                 boxShadow: '0 15px 40px rgba(0,0,0,0.06)', position: 'relative'
             }}>
-                
+
                 <Link to="/" style={{
                     position: 'absolute', top: '20px', left: '20px', zIndex: 50,
                     background: 'rgba(255,255,255,0.9)', padding: '8px', borderRadius: '50%',
@@ -136,8 +145,8 @@ const Login = () => {
                             }}
                         />
                     ))}
-                    <div style={{ 
-                        position: 'absolute', inset: 0, 
+                    <div style={{
+                        position: 'absolute', inset: 0,
                         background: 'linear-gradient(to top, rgba(44, 54, 94, 0.95), transparent 60%)',
                         display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '30px', zIndex: 10
                     }}>
@@ -151,7 +160,7 @@ const Login = () => {
                 </div>
 
                 <div style={{ flex: 1.1, display: 'flex', flexDirection: 'column', background: 'var(--white)', overflow: 'hidden' }}>
-                    
+
                     {step !== 'success' && (
                         <div style={{ borderBottom: '1px solid var(--light-gray)', padding: '20px 30px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-color)', shrink: 0 }}>
                             <div>
@@ -161,13 +170,13 @@ const Login = () => {
 
                             {(step === 'login' || step === 'register') && (
                                 <div style={{ display: 'flex', background: 'var(--white)', border: '1px solid var(--light-gray)', borderRadius: '6px', padding: '3px' }}>
-                                    <button 
+                                    <button
                                         onClick={() => { setStep('login'); setRegSubStep(1); setErrorMsg(null); }}
                                         style={{ padding: '6px 20px', fontSize: '13px', fontWeight: 'bold', borderRadius: '4px', border: 'none', cursor: 'pointer', background: step === 'login' ? 'var(--color-primary)' : 'transparent', color: step === 'login' ? 'var(--white)' : 'var(--text-light)', transition: 'all 0.3s' }}
                                     >
                                         Ingresar
                                     </button>
-                                    <button 
+                                    <button
                                         onClick={() => { setStep('register'); setRegSubStep(1); setErrorMsg(null); }}
                                         style={{ padding: '6px 20px', fontSize: '13px', fontWeight: 'bold', borderRadius: '4px', border: 'none', cursor: 'pointer', background: step === 'register' ? 'var(--color-primary)' : 'transparent', color: step === 'register' ? 'var(--white)' : 'var(--text-light)', transition: 'all 0.3s' }}
                                     >
@@ -179,7 +188,13 @@ const Login = () => {
                     )}
 
                     <div className="hide-scrollbar" style={{ padding: '30px 40px', flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', overflowY: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                        
+
+                        {loginMessage && !errorMsg && step === 'login' && (
+                            <div style={{ width: '100%', maxWidth: '380px', marginBottom: '15px' }}>
+                                <Alert type="info" title="Continuemos" message={loginMessage} />
+                            </div>
+                        )}
+
                         {errorMsg && (
                             <div style={{ width: '100%', maxWidth: '380px', marginBottom: '15px' }}>
                                 <Alert type="danger" title="Atención" message={errorMsg} onClose={() => setErrorMsg(null)} />
@@ -252,7 +267,7 @@ const Login = () => {
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                                         <div>
                                             <label style={labelStyle}>Selecciona tu rol</label>
-                                            
+
                                             <div style={{ display: 'flex', gap: '6px' }}>
                                                 {roles.map((r) => (
                                                     <button key={r.key} type="button" onClick={() => setSelectedRole(r.key)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', padding: '8px 4px', fontSize: '11px', fontWeight: 'bold', borderRadius: '6px', border: `1px solid ${selectedRole === r.key ? 'var(--color-primary)' : 'var(--light-gray)'}`, cursor: 'pointer', background: selectedRole === r.key ? 'rgba(4, 201, 166, 0.1)' : 'transparent', color: selectedRole === r.key ? 'var(--color-primary)' : 'var(--text-light)', transition: 'all 0.2s' }}>
@@ -261,12 +276,12 @@ const Login = () => {
                                                 ))}
                                             </div>
                                         </div>
-                                        
+
                                         <div>
                                             <label style={labelStyle}>Nombre</label>
                                             <Input type="text" icon="fa-user" placeholder="Ej. Juan" value={nombres} onChange={(e) => setNombres(e.target.value)} />
                                         </div>
-                                        
+
                                         <div>
                                             <label style={labelStyle}>Apellido</label>
                                             <Input type="text" icon="fa-user" placeholder="Ej. Pérez" value={apellidos} onChange={(e) => setApellidos(e.target.value)} />
@@ -340,7 +355,7 @@ const Login = () => {
 
                     {step !== 'success' && (
                         <div style={{ borderTop: '1px solid var(--light-gray)', padding: '15px 30px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-color)', shrink: 0 }}>
-                            <button 
+                            <button
                                 onClick={() => {
                                     setErrorMsg(null);
                                     if (step === 'register' && regSubStep > 1) setRegSubStep(prev => prev - 1);
@@ -350,12 +365,12 @@ const Login = () => {
                                 }}
                                 style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-light)', fontSize: '12px', fontWeight: 'bold' }}
                             >
-                                <ChevronLeft size={16} /> 
+                                <ChevronLeft size={16} />
                                 {step === 'register' && regSubStep > 1 ? "Anterior" : step === 'verify' || step === 'recover' ? "Regresar" : "Cancelar"}
                             </button>
 
-                            <Button 
-                                variant="primary" 
+                            <Button
+                                variant="primary"
                                 disabled={isLoading}
                                 onClick={(e) => {
                                     if (step === 'login') submitLogin(e);

@@ -13,6 +13,3 @@ media/
 
 # IDE
 .vscode/
-
-# Carpeta backend
-/backend/

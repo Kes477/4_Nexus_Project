@@ -1,11 +1,14 @@
+import { useNavigate } from 'react-router-dom';
 import { MapPin, Phone, Mail, Clock, Drone } from 'lucide-react';
-import { Button, IconButton } from '../ui'; 
+import { Button, IconButton } from '../ui';
 
 const Footer = () => {
+    const navigate = useNavigate();
+
     return (
         <footer style={{ background: 'var(--bg-color)', borderTop: '1px solid var(--light-gray)', padding: '60px 20px 20px' }}>
             <div className="section-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '40px', marginBottom: '40px' }}>
-                
+
                 <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' }}>
                         <div style={{ background: 'var(--color-primary)', padding: '8px', borderRadius: '8px', color: 'var(--white)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -18,21 +21,21 @@ const Footer = () => {
                     <p style={{ color: 'var(--text-light)', fontSize: '13px', lineHeight: '1.6', marginBottom: '20px' }}>
                         Ingeniería, soporte y soluciones para el mundo de los drones profesionales.
                     </p>
-                    
+
                     <div style={{ display: 'flex', gap: '10px' }}>
-                        <IconButton 
-                            icon="fa-instagram" 
-                            iconType="fab" 
+                        <IconButton
+                            icon="fa-instagram"
+                            iconType="fab"
                             customColor="#E1306C"
                         />
-                        <IconButton 
-                            icon="fa-facebook-f" 
-                            iconType="fab" 
+                        <IconButton
+                            icon="fa-facebook-f"
+                            iconType="fab"
                             customColor="#1877F2"
                         />
-                        <IconButton 
-                            icon="fa-linkedin-in" 
-                            iconType="fab" 
+                        <IconButton
+                            icon="fa-linkedin-in"
+                            iconType="fab"
                             customColor="#0A66C2"
                         />
                     </div>
@@ -63,7 +66,12 @@ const Footer = () => {
                         <li style={{ display: 'flex', alignItems: 'center', gap: '10px' }}><Clock size={16} /> Lunes a viernes</li>
                         <li>8:00 a.m. – 5:00 p.m.</li>
                         <li>
-                            <Button variant="outline-dark" size="sm" style={{ marginTop: '10px' }}>
+                            <Button
+                                variant="outline-dark"
+                                size="sm"
+                                style={{ marginTop: '10px' }}
+                                onClick={() => navigate('/formulario-contacto')}
+                            >
                                 Enviar una consulta
                             </Button>
                         </li>

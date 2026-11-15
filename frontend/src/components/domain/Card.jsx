@@ -96,7 +96,7 @@ export const ProductCard = ({ product }) => {
                 overflow: "hidden",
                 display: "flex",
                 flexDirection: "column",
-                height: "100%",
+                height: "95%",
                 boxShadow: "0 4px 15px rgba(0,0,0,0.03)",
                 transition: "transform 0.3s ease, box-shadow 0.3s ease",
             }}
@@ -119,7 +119,7 @@ export const ProductCard = ({ product }) => {
                     onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
                 />
                 <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.3) 0%, transparent 40%)" }} />
-                
+
                 <span style={{
                     position: "absolute", top: "10px", left: "10px",
                     background: "var(--color-primary)", color: "var(--white)",
@@ -145,7 +145,20 @@ export const ProductCard = ({ product }) => {
                 <h3 style={{ color: "var(--color-dark)", fontSize: "18px", margin: "0 0 8px 0", fontWeight: "800" }}>
                     {product.name}
                 </h3>
-                <p style={{ color: "var(--text-light)", fontSize: "13px", lineHeight: "1.5", margin: "0 0 15px 0", flexGrow: 1 }}>
+                <p
+                    style={{
+                        color: "var(--text-light)",
+                        fontSize: "13px",
+                        lineHeight: "1.5",
+                        margin: "0 0 15px 0",
+                        flexGrow: 1,
+                        display: "-webkit-box",
+                        WebkitLineClamp: 3,
+                        WebkitBoxOrient: "vertical",
+                        overflow: "hidden",
+                    }}
+                    title={product.description}
+                >
                     {product.description}
                 </p>
 
@@ -153,7 +166,7 @@ export const ProductCard = ({ product }) => {
                     <span style={{ fontSize: "10px", color: "var(--text-light)", fontWeight: "bold", textTransform: "uppercase", display: "block", marginBottom: "4px" }}>
                         Precio
                     </span>
-                    
+
                     <span style={{ fontSize: "18px", fontWeight: "800", color: "var(--color-dark)" }}>
                         L {product.price}
                     </span>
