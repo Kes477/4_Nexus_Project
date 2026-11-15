@@ -96,14 +96,15 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
+# Variables para Django y Cloude Run, y credenciales locales  
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'dron',                 
-        'USER': 'postgres',               
-        'PASSWORD': 'postgres', 
-        'HOST': 'localhost',              
-        'PORT': '5432',                   # Puerto por defecto de PostgreSQL
+        'NAME': os.environ.get('DB_NAME', 'dron'),
+        'USER': os.environ.get('DB_USER', 'postgres'),
+        'PASSWORD': os.environ.get('DB_PASSWORD', ''),
+        'HOST': os.environ.get('DB_HOST', 'localhost'),
+        'PORT': os.environ.get('DB_PORT', '5432'), # Puerto por defecto de Postgre
     }
 }
 
