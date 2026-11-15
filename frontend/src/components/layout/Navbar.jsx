@@ -1,19 +1,23 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Drone, ChevronDown, User, LogOut, LayoutDashboard, FileText, CreditCard, Plane, MessageSquare } from 'lucide-react';
-import { Button } from '../ui/Button';
+import { Drone, ChevronDown, User, LogOut, LayoutDashboard, FileText, CreditCard, Plane, MessageSquare, Shield, Navigation } from 'lucide-react';
+import { Button } from '../ui';
 
 const Navbar = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const [isServicesOpen, setIsServicesOpen] = useState(false);
     const [isUserOpen, setIsUserOpen] = useState(false);
-    
     const [hoveredPath, setHoveredPath] = useState(null);
 
+    // Obtenemos el rol del localStorage
     const [userRole, setUserRole] = useState(localStorage.getItem('user_role') || 'cliente'); 
 
-    const isDashboard = location.pathname.startsWith('/cliente') || location.pathname.startsWith('/dashboard');
+    // 1. DETECTAMOS LA RUTA BASE SEGÚN EL ROL
+    const basePath = userRole === 'admin' ? '/admin' : '/cliente';
+
+    // 2. EL NAVBAR SE MUESTRA EN DASHBOARD SI ESTAMOS EN /cliente O /admin
+    const isDashboard = location.pathname.startsWith('/cliente') || location.pathname.startsWith('/admin') || location.pathname.startsWith('/dashboard');
 
     const linkStyle = (path) => ({ 
         display: 'flex', 
@@ -52,12 +56,19 @@ const Navbar = () => {
     const cambiarRol = (nuevoRol) => {
         localStorage.setItem('user_role', nuevoRol);
         setUserRole(nuevoRol);
+        // Redirigimos a la ruta base del nuevo rol
+        if (nuevoRol === 'admin') {
+            navigate('/admin');
+        } else {
+            navigate('/cliente');
+        }
         window.location.reload(); 
     };
 
     return (
         <nav className="navbar">
-            <Link to={isDashboard ? "/cliente" : "/"} style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none' }}>
+            {/* El logo lleva a la base correspondiente */}
+            <Link to={isDashboard ? basePath : "/"} style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none' }}>
                 <div style={{ background: 'var(--color-primary)', padding: '8px', borderRadius: '8px', color: 'var(--white)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <Drone size={24} />
                 </div>
@@ -79,10 +90,11 @@ const Navbar = () => {
                     </>
                 ) : (
                     <>
+                        {/* Dashboard Dinámico */}
                         <Link 
-                            to="/cliente" 
-                            style={linkStyle('/cliente')}
-                            onMouseEnter={() => setHoveredPath('/cliente')}
+                            to={basePath} 
+                            style={linkStyle(basePath)}
+                            onMouseEnter={() => setHoveredPath(basePath)}
                             onMouseLeave={() => setHoveredPath(null)}
                         >
                             <LayoutDashboard size={18} /> Dashboard
@@ -101,42 +113,37 @@ const Navbar = () => {
                             
                             {isServicesOpen && (
                                 <div style={dropdownStyle}>
+                                    {/* MENÚ CLIENTE */}
                                     {userRole === 'cliente' && (
                                         <>
-                                            <Link 
-                                                to="/cliente/suscripciones" 
-                                                style={linkStyle('/cliente/suscripciones')} 
-                                                onClick={() => setIsServicesOpen(false)}
-                                                onMouseEnter={() => setHoveredPath('/cliente/suscripciones')} 
-                                                onMouseLeave={() => setHoveredPath(null)}
-                                            >
+                                            <Link to={`${basePath}/suscripciones`} style={linkStyle(`${basePath}/suscripciones`)} onClick={() => setIsServicesOpen(false)} onMouseEnter={() => setHoveredPath(`${basePath}/suscripciones`)} onMouseLeave={() => setHoveredPath(null)}>
                                                 <CreditCard size={16} /> Suscripciones
                                             </Link>
-                                            <Link 
-                                                to="/cliente/drones" 
-                                                style={linkStyle('/cliente/drones')} 
-                                                onClick={() => setIsServicesOpen(false)}
-                                                onMouseEnter={() => setHoveredPath('/cliente/drones')} 
-                                                onMouseLeave={() => setHoveredPath(null)}
-                                            >
+                                            <Link to={`${basePath}/drones`} style={linkStyle(`${basePath}/drones`)} onClick={() => setIsServicesOpen(false)} onMouseEnter={() => setHoveredPath(`${basePath}/drones`)} onMouseLeave={() => setHoveredPath(null)}>
                                                 <Plane size={16} /> Drones
                                             </Link>
-                                            <Link 
-                                                to="/cliente/servicios" 
-                                                style={linkStyle('/cliente/servicios')} 
-                                                onClick={() => setIsServicesOpen(false)}
-                                                onMouseEnter={() => setHoveredPath('/cliente/servicios')} 
-                                                onMouseLeave={() => setHoveredPath(null)}
-                                            >
+                                            <Link to={`${basePath}/servicios`} style={linkStyle(`${basePath}/servicios`)} onClick={() => setIsServicesOpen(false)} onMouseEnter={() => setHoveredPath(`${basePath}/servicios`)} onMouseLeave={() => setHoveredPath(null)}>
                                                 <FileText size={16} /> Mis Servicios
                                             </Link>
-                                            <Link 
-                                                to="/cliente/historial" 
-                                                style={linkStyle('/cliente/historial')} 
-                                                onClick={() => setIsServicesOpen(false)}
-                                                onMouseEnter={() => setHoveredPath('/cliente/historial')} 
-                                                onMouseLeave={() => setHoveredPath(null)}
-                                            >
+                                            <Link to={`${basePath}/historial`} style={linkStyle(`${basePath}/historial`)} onClick={() => setIsServicesOpen(false)} onMouseEnter={() => setHoveredPath(`${basePath}/historial`)} onMouseLeave={() => setHoveredPath(null)}>
+                                                <FileText size={16} /> Historial
+                                            </Link>
+                                        </>
+                                    )}
+
+                                    {/* MENÚ ADMINISTRADOR */}
+                                    {userRole === 'admin' && (
+                                        <>
+                                            <Link to={`${basePath}/usuarios`} style={linkStyle(`${basePath}/usuarios`)} onClick={() => setIsServicesOpen(false)} onMouseEnter={() => setHoveredPath(`${basePath}/usuarios`)} onMouseLeave={() => setHoveredPath(null)}>
+                                                <Shield size={16} /> Usuarios
+                                            </Link>
+                                            <Link to={`${basePath}/operaciones`} style={linkStyle(`${basePath}/operaciones`)} onClick={() => setIsServicesOpen(false)} onMouseEnter={() => setHoveredPath(`${basePath}/operaciones`)} onMouseLeave={() => setHoveredPath(null)}>
+                                                <Navigation size={16} /> Operaciones Globales
+                                            </Link>
+                                            <Link to={`${basePath}/precios`} style={linkStyle(`${basePath}/precios`)} onClick={() => setIsServicesOpen(false)} onMouseEnter={() => setHoveredPath(`${basePath}/precios`)} onMouseLeave={() => setHoveredPath(null)}>
+                                                <CreditCard size={16} /> Precios
+                                            </Link>
+                                            <Link to={`${basePath}/historial`} style={linkStyle(`${basePath}/historial`)} onClick={() => setIsServicesOpen(false)} onMouseEnter={() => setHoveredPath(`${basePath}/historial`)} onMouseLeave={() => setHoveredPath(null)}>
                                                 <FileText size={16} /> Historial
                                             </Link>
                                         </>
@@ -145,10 +152,11 @@ const Navbar = () => {
                             )}
                         </div>
 
+                        {/* Soporte Dinámico */}
                         <Link 
-                            to="/cliente/soporte" 
-                            style={linkStyle('/cliente/soporte')}
-                            onMouseEnter={() => setHoveredPath('/cliente/soporte')} 
+                            to={`${basePath}/soporte`} 
+                            style={linkStyle(`${basePath}/soporte`)}
+                            onMouseEnter={() => setHoveredPath(`${basePath}/soporte`)} 
                             onMouseLeave={() => setHoveredPath(null)}
                         >
                             <MessageSquare size={18} /> Soporte
@@ -197,8 +205,9 @@ const Navbar = () => {
 
                             {isUserOpen && (
                                 <div style={{ ...dropdownStyle, left: 'auto', right: 0 }}>
-                                    <Link to="/cliente/perfil" style={linkStyle('/cliente/perfil')} onClick={() => setIsUserOpen(false)}
-                                        onMouseEnter={() => setHoveredPath('/cliente/perfil')} onMouseLeave={() => setHoveredPath(null)}>
+                                    {/* Perfil Dinámico */}
+                                    <Link to={`${basePath}/perfil`} style={linkStyle(`${basePath}/perfil`)} onClick={() => setIsUserOpen(false)}
+                                        onMouseEnter={() => setHoveredPath(`${basePath}/perfil`)} onMouseLeave={() => setHoveredPath(null)}>
                                         <User size={16} /> Mi Perfil
                                     </Link>
                                     <hr style={{ border: 'none', borderTop: '1px solid var(--light-gray)', margin: '5px 0' }} />

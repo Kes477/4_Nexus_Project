@@ -1,4 +1,5 @@
 import { useState } from 'react';
+// Nota: Si 'Droplets' te da error, cámbialo a 'Droplet' (singular) aquí y en la línea 14
 import { Droplets, Clock, Radio, CheckCircle2, BarChart3 } from 'lucide-react';
 import { Tabs, Badge, Button, IconButton } from '../../components/ui'; 
 
@@ -60,7 +61,7 @@ export const ClienteDashboard = () => {
             {/* Gráfico y Tabs */}
             <div className="card" style={{ padding: 0, textAlign: 'left', overflow: 'hidden' }}>
                 
-                {/* Contenedor de las pestañas (los estilos vienen de App.css) */}
+                {/* Contenedor de las pestañas */}
                 <div style={{ padding: '15px 20px', borderBottom: '1px solid var(--light-gray)', background: 'var(--bg-color)', display: 'flex' }}>
                     <Tabs 
                         tabs={tabLabels} 
