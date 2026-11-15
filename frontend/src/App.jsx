@@ -1,122 +1,103 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import { Routes, Route } from 'react-router-dom';
+
+// --- PÁGINAS PÚBLICAS ---
+import LandingPage from './pages/LandingPage';
+import Login from './pages/Login';
+import Catalog from './pages/Catalog';
+import Suscription from './pages/Suscription';
+import FormularioContacto from './pages/FormularioContacto';
+import NotFound from './pages/NotFound';
+
+// --- LAYOUTS ---
+import { ClienteLayout } from './layouts/ClienteLayout';
+import AdminLayout from './layouts/AdminLayout';
+
+// --- PÁGINAS DEL CLIENTE ---
+import { ClienteDashboard } from './pages/cliente/ClienteDashboard';
+import { ClienteSuscripciones } from './pages/cliente/ClienteSuscripciones';
+import { ClienteDrones } from './pages/cliente/ClienteDrones';
+import ClientePerfil from './pages/cliente/ClientePerfil';
+import ClienteServicios from './pages/cliente/ClienteServicios';
+import ClienteHistorial from './pages/cliente/ClienteHistorial';
+import ClienteSoporte from './pages/cliente/ClienteSoporte';
+
+// --- PÁGINAS DEL ADMINISTRADOR ---
+import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminUsuarios from './pages/admin/AdminUsuarios';
+import AdminPrecios from './pages/admin/AdminPrecios';
+import AdminOperaciones from './pages/admin/AdminOperaciones';
+import AdminHistorial from './pages/admin/AdminHistorial';
+import AdminSoporte from './pages/admin/AdminSoporte';
+import AdminPerfil from './pages/admin/AdminPerfil';
+import AdminConfigCarga from './pages/admin/AdminConfigCarga';
+import AdminCheckout from './pages/admin/AdminCheckout';
+import AdminTracking from './pages/admin/AdminTracking';
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <Routes>
+      {/* 1. RUTAS PÚBLICAS */}
+      <Route path="/" element={<LandingPage />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/catalog" element={<Catalog />} />
+      <Route path="/suscription" element={<Suscription />} />
+      <Route path="/formulario-contacto" element={<FormularioContacto />} />
 
-      <div className="ticks"></div>
+      {/* 2. RUTAS PRIVADAS DEL CLIENTE */}
+      <Route path="/cliente" element={<ClienteLayout />}>
+        <Route index element={<ClienteDashboard />} />
+        <Route path="suscripciones" element={<ClienteSuscripciones />} />
+        <Route path="drones" element={<ClienteDrones />} />
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+        <Route path="servicios" element={<ClienteServicios />} />
+        <Route path="historial" element={<ClienteHistorial />} />
+        <Route path="soporte" element={<ClienteSoporte />} />
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+        <Route
+          path="perfil"
+          element={
+            <ClientePerfil
+              onLogout={() => {
+                localStorage.removeItem('user_role');
+                window.location.href = '/login';
+              }}
+            />
+          }
+        />
+      </Route>
+
+      {/* 3. RUTAS PRIVADAS DEL ADMINISTRADOR */}
+      <Route path="/admin" element={<AdminLayout />}>
+        <Route index element={<AdminDashboard />} />
+
+        <Route path="usuarios" element={<AdminUsuarios />} />
+        <Route path="precios" element={<AdminPrecios />} />
+        <Route path="historial" element={<AdminHistorial />} />
+        <Route path="soporte" element={<AdminSoporte />} />
+
+        <Route
+          path="perfil"
+          element={
+            <AdminPerfil
+              onLogout={() => {
+                localStorage.removeItem('user_role');
+                window.location.href = '/login';
+              }}
+            />
+          }
+        />
+
+        {/* Sub-rutas de Operaciones */}
+        <Route path="operaciones" element={<AdminOperaciones />} />
+        <Route path="operaciones/config-carga" element={<AdminConfigCarga />} />
+        <Route path="operaciones/checkout" element={<AdminCheckout />} />
+        <Route path="operaciones/tracking" element={<AdminTracking />} />
+      </Route>
+
+      {/* 4. RUTA COMODÍN PARA ERRORES 404 */}
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
 }
 
-export default App
+export default App;

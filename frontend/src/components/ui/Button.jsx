@@ -1,16 +1,15 @@
-const Button = ({
+export const Button = ({
     children,
     variant = 'primary',
     size = 'normal',
     className = '',
     ...props
 }) => {
-    const sizeClass = size === 'sm' ? 'btn-sm': '';
+    const sizeClass = size === 'sm' ? 'btn-sm' : '';
+    
     return (
-        <button classNme={`btn btn-${variant} ${sizeClass} ${className}`} {...props}>
+        <button className={`btn btn-${variant} ${sizeClass} ${className}`.trim()} {...props}>
             {children}
         </button>
     );
 };
-
-export default Button;
