@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { Layers, Navigation, Wrench, Shield, ChevronLeft, ArrowRight, Check, Home } from 'lucide-react';
 import { Input, Button, Alert } from '../components/ui';
+import {useSesion} from '../hooks/useSesion';
 
 const carouselImages = [
     "https://images.unsplash.com/photo-1508614589041-895b88991e3e?q=80&w=1000&auto=format&fit=crop",
@@ -12,6 +13,7 @@ const carouselImages = [
 const Login = () => {
     const navigate = useNavigate();
     const location = useLocation();
+    const { iniciarSesion } = useSesion();
 
     const redirectTo = location.state?.from || '/cliente';
     const loginMessage = location.state?.message;
@@ -62,18 +64,25 @@ const Login = () => {
         setErrorMsg(null);
         setIsLoading(true);
 
-        setTimeout(() => {
-            setIsLoading(false);
+        try {
+            const usuario = await iniciarSesion(email, password);
+            const destino = usuario.is_staff ? '/admin' : redirectTo;
 
-            localStorage.setItem('user_role', 'cliente');
-
-            navigate(redirectTo, {
+            navigate(destino, {
                 replace: true,
                 state: location.state?.selectedDrone
                     ? { selectedDrone: location.state.selectedDrone }
                     : undefined,
             });
-        }, 1200);
+        } catch (error) {
+            if (error.response?.status === 401) {
+                setErrorMsg('Correo o contraseña incorrectos.');
+            } else {
+                setErrorMsg('No se pudo conectar con el servidor. Intenta de nuevo.');
+            }
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const handleNextStep = () => {
