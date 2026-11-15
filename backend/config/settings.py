@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     # Aplicaciones dep Proyecto
     'usuarios',
     'catalogo',
+    'inventario',
 
 ]
 
