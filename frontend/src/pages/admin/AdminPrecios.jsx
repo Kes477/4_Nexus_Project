@@ -1,13 +1,11 @@
 import React, { useState } from 'react';
 import { Plus, Edit3, Drone, ShieldCheck, Tag, ShoppingBag } from 'lucide-react';
 
-// Importación estricta de tus componentes
 import { Button, Tabs, Badge, Input, Toggle, Modal, SectionHeading } from '../../components/ui';
 
 export default function AdminPrecios() {
-  const [tab, setTab] = useState(0); // 0: Planes, 1: Drones
+  const [tab, setTab] = useState(0);
 
-  // --- ESTADOS DE PLANES ---
   const [planes, setPlanes] = useState([
     { id: 1, name: "Básico", price: 1200, cycle: "Mensual", active: true },
     { id: 2, name: "Operativo", price: 2800, cycle: "Mensual", active: true },
@@ -16,7 +14,6 @@ export default function AdminPrecios() {
   const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
   const [editingPlan, setEditingPlan] = useState(null);
 
-  // --- ESTADOS DE DRONES ---
   const [drones, setDrones] = useState([
     { id: 1, name: "DJI Agras T40", price: 180000, stock: 5, tag: "Fumigación", active: true },
     { id: 2, name: "DJI Matrice 300 RTK", price: 320000, stock: 2, tag: "Mapeo", active: true },
@@ -25,7 +22,6 @@ export default function AdminPrecios() {
   const [isDroneModalOpen, setIsDroneModalOpen] = useState(false);
   const [editingDrone, setEditingDrone] = useState(null);
 
-  // Estilos para la tabla
   const tableHeaderStyle = {
     backgroundColor: 'var(--bg-color)',
     borderBottom: '2px solid var(--light-gray)',
@@ -56,14 +52,12 @@ export default function AdminPrecios() {
       fontFamily: "'Roboto', sans-serif"
     }}>
       
-      {/* HEADER */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px', paddingBottom: '20px', borderBottom: '1px solid var(--light-gray)' }}>
         <div>
           <h1 style={{ margin: 0, fontSize: '28px', fontWeight: '900', color: 'var(--color-dark)' }}>Precios y Catálogo</h1>
           <p style={{ margin: '6px 0 0 0', fontSize: '15px', color: 'var(--text-light)', fontWeight: '500' }}>Configura planes de suscripción, tarifas y equipos de venta.</p>
         </div>
         
-        {/* Botón dinámico según la pestaña */}
         <Button 
           variant="primary" 
           onClick={() => {
@@ -81,7 +75,6 @@ export default function AdminPrecios() {
         </Button>
       </div>
 
-      {/* COMPONENTE TABS */}
       <div style={{ marginBottom: '32px' }}>
         <Tabs 
           tabs={["Planes de suscripción", "Catálogo de Drones"]} 
@@ -90,9 +83,6 @@ export default function AdminPrecios() {
         />
       </div>
 
-      {/* ========================================== */}
-      {/* PESTAÑA 0: PLANES DE SUSCRIPCIÓN */}
-      {/* ========================================== */}
       {tab === 0 && (
         <div style={{ backgroundColor: 'var(--white)', border: '1px solid var(--light-gray)', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
           <div style={{ overflowX: 'auto' }}>
@@ -130,9 +120,6 @@ export default function AdminPrecios() {
         </div>
       )}
 
-      {/* ========================================== */}
-      {/* PESTAÑA 1: CATÁLOGO DE DRONES (MEJORADA) */}
-      {/* ========================================== */}
       {tab === 1 && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '24px' }}>
           {drones.map(dron => (
@@ -145,7 +132,6 @@ export default function AdminPrecios() {
               flexDirection: 'column',
               boxShadow: '0 4px 15px rgba(0,0,0,0.03)'
             }}>
-              {/* Imagen simulada del dron */}
               <div style={{ height: '160px', backgroundColor: 'var(--bg-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', borderBottom: '1px solid var(--light-gray)' }}>
                 <Drone size={64} color="var(--text-light)" opacity={0.4} />
                 <div style={{ position: 'absolute', top: '16px', right: '16px' }}>
@@ -153,7 +139,6 @@ export default function AdminPrecios() {
                 </div>
               </div>
 
-              {/* Detalles del dron */}
               <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
                   <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 'bold', color: 'var(--color-dark)' }}>{dron.name}</h3>
@@ -189,9 +174,6 @@ export default function AdminPrecios() {
         </div>
       )}
 
-      {/* ========================================== */}
-      {/* MODAL: EDITAR/CREAR PLAN */}
-      {/* ========================================== */}
       <Modal isOpen={isPlanModalOpen} onClose={() => setIsPlanModalOpen(false)} title={editingPlan?.id ? "Editar Plan de Suscripción" : "Crear Nuevo Plan"}>
         {editingPlan && (
           <form onSubmit={(e) => { e.preventDefault(); setIsPlanModalOpen(false); }} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -215,9 +197,6 @@ export default function AdminPrecios() {
         )}
       </Modal>
 
-      {/* ========================================== */}
-      {/* MODAL: EDITAR/CREAR DRON */}
-      {/* ========================================== */}
       <Modal isOpen={isDroneModalOpen} onClose={() => setIsDroneModalOpen(false)} title={editingDrone?.id ? "Editar Dron" : "Agregar Nuevo Dron"}>
         {editingDrone && (
           <form onSubmit={(e) => { e.preventDefault(); setIsDroneModalOpen(false); }} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>

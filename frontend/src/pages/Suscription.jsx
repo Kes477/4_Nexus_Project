@@ -1,11 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Zap, CreditCard, Check } from 'lucide-react';
+import { Shield, Zap, CreditCard, Check, Star } from 'lucide-react';
 
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import { SearchBar, Select, Modal, Button, Loader } from '../components/ui';
-import { ServiceCard } from '../components/domain/Card';
+import { ItemServiceCard } from '../components/domain/ItemCard';
 
 const API_URL = 'http://localhost:8000/api/catalogo/productos/';
 
@@ -17,22 +17,35 @@ const formatPrice = (precioDesde) =>
           })
         : 'Consultar';
 
-const adaptSuscripcion = (item, idx) => ({
-    id: item.id,
-    number: String(idx + 1).padStart(2, '0'),
-    icon: idx % 2 === 0 ? Shield : Zap,
-    title: item.nombre,
-    description: item.descripcion || 'Plan de servicios aéreos.',
-    price: formatPrice(item.precio_desde),
-    precioNumerico: Number(item.precio_desde) || 0,
-    period: item.periodo || '/mes',
-    destacado: item.destacado === true,
-    features: Array.isArray(item.caracteristicas)
-        ? item.caracteristicas
-        : Array.isArray(item.features)
-            ? item.features
-            : [],
-});
+const adaptSuscripcion = (item, idx) => {
+    const defaultFeatures = [
+        "2 vuelos de monitoreo mensuales",
+        "Reportes analíticos de vigor en PDF",
+        "Cobertura de hasta 10 manzanas",
+        "Soporte técnico prioritario",
+        "Acceso a plataforma web"
+    ];
+
+    return {
+        id: item.id,
+        number: String(idx + 1).padStart(2, '0'),
+        icon: idx % 2 === 0 ? Shield : Zap,
+        title: item.nombre,
+        description: item.descripcion || 'Plan de servicios aéreos diseñado para potenciar tu operación.',
+        price: formatPrice(item.precio_desde),
+        precioNumerico: Number(item.precio_desde) || 0,
+        period: item.periodo || '/mes',
+        destacado: item.destacado === true,
+        features: (Array.isArray(item.caracteristicas) && item.caracteristicas.length > 0)
+            ? item.caracteristicas
+            : (Array.isArray(item.features) && item.features.length > 0)
+                ? item.features
+                : defaultFeatures, 
+        tags: Array.isArray(item.tags) && item.tags.length > 0
+            ? item.tags 
+            : (item.destacado ? ["Soporte 24/7", "Sin contratos"] : [])
+    };
+};
 
 const SORT_OPTIONS = [
     { value: 'relevancia', label: 'Relevancia' },
@@ -128,7 +141,7 @@ export const Suscription = () => {
 
                     <div style={{ textAlign: 'center', marginBottom: '10px' }}>
                         <h1 style={{ fontSize: '28px', color: 'var(--color-dark)', fontWeight: '800', marginBottom: '5px' }}>
-                            Nuestros Planes
+                            Nuestros Planes de Suscripción
                         </h1>
                         <p style={{ color: 'var(--text-light)', fontSize: '14px', maxWidth: '600px', margin: '0 auto' }}>
                             Elige el plan que se adapte a tu operación. Soporte técnico, mantenimiento y acceso a plataforma.
@@ -207,14 +220,14 @@ export const Suscription = () => {
                         <div style={{
                             display: 'grid',
                             gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-                            gap: '20px',
+                            gap: '24px',
                             alignItems: 'stretch',
                         }}>
                             {suscripcionesFiltradas.map((suscripcion) => (
-                                <div key={suscripcion.id} style={{ display: 'flex', justifyContent: 'center' }}>
-                                    <ServiceCard
-                                        service={suscripcion}
-                                        onSelect={setSelected}
+                                <div key={suscripcion.id} style={{ display: 'flex', justifyContent: 'center', height: '100%' }}>
+                                    <ItemServiceCard
+                                        item={suscripcion}
+                                        onAction={setSelected}
                                     />
                                 </div>
                             ))}
@@ -234,10 +247,10 @@ export const Suscription = () => {
                             {selected.description}
                         </p>
 
-                        {selected.features.length > 0 && (
+                        {selected.features && selected.features.length > 0 && (
                             <div>
                                 <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-light)', fontWeight: 'bold', letterSpacing: '1px', marginBottom: '8px' }}>
-                                    INCLUYE
+                                    BENEFICIOS
                                 </span>
                                 <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                     {selected.features.map((feature, i) => (

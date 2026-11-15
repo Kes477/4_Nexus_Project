@@ -1,12 +1,10 @@
 import React from 'react';
 import { Battery, Droplet, Pause, MapPin, Activity, Navigation, MessageSquare, AlertTriangle } from 'lucide-react';
 
-// Importación estricta de tus componentes UI
 import { Button, ProgressBar } from '../../components/ui';
 
 export default function AdminTracking({ onFinish }) {
   
-  // Animación para el punto rojo de "En Vivo"
   const pulseStyle = `
     @keyframes pulse-red {
       0% { box-shadow: 0 0 0 0 rgba(240, 37, 88, 0.7); }
@@ -15,7 +13,6 @@ export default function AdminTracking({ onFinish }) {
     }
   `;
 
-  // Estilos reutilizables
   const cardStyle = {
     backgroundColor: 'var(--white)',
     border: '1px solid var(--light-gray)',
@@ -37,7 +34,6 @@ export default function AdminTracking({ onFinish }) {
     }}>
       <style>{pulseStyle}</style>
 
-      {/* HEADER */}
       <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '20px', marginBottom: '32px', paddingBottom: '20px', borderBottom: '1px solid var(--light-gray)' }}>
         <h2 style={{ margin: 0, fontSize: '28px', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '16px' }}>
           <span style={{ 
@@ -64,10 +60,8 @@ export default function AdminTracking({ onFinish }) {
         </span>
       </div>
 
-      {/* CUERPO PRINCIPAL DE 2 COLUMNAS */}
       <div style={{ display: 'flex', flexWrap: 'wrap', flex: 1, gap: '32px' }}>
         
-        {/* COLUMNA IZQUIERDA: MAPA SATELITAL */}
         <div style={{ ...cardStyle, flex: 1, minWidth: '400px', display: 'flex', flexDirection: 'column', padding: '16px' }}>
           
           <div style={{ 
@@ -81,7 +75,6 @@ export default function AdminTracking({ onFinish }) {
             overflow: 'hidden',
             minHeight: '400px'
           }}>
-            {/* SVG Simulando Ruta y Zonas */}
             <svg style={{ position: 'absolute', width: '100%', height: '100%' }}>
               <polygon points="200,150 600,100 700,400 300,500" fill="rgba(4, 201, 166, 0.15)" stroke="var(--color-primary)" strokeWidth="2" strokeDasharray="5 5" />
               <path d="M 250 200 L 300 180 L 350 250 L 400 220 L 450 300 L 500 280 L 550 350 L 600 320" fill="none" stroke="var(--color-warning)" strokeWidth="3" />
@@ -95,10 +88,8 @@ export default function AdminTracking({ onFinish }) {
           
         </div>
 
-        {/* COLUMNA DERECHA: TELEMETRÍA Y ACCIONES */}
         <div style={{ width: '100%', maxWidth: '400px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
           
-          {/* TARJETA DE TELEMETRÍA */}
           <div style={{ ...cardStyle, flex: 1 }}>
              <h3 style={{ margin: '0 0 24px 0', fontSize: '20px', fontWeight: '900', borderBottom: '1px solid var(--light-gray)', paddingBottom: '16px' }}>
                Telemetría del Dron
@@ -106,7 +97,6 @@ export default function AdminTracking({ onFinish }) {
              
              <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
                
-               {/* Batería */}
                <div>
                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                    <span style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--text-light)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -117,7 +107,6 @@ export default function AdminTracking({ onFinish }) {
                  <ProgressBar current={42} max={100} />
                </div>
 
-               {/* Tanque */}
                <div>
                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                    <span style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--text-light)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -128,7 +117,6 @@ export default function AdminTracking({ onFinish }) {
                  <ProgressBar current={30} max={100} />
                </div>
 
-               {/* Datos extra */}
                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', paddingTop: '16px', borderTop: '1px solid var(--light-gray)' }}>
                  <div>
                    <span style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', color: 'var(--text-light)', textTransform: 'uppercase' }}>Velocidad</span>
@@ -147,7 +135,6 @@ export default function AdminTracking({ onFinish }) {
              </div>
           </div>
 
-          {/* BOTONES DE ACCIÓN */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
              <Button variant="outline-dark" style={{ width: '100%', padding: '14px' }}>
                <Pause size={18} style={{ marginRight: '8px' }} /> Pausar Servicio

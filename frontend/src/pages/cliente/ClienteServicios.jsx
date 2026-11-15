@@ -4,7 +4,6 @@ import {
   ClipboardCopy, Pencil, Download, Share2, Trash2, Save, Check 
 } from 'lucide-react';
 
-// Importación estricta de TUS componentes UI
 import { 
   Button, 
   Input, 
@@ -18,10 +17,8 @@ import {
 } from '../../components/ui';
 
 export default function ClienteServicios() {
-  // --- ESTADOS GENERALES ---
-  const [activeTab, setActiveTab] = useState(0); // 0: servicios, 1: mapas
+  const [activeTab, setActiveTab] = useState(0);
 
-  // --- ESTADOS PESTAÑA SERVICIOS ---
   const [step, setStep] = useState(1);
   const [requestSuccess, setRequestSuccess] = useState(false);
 
@@ -84,7 +81,6 @@ export default function ClienteServicios() {
     return <Badge text={status} color="dark" />;
   };
 
-  // --- ESTADOS PESTAÑA EDITOR DE MAPAS ---
   const [selectedTool, setSelectedTool] = useState("polygon");
   const [showZones, setShowZones] = useState(true);
   const [showHeatmap, setShowHeatmap] = useState(false);
@@ -95,7 +91,6 @@ export default function ClienteServicios() {
   const [mappingId, setMappingId] = useState("MIS-FUM-001");
   const [tempMappingId, setTempMappingId] = useState("MIS-FUM-001");
   
-  // Modales
   const [isIdModalOpen, setIsIdModalOpen] = useState(false);
   const [isApprovalModalOpen, setIsApprovalModalOpen] = useState(false);
   const [isCopySuccessModalOpen, setIsCopySuccessModalOpen] = useState(false);
@@ -119,7 +114,6 @@ export default function ClienteServicios() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%', minHeight: '100vh', backgroundColor: 'var(--bg-color)', fontFamily: "'Roboto', sans-serif", overflow: 'hidden' }}>
       
-      {/* HEADER TABS PRINCIPALES USANDO EL COMPONENTE <Tabs> */}
       <div style={{ backgroundColor: 'var(--white)', borderBottom: '1px solid var(--light-gray)', padding: '0 32px', zIndex: 10 }}>
         <Tabs 
           tabs={[
@@ -131,9 +125,6 @@ export default function ClienteServicios() {
         />
       </div>
 
-      {/* ================================================================================= */}
-      {/* VISTA 1: MIS SERVICIOS */}
-      {/* ================================================================================= */}
       {activeTab === 0 && (
         <div style={{ flex: 1, padding: '32px', display: 'flex', flexDirection: 'column', gap: '24px', overflowY: 'auto' }}>
           
@@ -146,19 +137,16 @@ export default function ClienteServicios() {
           </div>
 
           <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start' }}>
-            {/* LISTA DE FICHAS */}
             <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '24px' }}>
               {servicios.map(srv => (
                 <div key={srv.id} style={{ backgroundColor: 'var(--white)', border: '1px solid var(--light-gray)', borderRadius: '8px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                   
-                  {/* Header de la tarjeta */}
                   <div style={{ height: '80px', backgroundColor: 'var(--color-dark)', position: 'relative', padding: '16px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
                     <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase' }}>{srv.type}</span>
                     <h3 style={{ margin: '4px 0 0 0', fontSize: '16px', color: 'var(--white)', fontWeight: 'bold' }}>{srv.title}</h3>
                     <div style={{ position: 'absolute', top: '12px', right: '12px' }}>{getStatusBadge(srv.status)}</div>
                   </div>
 
-                  {/* Cuerpo de la tarjeta */}
                   <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', flex: 1 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--text-light)' }}>
                       <MapPin size={16} color="var(--color-primary)" /> <span>{srv.location}</span>
@@ -186,12 +174,10 @@ export default function ClienteServicios() {
               ))}
             </div>
 
-            {/* FORMULARIO DE SOLICITUD */}
             <div style={{ width: '360px', flexShrink: 0, backgroundColor: 'var(--white)', border: '1px solid var(--light-gray)', borderRadius: '8px', overflow: 'hidden' }}>
               <div style={{ padding: '20px', borderBottom: '1px solid var(--light-gray)', backgroundColor: 'var(--bg-color)' }}>
                 <h2 style={{ margin: 0, fontSize: '16px', fontWeight: 'bold', color: 'var(--color-dark)' }}>Solicitar Servicio</h2>
                 
-                {/* COMPONENTE STEPPER */}
                 <div style={{ marginTop: '16px' }}>
                   <Stepper 
                     steps={['Detalles', 'Mapeo', 'Revisión']} 
@@ -286,13 +272,9 @@ export default function ClienteServicios() {
         </div>
       )}
 
-      {/* ================================================================================= */}
-      {/* VISTA 2: EDITOR DE MAPAS */}
-      {/* ================================================================================= */}
       {activeTab === 1 && (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: 'var(--white)' }}>
           
-          {/* Header del editor */}
           <header style={{ backgroundColor: 'var(--bg-color)', borderBottom: '1px solid var(--light-gray)', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '60px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <div style={{ padding: '8px', backgroundColor: 'var(--color-primary)', color: 'var(--white)', borderRadius: '6px' }}>
@@ -310,10 +292,8 @@ export default function ClienteServicios() {
             </div>
           </header>
 
-          {/* Cuerpo del editor (3 columnas) */}
           <main style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
             
-            {/* Panel Izquierdo */}
             <aside style={{ width: '260px', backgroundColor: 'var(--white)', borderRight: '1px solid var(--light-gray)', display: 'flex', flexDirection: 'column' }}>
               <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div style={{ padding: '12px', backgroundColor: 'var(--bg-color)', border: '1px solid var(--light-gray)', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -338,7 +318,6 @@ export default function ClienteServicios() {
                 <div>
                   <h4 style={{ margin: '0 0 8px 0', fontSize: '11px', color: 'var(--text-light)', textTransform: 'uppercase' }}>Capas</h4>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {/* COMPONENTE CHECKBOX */}
                     <Checkbox label="Zonas" checked={showZones} onChange={() => setShowZones(!showZones)} />
                     <Checkbox label="Mapa NDVI" checked={showHeatmap} onChange={() => setShowHeatmap(!showHeatmap)} />
                     <Checkbox label="Límites" checked={showBoundaries} onChange={() => setShowBoundaries(!showBoundaries)} />
@@ -347,7 +326,6 @@ export default function ClienteServicios() {
               </div>
             </aside>
 
-            {/* Mapa Central */}
             <div style={{ flex: 1, backgroundColor: '#1e293b', position: 'relative', overflow: 'hidden' }}>
               <svg style={{ width: '100%', height: '100%', position: 'absolute' }}>
                 {showZones && (
@@ -363,7 +341,6 @@ export default function ClienteServicios() {
               </div>
             </div>
 
-            {/* Panel Derecho */}
             <aside style={{ width: '300px', backgroundColor: 'var(--white)', borderLeft: '1px solid var(--light-gray)', padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
               
               <div style={{ padding: '16px', backgroundColor: 'var(--bg-color)', border: '1px solid var(--light-gray)', borderRadius: '8px' }}>
@@ -414,10 +391,6 @@ export default function ClienteServicios() {
         </div>
       )}
 
-      {/* ================================================================================= */}
-      {/* MODALES (COMPONENTE MODAL) */}
-      {/* ================================================================================= */}
-      
       <Modal isOpen={isCopySuccessModalOpen} onClose={() => setIsCopySuccessModalOpen(false)} title="¡ID Copiado!">
         <div style={{ textAlign: 'center', padding: '16px 0' }}>
           <CheckCircle2 size={48} color="var(--color-success)" style={{ margin: '0 auto 16px' }} />

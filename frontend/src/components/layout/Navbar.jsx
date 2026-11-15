@@ -10,8 +10,8 @@ const Navbar = () => {
     const [isUserOpen, setIsUserOpen] = useState(false);
     const [hoveredPath, setHoveredPath] = useState(null);
 
-    // Obtenemos el rol del localStorage
-    const [userRole, setUserRole] = useState(localStorage.getItem('user_role') || 'cliente');
+    // Obtenemos el rol del localStorage (guardado desde el Login)
+    const [userRole] = useState(localStorage.getItem('user_role') || 'cliente');
 
     // 1. DETECTAMOS LA RUTA BASE SEGÚN EL ROL
     const basePath = userRole === 'admin' ? '/admin' : '/cliente';
@@ -23,9 +23,6 @@ const Navbar = () => {
     const isLanding = location.pathname === '/';
 
     // 4. ITEMS DEL NAV PÚBLICO
-    //    - `dedicatedPath`: si existe y NO estamos en el landing, navega a esa ruta
-    //    - si estamos en el landing, siempre usa el ancla nativa
-    //    - si no hay `dedicatedPath` y NO estamos en el landing, navega al landing + ancla
     const publicNavItems = [
         { id: 'inicio', label: 'Inicio', dedicatedPath: null },
         { id: 'nosotros', label: 'Nosotros', dedicatedPath: null },
@@ -69,20 +66,17 @@ const Navbar = () => {
         zIndex: 1001
     };
 
-    const cambiarRol = (nuevoRol) => {
-        localStorage.setItem('user_role', nuevoRol);
-        setUserRole(nuevoRol);
-        if (nuevoRol === 'admin') {
-            navigate('/admin');
-        } else {
-            navigate('/cliente');
-        }
-        window.location.reload();
+    // FUNCIÓN PARA CERRAR SESIÓN (Limpia rol y tokens)
+    const handleLogout = () => {
+        localStorage.removeItem('user_role');
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        localStorage.removeItem('user_email');
+        navigate('/login');
     };
 
     // Renderiza un link público según el contexto
     const renderPublicLink = (item) => {
-        // En el landing → ancla nativa (scroll dentro de la misma página)
         if (isLanding) {
             return (
                 <a key={item.id} href={`#${item.id}`} className="nav-link">
@@ -91,7 +85,6 @@ const Navbar = () => {
             );
         }
 
-        // Fuera del landing con página dedicada → navega a esa ruta
         if (item.dedicatedPath) {
             return (
                 <Link key={item.id} to={item.dedicatedPath} className="nav-link">
@@ -100,7 +93,6 @@ const Navbar = () => {
             );
         }
 
-        // Fuera del landing sin página dedicada → vuelve al landing con ancla
         return (
             <Link key={item.id} to={`/#${item.id}`} className="nav-link">
                 {item.label}
@@ -210,16 +202,7 @@ const Navbar = () => {
                     </Link>
                 ) : (
                     <>
-                        <select
-                            value={userRole}
-                            onChange={(e) => cambiarRol(e.target.value)}
-                            style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--light-gray)', fontSize: '12px', background: 'var(--white)', cursor: 'pointer', color: 'var(--text-light)' }}
-                        >
-                            <option value="cliente">Rol: Cliente</option>
-                            <option value="admin">Rol: Admin</option>
-                            <option value="piloto">Rol: Piloto</option>
-                            <option value="tecnico">Rol: Técnico</option>
-                        </select>
+                        {/* EL SELECTOR DE ROLES HA SIDO ELIMINADO DE AQUÍ */}
 
                         <div style={{ position: 'relative' }}>
                             <button
@@ -250,7 +233,7 @@ const Navbar = () => {
                                     </Link>
                                     <hr style={{ border: 'none', borderTop: '1px solid var(--light-gray)', margin: '5px 0' }} />
                                     <button
-                                        onClick={() => { localStorage.removeItem('user_role'); navigate('/login'); }}
+                                        onClick={handleLogout}
                                         style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'none', border: 'none', padding: '10px 16px', fontSize: '14px', fontWeight: '600', color: 'var(--color-danger)', cursor: 'pointer', borderRadius: '8px', textAlign: 'left', width: '100%', transition: 'all 0.2s' }}
                                         onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(240, 37, 88, 0.05)'}
                                         onMouseLeave={(e) => e.currentTarget.style.background = 'none'}

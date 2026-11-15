@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ShieldCheck, Award, Check, ArrowLeft, CreditCard } from 'lucide-react';
 import { Button, Input, Tabs } from '../../components/ui';
-import DroneCard from '../../components/domain/DroneCard'; 
+import { ItemProductCard } from '../../components/domain/ItemCard'; 
 
 export const ClienteDrones = () => {
     const [activeTab, setActiveTab] = useState('mis-drones');
@@ -69,7 +69,7 @@ export const ClienteDrones = () => {
     };
 
     const handleSupportRequest = (drone) => {
-        console.log("Solicitando ayuda técnica para:", drone.nombre);
+        console.log("Solicitando ayuda técnica para:", drone.nombre || drone.name);
     };
 
     return (
@@ -102,24 +102,24 @@ export const ClienteDrones = () => {
                                 <Check size={30} />
                             </div>
                             <h2 style={{ color: 'var(--color-dark)', marginBottom: '10px' }}>¡Compra Exitosa!</h2>
-                            <p style={{ color: 'var(--text-light)', fontSize: '15px' }}>Has adquirido el <strong>{selectedDrone.nombre}</strong>.</p>
+                            <p style={{ color: 'var(--text-light)', fontSize: '15px' }}>Has adquirido el <strong>{selectedDrone.nombre || selectedDrone.name}</strong>.</p>
                         </div>
                     ) : (
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '30px', alignItems: 'center' }}>
                             
                             <div style={{ background: 'var(--bg-color)', padding: '20px', borderRadius: '12px', border: '1px solid var(--light-gray)' }}>
                                 <img 
-                                    src={selectedDrone.imagen} 
-                                    alt={selectedDrone.nombre} 
+                                    src={selectedDrone.imagen || selectedDrone.image} 
+                                    alt={selectedDrone.nombre || selectedDrone.name} 
                                     style={{ width: '100%', height: '180px', objectFit: 'cover', borderRadius: '8px', marginBottom: '15px' }} 
                                 />
                                 <span style={{ background: 'rgba(4, 201, 166, 0.1)', color: 'var(--color-primary)', padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold' }}>Resumen de Compra</span>
-                                <h2 style={{ fontSize: '22px', color: 'var(--color-dark)', margin: '10px 0 8px 0' }}>{selectedDrone.nombre}</h2>
-                                <p style={{ color: 'var(--text-light)', fontSize: '14px', marginBottom: '15px', lineHeight: '1.4' }}>{selectedDrone.desc}</p>
+                                <h2 style={{ fontSize: '22px', color: 'var(--color-dark)', margin: '10px 0 8px 0' }}>{selectedDrone.nombre || selectedDrone.name}</h2>
+                                <p style={{ color: 'var(--text-light)', fontSize: '14px', marginBottom: '15px', lineHeight: '1.4' }}>{selectedDrone.desc || selectedDrone.description}</p>
                                 <hr style={{ border: 'none', borderTop: '1px solid var(--light-gray)', margin: '15px 0' }} />
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <span style={{ color: 'var(--text-light)', fontWeight: 'bold', fontSize: '14px' }}>Total:</span>
-                                    <h3 style={{ fontSize: '24px', color: 'var(--color-primary)', margin: 0 }}>L {selectedDrone.precio}</h3>
+                                    <h3 style={{ fontSize: '24px', color: 'var(--color-primary)', margin: 0 }}>L {selectedDrone.precio || selectedDrone.price}</h3>
                                 </div>
                             </div>
                             
@@ -200,7 +200,7 @@ export const ClienteDrones = () => {
                                             disabled={isProcessing} 
                                             style={{ marginTop: '5px', width: '100%', padding: '12px', fontSize: '15px' }}
                                         >
-                                            {isProcessing ? 'Procesando...' : <><ShieldCheck size={18} /> Pagar L {selectedDrone.precio}</>}
+                                            {isProcessing ? 'Procesando...' : <><ShieldCheck size={18} /> Pagar L {selectedDrone.precio || selectedDrone.price}</>}
                                         </Button>
                                     </div>
                                 </div>
@@ -222,7 +222,11 @@ export const ClienteDrones = () => {
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '15px', alignItems: 'stretch', marginTop: '10px' }}>
                             {misDrones.map(dron => (
                                 <div key={dron.id} style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                                    <DroneCard drone={dron} mode="owned" onAction={handleSupportRequest} />
+                                    <ItemProductCard 
+                                        item={dron} 
+                                        mode="owned" 
+                                        onAction={handleSupportRequest} 
+                                    />
                                 </div>
                             ))}
                         </div>
@@ -232,7 +236,11 @@ export const ClienteDrones = () => {
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '15px', alignItems: 'stretch', marginTop: '10px' }}>
                             {catalogo.map(dron => (
                                 <div key={dron.id} style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                                    <DroneCard drone={dron} mode="catalog" onAction={setSelectedDrone} />
+                                    <ItemProductCard 
+                                        item={dron} 
+                                        mode="catalog" 
+                                        onAction={setSelectedDrone} 
+                                    />
                                 </div>
                             ))}
                         </div>

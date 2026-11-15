@@ -1,7 +1,6 @@
 import React from 'react';
 import { ChevronLeft, Check, MapPin, User, Droplets } from 'lucide-react';
 
-// Importación estricta de tus componentes UI
 import { Button } from '../../components/ui';
 
 export default function AdminCheckout({ onConfirm, onBack }) {
@@ -17,14 +16,12 @@ export default function AdminCheckout({ onConfirm, onBack }) {
       fontFamily: "'Roboto', sans-serif" 
     }}>
       
-      {/* BOTÓN VOLVER (Fuera del recibo para que no ocupe espacio) */}
       <div style={{ width: '100%', maxWidth: '420px', marginBottom: '16px' }}>
         <Button variant="outline-dark" size="sm" onClick={onBack}>
           <ChevronLeft size={16} style={{ marginRight: '6px' }} /> Volver al Panel
         </Button>
       </div>
 
-      {/* RECIBO (Estilo ticket, más estrecho) */}
       <div style={{ 
         width: '100%', 
         maxWidth: '420px', 
@@ -36,7 +33,6 @@ export default function AdminCheckout({ onConfirm, onBack }) {
         border: '1px solid var(--light-gray)'
       }}>
         
-        {/* ENCABEZADO DEL RECIBO */}
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
           <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '900', color: 'var(--color-dark)', textTransform: 'uppercase', letterSpacing: '1px' }}>
             Resumen de Vuelo
@@ -46,10 +42,8 @@ export default function AdminCheckout({ onConfirm, onBack }) {
           </p>
         </div>
 
-        {/* LÍNEA PUNTEADA */}
         <div style={{ borderBottom: '2px dashed var(--light-gray)', marginBottom: '24px' }} />
 
-        {/* DETALLES (Formato lista vertical) */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
           
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -81,10 +75,8 @@ export default function AdminCheckout({ onConfirm, onBack }) {
 
         </div>
 
-        {/* LÍNEA PUNTEADA */}
         <div style={{ borderBottom: '2px dashed var(--light-gray)', marginBottom: '24px' }} />
 
-        {/* TOTAL */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginBottom: '32px' }}>
           <span style={{ fontSize: '13px', color: 'var(--text-light)', fontWeight: 'bold', textTransform: 'uppercase' }}>
             Total Estimado
@@ -94,7 +86,6 @@ export default function AdminCheckout({ onConfirm, onBack }) {
           </span>
         </div>
 
-        {/* BOTÓN CONFIRMAR */}
         <Button 
           variant="primary" 
           onClick={onConfirm} 
@@ -112,7 +103,6 @@ export default function AdminCheckout({ onConfirm, onBack }) {
           <Check size={18} /> Confirmar y Programar
         </Button>
 
-        {/* CÓDIGO DE BARRAS SIMULADO (Detalle visual de recibo) */}
         <div style={{ marginTop: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', opacity: 0.5 }}>
           <div style={{ display: 'flex', gap: '2px', height: '24px' }}>
             {[4,2,6,2,8,3,5,2,7,4,2,9,3,5,2,4,8,3,6,2,5,7].map((w, i) => (

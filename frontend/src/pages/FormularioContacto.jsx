@@ -1,13 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Home, ChevronLeft, ChevronRight, Check, Send } from 'lucide-react';
-import { Input, Button, Alert, Checkbox } from '../components/ui';
-
-const carouselImages = [
-    "https://images.unsplash.com/photo-1508614589041-895b88991e3e?q=80&w=1000&auto=format&fit=crop",
-    "https://images.unsplash.com/photo-1579829366248-204fe8413f31?q=80&w=1000&auto=format&fit=crop",
-    "https://images.unsplash.com/photo-1473968512647-3e447244af8f?q=80&w=1000&auto=format&fit=crop",
-];
+import { Home, ChevronLeft, ChevronRight, Check, Send, Phone, Mail, MapPin, Clock, MessageSquare } from 'lucide-react';
+import { Input, Button, Alert, Checkbox, IconButton } from '../components/ui';
 
 const TIPOS_CONSULTA = [
     { value: '', label: 'Selecciona un tipo de consulta' },
@@ -25,7 +19,6 @@ const FormularioContacto = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState(null);
     const [success, setSuccess] = useState(false);
-    const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [fieldErrors, setFieldErrors] = useState({});
 
     const [nombre, setNombre] = useState('');
@@ -35,13 +28,6 @@ const FormularioContacto = () => {
     const [asunto, setAsunto] = useState('');
     const [mensaje, setMensaje] = useState('');
     const [aceptaContacto, setAceptaContacto] = useState(false);
-
-    useEffect(() => {
-        const interval = setInterval(() => {
-            setCurrentImageIndex((prev) => (prev + 1) % carouselImages.length);
-        }, 4000);
-        return () => clearInterval(interval);
-    }, []);
 
     const validateStep1 = () => {
         const errs = {};
@@ -121,11 +107,13 @@ const FormularioContacto = () => {
     };
 
     const labelStyle = {
-        fontSize: '12px',
-        fontWeight: '600',
-        color: 'var(--color-dark)',
+        fontSize: '11px',
+        fontWeight: '700',
+        color: 'var(--text-light)',
         marginBottom: '6px',
         display: 'block',
+        textTransform: 'uppercase',
+        letterSpacing: '0.5px',
     };
 
     const fieldWrapperStyle = { display: 'flex', flexDirection: 'column' };
@@ -133,7 +121,7 @@ const FormularioContacto = () => {
     const errorTextStyle = {
         color: 'var(--color-danger)',
         fontSize: '12px',
-        marginTop: '5px',
+        marginTop: '4px',
         display: 'block',
     };
 
@@ -150,6 +138,7 @@ const FormularioContacto = () => {
         outline: 'none',
         fontFamily: 'inherit',
         cursor: 'pointer',
+        transition: 'border-color 0.2s',
     };
 
     const textareaStyle = {
@@ -163,71 +152,112 @@ const FormularioContacto = () => {
         outline: 'none',
         fontFamily: 'inherit',
         resize: 'vertical',
-        minHeight: '110px',
+        minHeight: '100px',
+        transition: 'border-color 0.2s',
     };
 
     return (
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', background: 'var(--bg-color)', padding: '30px 20px' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', background: 'var(--bg-color)', padding: '20px' }}>
 
             <style>{`.hide-scrollbar::-webkit-scrollbar { display: none; }`}</style>
 
             <div style={{
                 background: 'var(--white)', border: '1px solid var(--light-gray)',
-                borderRadius: '12px', overflow: 'hidden',
-                display: 'flex', width: '100%', maxWidth: '1000px', height: '620px',
-                boxShadow: '0 15px 40px rgba(0,0,0,0.06)', position: 'relative',
+                borderRadius: '16px', overflow: 'hidden',
+                display: 'flex', width: '100%', maxWidth: '1000px', height: '600px',
+                boxShadow: '0 20px 50px rgba(0,0,0,0.08)', position: 'relative',
             }}>
 
-                <Link
-                    to="/"
-                    style={{
-                        position: 'absolute', top: '20px', left: '20px', zIndex: 50,
-                        background: 'rgba(255,255,255,0.9)', padding: '8px', borderRadius: '50%',
-                        color: 'var(--color-dark)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        boxShadow: '0 2px 10px rgba(0,0,0,0.1)', textDecoration: 'none', transition: 'all 0.3s',
-                    }}
-                    title="Volver al inicio"
-                >
-                    <Home size={18} />
+                <Link to="/" style={{ position: 'absolute', top: '16px', left: '16px', zIndex: 50, textDecoration: 'none' }} title="Volver al inicio">
+                    <IconButton 
+                        icon="fa-home" 
+                        customColor="rgba(255, 255, 255, 0.15)" 
+                    />
                 </Link>
 
-                <div style={{ flex: 1, position: 'relative', display: 'flex', overflow: 'hidden', background: 'var(--color-dark)' }}>
-                    {carouselImages.map((src, index) => (
-                        <img
-                            key={index}
-                            src={src}
-                            alt={`Slide ${index}`}
-                            style={{
-                                position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover',
-                                opacity: index === currentImageIndex ? 1 : 0, transition: 'opacity 1s ease-in-out',
-                            }}
-                        />
-                    ))}
-                    <div
-                        style={{
-                            position: 'absolute', inset: 0,
-                            background: 'linear-gradient(to top, rgba(44, 54, 94, 0.95), transparent 60%)',
-                            display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '30px', zIndex: 10,
-                        }}
-                    >
-                        <span style={{ background: 'var(--color-primary)', color: 'var(--white)', padding: '4px 12px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', width: 'fit-content', marginBottom: '10px' }}>
+                <div style={{ 
+                    flex: 1, position: 'relative', display: 'flex', flexDirection: 'column', 
+                    overflow: 'hidden', background: 'var(--color-dark)',
+                    padding: '32px 40px'
+                }}>
+                    <div style={{ position: 'absolute', top: '-10%', left: '-10%', width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(4, 201, 166, 0.25) 0%, transparent 70%)' }} />
+                    <div style={{ position: 'absolute', bottom: '-10%', right: '-10%', width: '400px', height: '400px', background: 'radial-gradient(circle, rgba(4, 201, 166, 0.15) 0%, transparent 70%)' }} />
+
+                    <div style={{ zIndex: 10, marginTop: 'auto', marginBottom: 'auto' }}>
+                        <div style={{ 
+                            background: 'var(--color-primary)', color: 'var(--white)', 
+                            padding: '6px 14px', borderRadius: '8px', fontSize: '13px', 
+                            fontWeight: '900', width: 'fit-content', marginBottom: '24px',
+                            letterSpacing: '1px', boxShadow: '0 4px 15px rgba(4, 201, 166, 0.3)'
+                        }}>
                             4 NEXUS
-                        </span>
-                        <p style={{ color: 'var(--white)', fontSize: '15px', margin: 0, fontWeight: '500', lineHeight: '1.4' }}>
-                            Cuéntanos qué necesitas. Te responderemos a la brevedad.
+                        </div>
+                        
+                        <h1 style={{ color: 'var(--white)', fontSize: '28px', fontWeight: '800', lineHeight: '1.2', marginBottom: '12px' }}>
+                            Hablemos de tu próximo proyecto.
+                        </h1>
+                        
+                        <p style={{ color: 'var(--light-gray)', fontSize: '14px', lineHeight: '1.6', marginBottom: '32px', maxWidth: '90%' }}>
+                            Completa el formulario y nuestro equipo de soporte técnico y ventas se pondrá en contacto contigo a la brevedad.
                         </p>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', color: 'var(--white)' }}>
+                                <div style={{ background: 'rgba(255,255,255,0.1)', padding: '10px', borderRadius: '8px', color: 'var(--color-primary)' }}>
+                                    <Phone size={18} />
+                                </div>
+                                <div>
+                                    <span style={{ display: 'block', fontSize: '11px', color: 'var(--light-gray)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '2px' }}>Llámanos</span>
+                                    <span style={{ fontSize: '14px', fontWeight: '500' }}>+504 9999-0000</span>
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', color: 'var(--white)' }}>
+                                <div style={{ background: 'rgba(255,255,255,0.1)', padding: '10px', borderRadius: '8px', color: 'var(--color-primary)' }}>
+                                    <Mail size={18} />
+                                </div>
+                                <div>
+                                    <span style={{ display: 'block', fontSize: '11px', color: 'var(--light-gray)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '2px' }}>Escríbenos</span>
+                                    <span style={{ fontSize: '14px', fontWeight: '500' }}>soporte@4nexus.com</span>
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', color: 'var(--white)' }}>
+                                <div style={{ background: 'rgba(255,255,255,0.1)', padding: '10px', borderRadius: '8px', color: 'var(--color-primary)' }}>
+                                    <MapPin size={18} />
+                                </div>
+                                <div>
+                                    <span style={{ display: 'block', fontSize: '11px', color: 'var(--light-gray)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '2px' }}>Ubicación</span>
+                                    <span style={{ fontSize: '14px', fontWeight: '500' }}>Tegucigalpa, Honduras</span>
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', color: 'var(--white)' }}>
+                                <div style={{ background: 'rgba(255,255,255,0.1)', padding: '10px', borderRadius: '8px', color: 'var(--color-primary)' }}>
+                                    <Clock size={18} />
+                                </div>
+                                <div>
+                                    <span style={{ display: 'block', fontSize: '11px', color: 'var(--light-gray)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '2px' }}>Horario</span>
+                                    <span style={{ fontSize: '14px', fontWeight: '500' }}>Lun - Vie, 8:00 AM - 5:00 PM</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
                 <div style={{ flex: 1.1, display: 'flex', flexDirection: 'column', background: 'var(--white)', overflow: 'hidden' }}>
 
                     {!success && (
-                        <div style={{ borderBottom: '1px solid var(--light-gray)', padding: '20px 30px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-color)', shrink: 0 }}>
+                        <div style={{ borderBottom: '1px solid var(--light-gray)', padding: '16px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-color)', shrink: 0 }}>
                             <div>
-                                <h2 style={{ margin: 0, fontSize: '20px', color: 'var(--color-primary)', fontWeight: '900', letterSpacing: '1px' }}>4 NEXUS</h2>
-                                <span style={{ fontSize: '12px', color: 'var(--text-light)', fontWeight: '500' }}>Formulario de contacto</span>
+                                <h2 style={{ margin: 0, fontSize: '18px', color: 'var(--color-dark)', fontWeight: '900' }}>
+                                    Formulario de Contacto
+                                </h2>
+                                <span style={{ fontSize: '12px', color: 'var(--text-light)', fontWeight: '500' }}>
+                                    Envíanos un mensaje directo.
+                                </span>
                             </div>
-                            <span style={{ fontSize: '11px', color: 'var(--color-primary)', fontWeight: 'bold', background: 'rgba(4, 201, 166, 0.1)', padding: '4px 10px', borderRadius: '20px' }}>
+                            <span style={{ fontSize: '10px', color: 'var(--color-primary)', fontWeight: 'bold', background: 'rgba(4, 201, 166, 0.1)', padding: '4px 10px', borderRadius: '20px' }}>
                                 Respuesta &lt; 24h
                             </span>
                         </div>
@@ -236,50 +266,50 @@ const FormularioContacto = () => {
                     <div
                         className="hide-scrollbar"
                         style={{
-                            padding: '25px 40px', flexGrow: 1, display: 'flex', flexDirection: 'column',
+                            padding: '24px 32px', flexGrow: 1, display: 'flex', flexDirection: 'column',
                             justifyContent: success ? 'center' : 'flex-start',
                             alignItems: 'center', overflowY: 'auto',
                             scrollbarWidth: 'none', msOverflowStyle: 'none',
                         }}
                     >
                         {errorMsg && (
-                            <div style={{ width: '100%', maxWidth: '420px', marginBottom: '12px' }}>
+                            <div style={{ width: '100%', maxWidth: '420px', marginBottom: '16px' }}>
                                 <Alert type="danger" title="Atención" message={errorMsg} onClose={() => setErrorMsg(null)} />
                             </div>
                         )}
 
                         {success ? (
-                            <div style={{ width: '100%', maxWidth: '380px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px' }}>
-                                <div style={{ background: 'rgba(4, 201, 166, 0.1)', padding: '14px', borderRadius: '50%', color: 'var(--color-primary)' }}>
-                                    <Check size={28} />
+                            <div style={{ width: '100%', maxWidth: '380px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
+                                <div style={{ background: 'rgba(4, 201, 166, 0.1)', padding: '16px', borderRadius: '50%', color: 'var(--color-primary)' }}>
+                                    <Check size={32} />
                                 </div>
-                                <h3 style={{ margin: 0, fontSize: '20px', color: 'var(--color-primary)' }}>¡Mensaje enviado!</h3>
-                                <p style={{ fontSize: '13px', color: 'var(--text-light)', margin: 0 }}>
-                                    Gracias por escribirnos, {nombre.split(' ')[0] || 'usuario'}. Te contactaremos pronto.
-                                </p>
-                                <div style={{ display: 'flex', gap: '10px', width: '100%', marginTop: '10px' }}>
-                                    <Button variant="outline-dark" onClick={() => navigate('/')} style={{ flex: 1 }}>
+                                <div>
+                                    <h3 style={{ margin: '0 0 6px 0', fontSize: '20px', color: 'var(--color-primary)' }}>¡Mensaje enviado!</h3>
+                                    <p style={{ fontSize: '13px', color: 'var(--text-light)', margin: 0 }}>
+                                        Gracias por escribirnos, {nombre.split(' ')[0] || 'usuario'}. Te contactaremos pronto.
+                                    </p>
+                                </div>
+                                <div style={{ display: 'flex', gap: '12px', width: '100%', marginTop: '16px' }}>
+                                    <Button variant="outline-dark" onClick={() => navigate('/')} style={{ flex: 1, padding: '10px' }}>
                                         Ir al inicio
                                     </Button>
-                                    <Button variant="primary" onClick={resetForm} style={{ flex: 1 }}>
+                                    <Button variant="primary" onClick={resetForm} style={{ flex: 1, padding: '10px' }}>
                                         Enviar otro
                                     </Button>
                                 </div>
                             </div>
                         ) : (
                             <div style={{ width: '100%', maxWidth: '420px' }}>
-                                {/* Indicador de paso — mismo patrón que Login.jsx */}
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--light-gray)', paddingBottom: '10px', marginBottom: '18px' }}>
-                                    <span style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--color-dark)' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--light-gray)', paddingBottom: '12px', marginBottom: '16px' }}>
+                                    <span style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--color-dark)' }}>
                                         {step === 1 && 'Paso 1: Información de contacto'}
                                         {step === 2 && 'Paso 2: Detalles del mensaje'}
                                     </span>
-                                    <span style={{ fontSize: '11px', color: 'var(--color-primary)', fontWeight: 'bold', background: 'rgba(4, 201, 166, 0.1)', padding: '2px 8px', borderRadius: '20px' }}>
+                                    <span style={{ fontSize: '10px', color: 'var(--color-primary)', fontWeight: 'bold', background: 'rgba(4, 201, 166, 0.1)', padding: '2px 8px', borderRadius: '20px' }}>
                                         Paso {step} de 2
                                     </span>
                                 </div>
 
-                                {/* PASO 1 */}
                                 {step === 1 && (
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                                         <div style={fieldWrapperStyle}>
@@ -309,7 +339,7 @@ const FormularioContacto = () => {
                                         </div>
 
                                         <div style={fieldWrapperStyle}>
-                                            <label style={labelStyle}>Teléfono</label>
+                                            <label style={labelStyle}>Teléfono (Opcional)</label>
                                             <Input
                                                 type="tel"
                                                 icon="fa-phone"
@@ -335,6 +365,8 @@ const FormularioContacto = () => {
                                                     onChange={(e) => setTipoConsulta(e.target.value)}
                                                     style={selectStyle}
                                                     disabled={isLoading}
+                                                    onFocus={(e) => e.target.style.borderColor = 'var(--color-primary)'}
+                                                    onBlur={(e) => e.target.style.borderColor = fieldErrors.tipoConsulta ? 'var(--color-danger)' : 'var(--light-gray)'}
                                                 >
                                                     {TIPOS_CONSULTA.map((t) => (
                                                         <option key={t.value} value={t.value}>{t.label}</option>
@@ -348,7 +380,6 @@ const FormularioContacto = () => {
                                     </div>
                                 )}
 
-                                {/* PASO 2 */}
                                 {step === 2 && (
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                                         <div style={fieldWrapperStyle}>
@@ -371,6 +402,8 @@ const FormularioContacto = () => {
                                                 placeholder="Describe tu necesidad, equipo o proyecto..."
                                                 style={textareaStyle}
                                                 disabled={isLoading}
+                                                onFocus={(e) => e.target.style.borderColor = 'var(--color-primary)'}
+                                                onBlur={(e) => e.target.style.borderColor = fieldErrors.mensaje ? 'var(--color-danger)' : 'var(--light-gray)'}
                                             />
                                             {fieldErrors.mensaje && (
                                                 <span style={errorTextStyle}>{fieldErrors.mensaje}</span>
@@ -388,14 +421,18 @@ const FormularioContacto = () => {
                                             )}
                                         </div>
 
-                                        {/* Resumen compacto del paso 1 */}
-                                        <div style={{ marginTop: '4px', padding: '10px 12px', background: 'var(--bg-color)', borderRadius: '6px', border: '1px solid var(--light-gray)' }}>
-                                            <span style={{ fontSize: '11px', color: 'var(--text-light)', display: 'block', marginBottom: '2px', fontWeight: 'bold', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
-                                                Contacto
-                                            </span>
-                                            <span style={{ fontSize: '13px', color: 'var(--color-dark)', fontWeight: '600' }}>
-                                                {nombre} · {email}
-                                            </span>
+                                        <div style={{ marginTop: '4px', padding: '12px', background: 'var(--bg-color)', borderRadius: '8px', border: '1px solid var(--light-gray)', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                            <div style={{ background: 'var(--white)', padding: '6px', borderRadius: '50%', color: 'var(--color-primary)', border: '1px solid var(--light-gray)' }}>
+                                                <MessageSquare size={16} />
+                                            </div>
+                                            <div style={{ overflow: 'hidden' }}>
+                                                <span style={{ fontSize: '10px', color: 'var(--text-light)', display: 'block', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                                    Contacto
+                                                </span>
+                                                <span style={{ fontSize: '13px', color: 'var(--color-dark)', fontWeight: '600', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>
+                                                    {nombre} · {email}
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
                                 )}
@@ -404,17 +441,20 @@ const FormularioContacto = () => {
                     </div>
 
                     {!success && (
-                        <div style={{ borderTop: '1px solid var(--light-gray)', padding: '15px 30px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-color)', shrink: 0 }}>
+                        <div style={{ borderTop: '1px solid var(--light-gray)', padding: '16px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-color)', shrink: 0 }}>
                             <button
                                 type="button"
                                 onClick={handleBack}
                                 disabled={isLoading}
                                 style={{
-                                    display: 'flex', alignItems: 'center', gap: '5px', background: 'none', border: 'none',
+                                    display: 'flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none',
                                     cursor: isLoading ? 'not-allowed' : 'pointer',
-                                    color: 'var(--text-light)', fontSize: '12px', fontWeight: 'bold',
+                                    color: 'var(--text-light)', fontSize: '13px', fontWeight: 'bold',
                                     opacity: isLoading ? 0.6 : 1,
+                                    transition: 'color 0.2s'
                                 }}
+                                onMouseEnter={(e) => e.currentTarget.style.color = 'var(--color-dark)'}
+                                onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-light)'}
                             >
                                 <ChevronLeft size={16} />
                                 {step === 2 ? 'Anterior' : 'Cancelar'}
@@ -423,18 +463,20 @@ const FormularioContacto = () => {
                             {step === 1 ? (
                                 <Button
                                     variant="primary"
+                                    size="sm"
                                     onClick={handleNext}
                                     disabled={isLoading}
-                                    style={{ padding: '8px 20px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                                    style={{ padding: '10px 28px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}
                                 >
                                     Siguiente <ChevronRight size={14} />
                                 </Button>
                             ) : (
                                 <Button
                                     variant="primary"
+                                    size="sm"
                                     disabled={isLoading}
                                     onClick={handleSubmit}
-                                    style={{ padding: '8px 20px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                                    style={{ padding: '10px 28px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}
                                 >
                                     {isLoading ? (
                                         <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>

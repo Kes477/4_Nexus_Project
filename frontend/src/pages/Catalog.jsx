@@ -5,7 +5,7 @@ import { ShoppingBag } from 'lucide-react';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import { SearchBar, Select, Modal, Button, Loader } from '../components/ui';
-import DroneCard from '../components/domain/DroneCard';
+import { ItemProductCard } from '../components/domain/ItemCard';
 
 const API_URL = 'http://localhost:8000/api/catalogo/productos/';
 
@@ -19,18 +19,18 @@ const formatPrice = (precioDesde) =>
 
 const adaptDron = (item) => ({
     id: item.id,
-    nombre: item.nombre,
-    descripcion_corta: item.descripcion || 'Sin descripción disponible.',
-    precio: formatPrice(item.precio_desde),
-    precioNumerico: Number(item.precio_desde) || 0,
+    name: item.nombre,
+    description: item.descripcion || 'Sin descripción disponible.',
+    price: formatPrice(item.precio_desde),
+    numericPrice: Number(item.precio_desde) || 0,
     rating: item.rating ?? 5,
-    es_nuevo: item.es_nuevo === true,
-    categoria: item.marca || item.categoria || 'Otros',
-    tamano: Number(
-        item.tamano ?? item.tamaño ?? item.peso ?? item.capacidad_carga ?? 0
-    ) || 0,
-    imagen: item.imagen_principal || null,
+    isNew: item.es_nuevo === true,
+    category: item.marca || item.categoria || 'Otros',
+    size: Number(item.tamano ?? item.tamaño ?? item.peso ?? item.capacidad_carga ?? 0) || 0,
+    image: item.imagen_principal || null,
     hasImage: Boolean(item.imagen_principal),
+    battery: item.autonomia || '45 min',
+    stock: item.stock || null,
 });
 
 const SORT_OPTIONS = [
@@ -75,7 +75,7 @@ export const Catalog = () => {
     }, []);
 
     const categoriasOptions = useMemo(() => {
-        const cats = ['Todas', ...new Set(drones.map((d) => d.categoria))];
+        const cats = ['Todas', ...new Set(drones.map((d) => d.category))];
         return cats.map((cat) => ({
             value: cat,
             label: cat === 'Todas' ? 'Todas las categorías' : cat,
@@ -84,31 +84,31 @@ export const Catalog = () => {
 
     const dronesFiltrados = useMemo(() => {
         const filtrados = drones.filter((dron) => {
-            const texto = `${dron.nombre} ${dron.descripcion_corta}`.toLowerCase();
+            const texto = `${dron.name} ${dron.description}`.toLowerCase();
             const matchesSearch = texto.includes(searchTerm.toLowerCase());
-            const matchesCategory = selectedCategory === 'Todas' || dron.categoria === selectedCategory;
+            const matchesCategory = selectedCategory === 'Todas' || dron.category === selectedCategory;
             return matchesSearch && matchesCategory;
         });
 
         const ordenados = [...filtrados];
         switch (sortBy) {
             case 'precio-asc':
-                ordenados.sort((a, b) => a.precioNumerico - b.precioNumerico);
+                ordenados.sort((a, b) => a.numericPrice - b.numericPrice);
                 break;
             case 'precio-desc':
-                ordenados.sort((a, b) => b.precioNumerico - a.precioNumerico);
+                ordenados.sort((a, b) => b.numericPrice - a.numericPrice);
                 break;
             case 'rating':
                 ordenados.sort((a, b) => b.rating - a.rating);
                 break;
             case 'tamano-asc':
-                ordenados.sort((a, b) => a.tamano - b.tamano);
+                ordenados.sort((a, b) => a.size - b.size);
                 break;
             case 'tamano-desc':
-                ordenados.sort((a, b) => b.tamano - a.tamano);
+                ordenados.sort((a, b) => b.size - a.size);
                 break;
             case 'categoria':
-                ordenados.sort((a, b) => a.categoria.localeCompare(b.categoria));
+                ordenados.sort((a, b) => a.category.localeCompare(b.category));
                 break;
             default:
                 break;
@@ -124,7 +124,7 @@ export const Catalog = () => {
                 from: '/cliente/drones',
                 selectedDrone: dronParaComprar,
                 message: dronParaComprar
-                    ? `Inicia sesión para comprar el ${dronParaComprar.nombre}.`
+                    ? `Inicia sesión para comprar el ${dronParaComprar.name}.`
                     : 'Inicia sesión para continuar con tu compra.',
             },
         });
@@ -229,12 +229,13 @@ export const Catalog = () => {
                             )}
                         </div>
                     ) : (
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '20px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
                             {dronesFiltrados.map((dron) => (
-                                <div key={dron.id} style={{ display: 'flex', justifyContent: 'center' }}>
-                                    <DroneCard
-                                        drone={dron}
-                                        onViewDetails={setSelectedDrone}
+                                <div key={dron.id} style={{ height: '100%', display: 'flex' }}>
+                                    <ItemProductCard 
+                                        item={dron} 
+                                        mode="catalog" 
+                                        onAction={setSelectedDrone} 
                                     />
                                 </div>
                             ))}
@@ -246,14 +247,14 @@ export const Catalog = () => {
             <Modal
                 isOpen={!!selectedDrone}
                 onClose={() => setSelectedDrone(null)}
-                title={selectedDrone?.nombre}
+                title={selectedDrone?.name}
             >
                 {selectedDrone && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                         {selectedDrone.hasImage ? (
                             <img
-                                src={selectedDrone.imagen}
-                                alt={selectedDrone.nombre}
+                                src={selectedDrone.image}
+                                alt={selectedDrone.name}
                                 style={{ width: '100%', height: '200px', objectFit: 'cover', borderRadius: '8px' }}
                             />
                         ) : (
@@ -266,13 +267,13 @@ export const Catalog = () => {
                             </div>
                         )}
                         <p style={{ color: 'var(--text-light)', lineHeight: '1.5', fontSize: '14px' }}>
-                            {selectedDrone.descripcion_corta}
+                            {selectedDrone.description}
                         </p>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--light-gray)', paddingTop: '15px' }}>
                             <div>
                                 <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-light)', fontWeight: 'bold' }}>PRECIO</span>
                                 <strong style={{ fontSize: '22px', color: 'var(--color-primary)' }}>
-                                    {selectedDrone.precio === 'Consultar' ? 'Consultar' : `L ${selectedDrone.precio}`}
+                                    {selectedDrone.price === 'Consultar' ? 'Consultar' : `L ${selectedDrone.price}`}
                                 </strong>
                             </div>
 

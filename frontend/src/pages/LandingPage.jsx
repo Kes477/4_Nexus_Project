@@ -47,10 +47,6 @@ const adaptSuscripcionToService = (sub, idx) => ({
     features: ['Soporte técnico', 'Acceso a plataforma', 'Reportes mensuales'],
 });
 
-// ============================================================================
-// Estilos compartidos
-// ============================================================================
-
 const scrollAnchorStyle = { scrollMarginTop: '80px' };
 const paddingLarge = { padding: '120px 20px', width: '100%' };
 const paddingCatalog = { padding: '20px 20px', width: '100%' };
@@ -242,130 +238,129 @@ const CatalogoSection = ({
     return (
         <section id="catalogo" style={{ ...paddingCatalog, background: 'var(--white)', ...scrollAnchorStyle }}>
             <div style={containerStyle}>
-                <div style={{ textAlign: 'center', marginBottom: '30px' }}>
-                    <h2 style={titleStyle}>Nuestros Planes y Equipos</h2>
-
-                    {/* Fila con tabs centrados + botón "Ver todos" a la derecha */}
-                    <div
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            marginTop: '20px',
-                            flexWrap: 'wrap',
-                            gap: '15px',
-                        }}
-                    >
-                        {/* Espaciador izquierdo para centrar los tabs */}
-                        <div style={{ flex: '1 1 0', minWidth: '120px' }} />
-
-                        {/* Tabs */}
+                
+                <div style={{ maxWidth: '1100px', margin: '0 auto', position: 'relative' }}>
+                    
+                    <div style={{ marginBottom: '30px' }}>
+                        <h2 style={{ ...titleStyle, textAlign: 'center' }}>Nuestros Planes y Equipos</h2>
+                        
                         <div
                             style={{
                                 display: 'flex',
-                                background: 'var(--bg-color)',
-                                padding: '6px',
-                                borderRadius: '10px',
-                                border: '1px solid var(--light-gray)',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                flexWrap: 'wrap',
+                                gap: '15px',
+                                width: '100%',
                             }}
                         >
-                            <button
-                                className={`tab-btn ${pestana === 'subs' ? 'active' : ''}`}
-                                onClick={() => onPestanaChange('subs')}
-                                style={{ padding: '12px 30px', fontSize: '15px' }}
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    background: 'var(--bg-color)',
+                                    padding: '6px',
+                                    borderRadius: '10px',
+                                    border: '1px solid var(--light-gray)',
+                                }}
                             >
-                                Suscripciones
-                            </button>
-                            <button
-                                className={`tab-btn ${pestana === 'equipos' ? 'active' : ''}`}
-                                onClick={() => onPestanaChange('equipos')}
-                                style={{ padding: '12px 30px', fontSize: '15px' }}
-                            >
-                                Equipos
-                            </button>
-                        </div>
-
-                        {/* Botón "Ver todos" a la derecha */}
-                        <div style={{ flex: '1 1 0', minWidth: '120px', display: 'flex', justifyContent: 'flex-end' }}>
-                            {!cargando && hayDatos && (
                                 <button
-                                    style={verMasButtonStyle}
-                                    onClick={verTodosHandler}
-                                    onMouseEnter={(e) => {
-                                        e.currentTarget.style.background = 'var(--color-primary)';
-                                        e.currentTarget.style.color = 'var(--white)';
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.currentTarget.style.background = 'var(--white)';
-                                        e.currentTarget.style.color = 'var(--color-primary)';
-                                    }}
+                                    className={`tab-btn ${pestana === 'subs' ? 'active' : ''}`}
+                                    onClick={() => onPestanaChange('subs')}
+                                    style={{ padding: '12px 30px', fontSize: '15px' }}
                                 >
-                                    {verTodosLabel} <ArrowRight size={13} />
+                                    Suscripciones
                                 </button>
-                            )}
+                                <button
+                                    className={`tab-btn ${pestana === 'equipos' ? 'active' : ''}`}
+                                    onClick={() => onPestanaChange('equipos')}
+                                    style={{ padding: '12px 30px', fontSize: '15px' }}
+                                >
+                                    Equipos
+                                </button>
+                            </div>
+
+                            <div>
+                                {!cargando && hayDatos && (
+                                    <button
+                                        style={verMasButtonStyle}
+                                        onClick={verTodosHandler}
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.background = 'var(--color-primary)';
+                                            e.currentTarget.style.color = 'var(--white)';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.background = 'var(--white)';
+                                            e.currentTarget.style.color = 'var(--color-primary)';
+                                        }}
+                                    >
+                                        {verTodosLabel} <ArrowRight size={13} />
+                                    </button>
+                                )}
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <div style={{ maxWidth: '1100px', margin: '0 auto', position: 'relative' }}>
-                    {cargando ? (
-                        <div style={{ textAlign: 'center', padding: '50px' }}>
-                            <p style={{ color: 'var(--text-light)' }}>Cargando catálogo...</p>
-                        </div>
-                    ) : (
-                        <>
-                            {pestana === 'subs' && suscripciones.length > 4 && (
-                                <>
-                                    <button className="nav-btn" style={{ ...navButtonStyle, left: '-20px' }} onClick={() => handleScroll(suscripcionesRef, 'left')}>
-                                        <ChevronLeft size={24} />
-                                    </button>
-                                    <button className="nav-btn" style={{ ...navButtonStyle, right: '-20px' }} onClick={() => handleScroll(suscripcionesRef, 'right')}>
-                                        <ChevronRight size={24} />
-                                    </button>
-                                </>
-                            )}
+                    <div>
+                        {cargando ? (
+                            <div style={{ textAlign: 'center', padding: '50px' }}>
+                                <p style={{ color: 'var(--text-light)' }}>Cargando catálogo...</p>
+                            </div>
+                        ) : (
+                            <>
+                                {pestana === 'subs' && suscripciones.length > 4 && (
+                                    <>
+                                        <button className="nav-btn" style={{ ...navButtonStyle, left: '-20px' }} onClick={() => handleScroll(suscripcionesRef, 'left')}>
+                                            <ChevronLeft size={24} />
+                                        </button>
+                                        <button className="nav-btn" style={{ ...navButtonStyle, right: '-20px' }} onClick={() => handleScroll(suscripcionesRef, 'right')}>
+                                            <ChevronRight size={24} />
+                                        </button>
+                                    </>
+                                )}
 
-                            {pestana === 'equipos' && equipos.length > 4 && (
-                                <>
-                                    <button className="nav-btn" style={{ ...navButtonStyle, left: '-20px' }} onClick={() => handleScroll(equiposRef, 'left')}>
-                                        <ChevronLeft size={24} />
-                                    </button>
-                                    <button className="nav-btn" style={{ ...navButtonStyle, right: '-20px' }} onClick={() => handleScroll(equiposRef, 'right')}>
-                                        <ChevronRight size={24} />
-                                    </button>
-                                </>
-                            )}
+                                {pestana === 'equipos' && equipos.length > 4 && (
+                                    <>
+                                        <button className="nav-btn" style={{ ...navButtonStyle, left: '-20px' }} onClick={() => handleScroll(equiposRef, 'left')}>
+                                            <ChevronLeft size={24} />
+                                        </button>
+                                        <button className="nav-btn" style={{ ...navButtonStyle, right: '-20px' }} onClick={() => handleScroll(equiposRef, 'right')}>
+                                            <ChevronRight size={24} />
+                                        </button>
+                                    </>
+                                )}
 
-                            {pestana === 'subs' ? (
-                                suscripciones.length > 0 ? (
-                                    <div ref={suscripcionesRef} className="carrusel-scroll" style={carruselContainerStyle}>
-                                        {suscripciones.map((s) => (
-                                            <div key={s.title} style={carruselItemStyle}>
-                                                <ServiceCard service={s} onSuscribir={onSuscribir} />
-                                            </div>
-                                        ))}
-                                    </div>
+                                {pestana === 'subs' ? (
+                                    suscripciones.length > 0 ? (
+                                        <div ref={suscripcionesRef} className="carrusel-scroll" style={carruselContainerStyle}>
+                                            {suscripciones.map((s) => (
+                                                <div key={s.title} style={carruselItemStyle}>
+                                                    <ServiceCard service={s} onSuscribir={onSuscribir} />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div style={{ textAlign: 'center', padding: '50px' }}>
+                                            <p style={{ color: 'var(--text-light)' }}>No hay suscripciones disponibles por el momento.</p>
+                                        </div>
+                                    )
                                 ) : (
-                                    <div style={{ textAlign: 'center', padding: '50px' }}>
-                                        <p style={{ color: 'var(--text-light)' }}>No hay suscripciones disponibles por el momento.</p>
-                                    </div>
-                                )
-                            ) : (
-                                equipos.length > 0 ? (
-                                    <div ref={equiposRef} className="carrusel-scroll" style={carruselContainerStyle}>
-                                        {equipos.map((e) => (
-                                            <div key={e.id} style={carruselItemStyle}>
-                                                <ProductCard product={e} onCotizar={onCotizar} />
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <div style={{ textAlign: 'center', padding: '50px' }}>
-                                        <p style={{ color: 'var(--text-light)' }}>No hay equipos disponibles en el catálogo por el momento.</p>
-                                    </div>
-                                )
-                            )}
-                        </>
-                    )}
+                                    equipos.length > 0 ? (
+                                        <div ref={equiposRef} className="carrusel-scroll" style={carruselContainerStyle}>
+                                            {equipos.map((e) => (
+                                                <div key={e.id} style={carruselItemStyle}>
+                                                    <ProductCard product={e} onCotizar={onCotizar} />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div style={{ textAlign: 'center', padding: '50px' }}>
+                                            <p style={{ color: 'var(--text-light)' }}>No hay equipos disponibles en el catálogo por el momento.</p>
+                                        </div>
+                                    )
+                                )}
+                            </>
+                        )}
+                    </div>
                 </div>
             </div>
         </section>
@@ -461,7 +456,7 @@ const LandingPage = () => {
     useEffect(() => {
         const fetchProductos = async () => {
             try {
-                const respuesta = await fetch('http://localhost:8000/api/catalogo/productos/');
+                const respuesta = await fetch(`${import.meta.env.VITE_API_URL}/catalogo/productos/`);
                 if (!respuesta.ok) throw new Error('Error al cargar el catálogo');
                 const data = await respuesta.json();
                 setDrones(data.filter((item) => item.tipo_producto === 'ARTICULO'));

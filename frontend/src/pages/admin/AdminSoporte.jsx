@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import { FileText, CheckCircle2, Search, Phone, Video, MoreVertical, Paperclip, Send, X, ShieldAlert } from 'lucide-react';
+import { FileText, CheckCircle2, Search, Send } from 'lucide-react';
 
-// Importación estricta de tus componentes UI
-import { Button, Input, Select, Modal, SearchBar, Avatar, Badge, IconButton } from '../../components/ui';
+import { Button, Input, Select, Modal, Avatar, Badge, IconButton } from '../../components/ui';
 
 export default function AdminSoporte() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -11,7 +10,6 @@ export default function AdminSoporte() {
   const [activeChatId, setActiveChatId] = useState(1);
   const [messageInput, setMessageInput] = useState("");
 
-  // Datos de prueba para la lista de chats
   const [chats, setChats] = useState([
     {
       id: 1,
@@ -50,13 +48,11 @@ export default function AdminSoporte() {
 
   const activeChat = chats.find(c => c.id === activeChatId) || chats[0];
 
-  // Filtrar chats por búsqueda
   const filteredChats = chats.filter(chat => 
     chat.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
     chat.role.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Enviar mensaje simulado
   const handleSendMessage = (e) => {
     e.preventDefault();
     if (!messageInput.trim()) return;
@@ -78,15 +74,19 @@ export default function AdminSoporte() {
     <div style={{ 
       display: 'flex', 
       width: '100%', 
-      height: '100vh', 
+      height: 'calc(100vh - 100px)',
       backgroundColor: 'var(--bg-color)',
       fontFamily: "'Roboto', sans-serif",
-      overflow: 'hidden'
+      overflow: 'hidden',
+      borderRadius: '12px',
+      border: '1px solid var(--light-gray)',
+      margin: '0 auto',
+      maxWidth: '1400px',
+      boxShadow: '0 4px 20px rgba(0,0,0,0.03)'
     }}>
       
-      {/* ================= BARRA LATERAL: LISTA DE CHATS ================= */}
       <aside style={{ 
-        width: '380px', 
+        width: '350px', 
         backgroundColor: 'var(--white)', 
         borderRight: '1px solid var(--light-gray)',
         display: 'flex',
@@ -94,96 +94,103 @@ export default function AdminSoporte() {
         flexShrink: 0
       }}>
         
-        {/* Header de la barra lateral */}
-        <div style={{ padding: '24px', borderBottom: '1px solid var(--light-gray)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '900', color: 'var(--color-dark)' }}>Panel de Soporte</h2>
-            <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: 'var(--text-light)' }}>Atención a granjeros y pilotos</p>
+        <div style={{ padding: '20px', borderBottom: '1px solid var(--light-gray)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <div>
+              <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '900', color: 'var(--color-dark)' }}>Panel de Soporte</h2>
+              <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: 'var(--text-light)' }}>Atención a granjeros y pilotos</p>
+            </div>
+            <Button variant="primary" size="sm" onClick={() => setIsModalOpen(true)} style={{ padding: '8px 12px', borderRadius: '8px' }}>
+              <FileText size={14} style={{ marginRight: '6px' }} /> Ticket
+            </Button>
           </div>
-          <Button variant="primary" size="sm" onClick={() => setIsModalOpen(true)}>
-            <FileText size={16} style={{ marginRight: '6px' }} /> Ticket
-          </Button>
+
+          <div style={{ position: 'relative' }}>
+            <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)' }} />
+            <input 
+              type="text"
+              placeholder="Buscar cliente o rol..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{ 
+                width: '100%', padding: '10px 12px 10px 36px', 
+                border: '1px solid var(--light-gray)', borderRadius: '8px', 
+                fontSize: '13px', outline: 'none', transition: 'border-color 0.2s' 
+              }}
+              onFocus={(e) => e.target.style.borderColor = 'var(--color-primary)'}
+              onBlur={(e) => e.target.style.borderColor = 'var(--light-gray)'}
+            />
+          </div>
         </div>
 
-        {/* Buscador */}
-        <div style={{ padding: '16px', borderBottom: '1px solid var(--light-gray)' }}>
-          <SearchBar 
-            placeholder="Buscar por nombre o rol..." 
-            value={searchQuery} 
-            onChange={(e) => setSearchQuery(e.target.value)} 
-          />
-        </div>
-
-        {/* Lista de conversaciones */}
         <div style={{ flex: 1, overflowY: 'auto' }}>
           {filteredChats.length > 0 ? (
-            filteredChats.map(chat => (
-              <div 
-                key={chat.id}
-                onClick={() => setActiveChatId(chat.id)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '16px',
-                  padding: '16px 24px',
-                  cursor: 'pointer',
-                  backgroundColor: activeChatId === chat.id ? 'rgba(4, 201, 166, 0.05)' : 'transparent',
-                  borderLeft: activeChatId === chat.id ? '4px solid var(--color-primary)' : '4px solid transparent',
-                  borderBottom: '1px solid var(--light-gray)',
-                  transition: 'all 0.2s'
-                }}
-              >
-                <div style={{ position: 'relative' }}>
-                  <Avatar size="sm" imageUrl={chat.avatar} />
-                  {chat.online && (
+            filteredChats.map(chat => {
+              const lastMsg = chat.messages[chat.messages.length - 1];
+              const isActive = activeChatId === chat.id;
+              return (
+                <div 
+                  key={chat.id}
+                  onClick={() => setActiveChatId(chat.id)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '12px', padding: '16px 20px', cursor: 'pointer',
+                    backgroundColor: isActive ? 'rgba(4, 201, 166, 0.05)' : 'transparent',
+                    borderLeft: isActive ? '3px solid var(--color-primary)' : '3px solid transparent',
+                    borderBottom: '1px solid var(--light-gray)', transition: 'all 0.2s'
+                  }}
+                >
+                  <div style={{ position: 'relative' }}>
+                    <Avatar size="sm" imageUrl={chat.avatar} />
                     <div style={{ 
                       position: 'absolute', bottom: 0, right: 0, 
                       width: '12px', height: '12px', 
-                      backgroundColor: 'var(--color-success)', 
+                      backgroundColor: chat.online ? 'var(--color-success)' : 'var(--light-gray)', 
                       borderRadius: '50%', border: '2px solid var(--white)' 
                     }} />
-                  )}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                    <span style={{ fontWeight: 'bold', color: 'var(--color-dark)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{chat.name}</span>
                   </div>
-                  <span style={{ display: 'block', fontSize: '12px', color: 'var(--color-primary)', fontWeight: '600', marginBottom: '4px' }}>{chat.role}</span>
-                  <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-light)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {chat.messages[chat.messages.length - 1].sender === 'admin' ? 'Tú: ' : ''}
-                    {chat.messages[chat.messages.length - 1].text}
-                  </p>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
+                      <span style={{ fontWeight: 'bold', fontSize: '14px', color: 'var(--color-dark)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{chat.name}</span>
+                      <span style={{ fontSize: '11px', color: 'var(--text-light)', fontWeight: '500' }}>{lastMsg?.time}</span>
+                    </div>
+                    <p style={{ margin: 0, fontSize: '12px', color: 'var(--color-primary)', fontWeight: '600', marginBottom: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{chat.role}</p>
+                    <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-light)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {lastMsg?.sender === 'admin' ? 'Tú: ' : ''}
+                      {lastMsg?.text}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           ) : (
-            <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-light)' }}>No se encontraron chats.</div>
+            <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-light)', fontSize: '13px' }}>No se encontraron chats.</div>
           )}
         </div>
       </aside>
 
-      {/* ================= ÁREA PRINCIPAL DEL CHAT ================= */}
       <main style={{ 
         flex: 1, 
         display: 'flex', 
         flexDirection: 'column',
-        backgroundColor: 'var(--bg-color)'
+        backgroundColor: 'var(--bg-color)',
+        position: 'relative'
       }}>
         
-        {/* Header del Chat Activo */}
         <header style={{ 
-          padding: '16px 32px', 
+          padding: '16px 24px', 
           backgroundColor: 'var(--white)', 
           borderBottom: '1px solid var(--light-gray)',
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'center'
+          alignItems: 'center',
+          flexShrink: 0
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
             <Avatar size="sm" imageUrl={activeChat.avatar} />
             <div>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 'bold', color: 'var(--color-dark)' }}>{activeChat.name}</h3>
-              <div style={{ marginTop: '4px' }}>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800', color: 'var(--color-dark)' }}>{activeChat.name}</h3>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
+                <span style={{ fontSize: '12px', color: 'var(--text-light)' }}>{activeChat.role}</span>
                 {activeChat.online ? (
                   <Badge text="En línea" color="success" />
                 ) : (
@@ -192,44 +199,46 @@ export default function AdminSoporte() {
               </div>
             </div>
           </div>
+          
           <div style={{ display: 'flex', gap: '8px' }}>
-            <IconButton icon="fa-phone" variant="outline-dark" onClick={() => {}} />
-            <IconButton icon="fa-video" variant="outline-dark" onClick={() => {}} />
-            <IconButton icon="fa-ellipsis-v" variant="outline-dark" onClick={() => {}} />
+            <IconButton icon="fa-phone" variant="outline" onClick={() => {}} />
+            <IconButton icon="fa-video" variant="outline" onClick={() => {}} />
+            <IconButton icon="fa-ellipsis-v" variant="outline" onClick={() => {}} />
           </div>
         </header>
 
-        {/* Historial de Mensajes */}
         <div style={{ 
           flex: 1, 
           overflowY: 'auto', 
-          padding: '32px',
+          padding: '24px',
           display: 'flex',
           flexDirection: 'column',
-          gap: '20px'
+          gap: '16px',
+          backgroundImage: 'radial-gradient(var(--light-gray) 1px, transparent 1px)',
+          backgroundSize: '20px 20px'
         }}>
           {activeChat.messages.map(msg => {
             const isAdmin = msg.sender === 'admin';
             return (
               <div key={msg.id} style={{ display: 'flex', justifyContent: isAdmin ? 'flex-end' : 'flex-start' }}>
+                {!isAdmin && (
+                  <Avatar size="sm" imageUrl={activeChat.avatar} style={{ marginRight: '8px', width: '28px', height: '28px', alignSelf: 'flex-end', marginBottom: '4px' }} />
+                )}
                 <div style={{ 
-                  maxWidth: '65%', 
-                  padding: '16px', 
+                  maxWidth: '70%', 
+                  padding: '12px 16px', 
                   borderRadius: '12px',
                   backgroundColor: isAdmin ? 'var(--color-primary)' : 'var(--white)',
                   color: isAdmin ? 'var(--white)' : 'var(--color-dark)',
-                  boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
                   border: isAdmin ? 'none' : '1px solid var(--light-gray)',
                   borderBottomRightRadius: isAdmin ? '2px' : '12px',
                   borderBottomLeftRadius: isAdmin ? '12px' : '2px'
                 }}>
                   <p style={{ margin: 0, fontSize: '14px', lineHeight: '1.5' }}>{msg.text}</p>
                   <span style={{ 
-                    display: 'block', 
-                    textAlign: 'right', 
-                    fontSize: '11px', 
-                    marginTop: '8px',
-                    color: isAdmin ? 'rgba(255,255,255,0.7)' : 'var(--text-light)'
+                    display: 'block', textAlign: 'right', fontSize: '10px', marginTop: '6px', fontWeight: '500',
+                    color: isAdmin ? 'rgba(255,255,255,0.8)' : 'var(--text-light)'
                   }}>
                     {msg.time}
                   </span>
@@ -239,40 +248,48 @@ export default function AdminSoporte() {
           })}
         </div>
 
-        {/* Caja de Texto para Responder */}
         <footer style={{ 
-          padding: '20px 32px', 
+          padding: '16px 24px', 
           backgroundColor: 'var(--white)', 
-          borderTop: '1px solid var(--light-gray)'
+          borderTop: '1px solid var(--light-gray)',
+          flexShrink: 0
         }}>
-          <form onSubmit={handleSendMessage} style={{ display: 'flex', gap: '16px' }}>
+          <form onSubmit={handleSendMessage} style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
             <IconButton icon="fa-paperclip" variant="outline" onClick={() => {}} />
-            <div style={{ flex: 1 }}>
-              <Input 
+            <div style={{ flex: 1, position: 'relative' }}>
+              <input 
+                type="text"
                 placeholder="Escribe una respuesta como administrador..." 
                 value={messageInput}
                 onChange={(e) => setMessageInput(e.target.value)}
+                style={{ 
+                  width: '100%', padding: '12px 16px', 
+                  border: '1px solid var(--light-gray)', borderRadius: '24px', 
+                  fontSize: '14px', outline: 'none', backgroundColor: 'var(--bg-color)',
+                  transition: 'border-color 0.2s'
+                }}
+                onFocus={(e) => e.target.style.borderColor = 'var(--color-primary)'}
+                onBlur={(e) => e.target.style.borderColor = 'var(--light-gray)'}
               />
             </div>
-            <Button variant="primary" type="submit" style={{ padding: '0 24px' }}>
-              <Send size={18} style={{ marginRight: '8px' }} /> Enviar
+            <Button variant="primary" type="submit" style={{ padding: '10px 20px', borderRadius: '24px' }}>
+              <Send size={16} style={{ marginRight: '6px' }} /> Enviar
             </Button>
           </form>
         </footer>
       </main>
 
-      {/* ================= MODAL: CREAR TICKET ================= */}
       <Modal isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); setIsSubmitted(false); }} title="Registrar Ticket Interno">
         {!isSubmitted ? (
-          <form onSubmit={(e) => { e.preventDefault(); setIsSubmitted(true); }} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <form onSubmit={(e) => { e.preventDefault(); setIsSubmitted(true); }} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             
             <div>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: 'var(--text-light)', marginBottom: '8px' }}>Cliente / Granjero</label>
+              <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--text-light)', marginBottom: '6px', textTransform: 'uppercase' }}>Cliente / Granjero</label>
               <Input placeholder="Nombre del cliente..." required />
             </div>
             
             <div>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: 'var(--text-light)', marginBottom: '8px' }}>Categoría del Problema</label>
+              <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--text-light)', marginBottom: '6px', textTransform: 'uppercase' }}>Categoría del Problema</label>
               <Select 
                 options={[
                   { value: "soporte", label: "Soporte Técnico - Drones" },
@@ -283,35 +300,36 @@ export default function AdminSoporte() {
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: 'var(--text-light)', marginBottom: '8px' }}>Descripción del problema</label>
+              <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--text-light)', marginBottom: '6px', textTransform: 'uppercase' }}>Descripción del problema</label>
               <textarea 
                 rows={4}
                 placeholder="Escribe los detalles aquí..."
                 required
                 style={{
-                  width: '100%',
-                  padding: '12px 15px',
-                  border: '1px solid var(--light-gray)',
-                  borderRadius: '6px',
-                  fontSize: '16px',
-                  color: 'var(--color-dark)',
-                  fontFamily: "'Roboto', sans-serif",
-                  outline: 'none',
-                  resize: 'vertical'
+                  width: '100%', padding: '12px 15px',
+                  border: '1px solid var(--light-gray)', borderRadius: '8px',
+                  fontSize: '14px', color: 'var(--color-dark)',
+                  fontFamily: "'Roboto', sans-serif", outline: 'none',
+                  resize: 'vertical', minHeight: '100px',
+                  transition: 'border-color 0.2s'
                 }}
+                onFocus={(e) => e.target.style.borderColor = 'var(--color-primary)'}
+                onBlur={(e) => e.target.style.borderColor = 'var(--light-gray)'}
               />
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', paddingTop: '16px', borderTop: '1px solid var(--light-gray)' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', paddingTop: '16px', borderTop: '1px solid var(--light-gray)', marginTop: '8px' }}>
               <Button variant="outline-dark" type="button" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
               <Button variant="primary" type="submit">Guardar Ticket</Button>
             </div>
           </form>
         ) : (
-          <div style={{ padding: '32px 0', textAlign: 'center' }}>
-            <CheckCircle2 size={48} color="var(--color-success)" style={{ margin: '0 auto 16px' }} />
-            <h4 style={{ margin: '0 0 8px 0', fontSize: '20px', color: 'var(--color-dark)' }}>¡Ticket Registrado!</h4>
-            <p style={{ margin: '0 0 24px 0', color: 'var(--text-light)' }}>El ticket ha sido asignado al equipo técnico.</p>
+          <div style={{ padding: '24px 0', textAlign: 'center' }}>
+            <div style={{ background: 'rgba(4, 201, 166, 0.1)', width: '64px', height: '64px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+              <CheckCircle2 size={32} color="var(--color-primary)" />
+            </div>
+            <h4 style={{ margin: '0 0 8px 0', fontSize: '18px', color: 'var(--color-dark)' }}>¡Ticket Registrado!</h4>
+            <p style={{ margin: '0 0 24px 0', fontSize: '13px', color: 'var(--text-light)' }}>El ticket ha sido asignado al equipo técnico.</p>
             <Button variant="primary" onClick={() => { setIsModalOpen(false); setIsSubmitted(false); }}>
               Cerrar Ventana
             </Button>

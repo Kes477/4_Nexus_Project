@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { MapPin, Layers, Settings, Play, Save, Trash2, Crosshair, Navigation, ZoomIn, ZoomOut, ShieldCheck } from 'lucide-react';
 
-// Importación estricta de tus componentes
 import { 
   Button, 
   IconButton, 
@@ -19,12 +18,10 @@ export default function AdminOperaciones() {
   const [mappingId, setMappingId] = useState("MIS-FUM-001");
   const [isApprovalModalOpen, setIsApprovalModalOpen] = useState(false);
   
-  // Estados de las capas
   const [showZones, setShowZones] = useState(true);
   const [showNDVI, setShowNDVI] = useState(false);
   const [showGrid, setShowGrid] = useState(true);
   
-  // Estado del dron
   const [selectedDrone, setSelectedDrone] = useState("agras_t40");
 
   return (
@@ -38,7 +35,6 @@ export default function AdminOperaciones() {
       overflow: 'hidden'
     }}>
       
-      {/* HEADER PRINCIPAL */}
       <header style={{ 
         backgroundColor: 'var(--white)', 
         borderBottom: '2px solid var(--light-gray)', 
@@ -79,10 +75,8 @@ export default function AdminOperaciones() {
         </div>
       </header>
 
-      {/* CONTENEDOR PRINCIPAL DE 3 COLUMNAS */}
       <main style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         
-        {/* COLUMNA IZQUIERDA: HERRAMIENTAS Y CAPAS */}
         <aside style={{ 
           width: '300px', 
           backgroundColor: 'var(--white)', 
@@ -128,7 +122,6 @@ export default function AdminOperaciones() {
           </div>
         </aside>
 
-        {/* COLUMNA CENTRAL: MAPA INTERACTIVO */}
         <section style={{ 
           flex: 1, 
           position: 'relative', 
@@ -138,7 +131,6 @@ export default function AdminOperaciones() {
           alignItems: 'center',
           justifyContent: 'center'
         }}>
-          {/* Patrón de cuadrícula simulado */}
           {showGrid && (
             <div style={{ 
               position: 'absolute', inset: 0, 
@@ -147,7 +139,6 @@ export default function AdminOperaciones() {
             }} />
           )}
 
-          {/* Dibujo SVG de Zonas */}
           <svg style={{ position: 'absolute', width: '100%', height: '100%', pointerEvents: 'none' }}>
             {showZones && (
               <polygon 
@@ -167,14 +158,12 @@ export default function AdminOperaciones() {
             VISTA SATELITAL
           </div>
 
-          {/* Controles de Zoom Flotantes */}
           <div style={{ position: 'absolute', bottom: '24px', right: '24px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <IconButton icon="fa-plus" variant="primary" onClick={() => {}} />
             <IconButton icon="fa-minus" variant="dark" onClick={() => {}} />
           </div>
         </section>
 
-        {/* COLUMNA DERECHA: TELEMETRÍA Y APROBACIÓN */}
         <aside style={{ 
           width: '340px', 
           backgroundColor: 'var(--white)', 
@@ -239,7 +228,6 @@ export default function AdminOperaciones() {
 
       </main>
 
-      {/* MODAL DE APROBACIÓN */}
       <Modal 
         isOpen={isApprovalModalOpen} 
         onClose={() => setIsApprovalModalOpen(false)} 

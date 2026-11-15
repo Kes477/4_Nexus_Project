@@ -1,18 +1,16 @@
 import React, { useState } from 'react';
-import { Edit2, Phone, Mail, Lock, LogOut, Save, MapPin, CheckCircle, Map, Drone, TrendingUp } from 'lucide-react';
+import { Edit2, Phone, Mail, Lock, LogOut, Save, MapPin, CheckCircle, Map, Plane, TrendingUp } from 'lucide-react';
 
-// Importación estricta de tus componentes
 import { Button, Avatar, Badge, Modal, Input, SectionHeading } from '../../components/ui';
 
 export default function ClientePerfil({ onLogout }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   
-  // Datos simulados del cliente
   const [profileData] = useState({
     name: "Juan Pérez", 
     email: "juan.perez@fincaelvalle.hn",
     phone: "+504 8877-6655", 
-    avatar: "src/img/cliente_perfil.png", // Puedes cambiar esta ruta o dejar el ícono por defecto
+    avatar: "src/img/cliente_perfil.png", 
     roleLabel: "Cliente Premium",
     location: "Finca El Valle, Danlí",
     joinDate: "15 de Marzo, 2025",
@@ -20,14 +18,30 @@ export default function ClientePerfil({ onLogout }) {
   });
 
   const infoBoxStyle = {
-    padding: '24px',
+    padding: '20px',
     backgroundColor: 'var(--white)',
     border: '1px solid var(--light-gray)',
-    borderRadius: '8px',
+    borderRadius: '10px',
     display: 'flex',
     flexDirection: 'column',
-    gap: '8px',
-    boxShadow: '0 4px 15px rgba(0,0,0,0.02)'
+    gap: '6px',
+    boxShadow: '0 4px 15px rgba(0,0,0,0.02)',
+    transition: 'transform 0.2s, box-shadow 0.2s'
+  };
+
+  const statBoxStyle = {
+    ...infoBoxStyle,
+    padding: '20px',
+  };
+
+  const labelStyle = {
+    display: 'block',
+    fontSize: '11px',
+    fontWeight: '700',
+    color: 'var(--text-light)',
+    marginBottom: '6px',
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px'
   };
 
   return (
@@ -48,27 +62,24 @@ export default function ClientePerfil({ onLogout }) {
         width: '100%', 
         maxWidth: '1200px', 
         backgroundColor: 'var(--white)', 
-        borderRadius: '12px', 
+        borderRadius: '16px', 
         overflow: 'hidden', 
         boxShadow: '0 10px 30px rgba(0,0,0,0.05)',
         border: '1px solid var(--light-gray)'
       }}>
         
-        {/* BANNER SUPERIOR (Fondo simulado) */}
         <div style={{ 
-          height: '160px', 
+          height: '150px', 
           backgroundColor: 'var(--color-primary)', 
           backgroundImage: 'linear-gradient(45deg, var(--color-primary) 25%, #03b394 25%, #03b394 50%, var(--color-primary) 50%, var(--color-primary) 75%, #03b394 75%, #03b394 100%)',
           backgroundSize: '40px 40px',
           position: 'relative'
         }} />
 
-        {/* CABECERA DEL PERFIL */}
-        <div style={{ padding: '0 40px', position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '32px' }}>
+        <div style={{ padding: '0 40px', position: 'relative', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '24px' }}>
           
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: '20px' }}>
             
-            {/* AVATAR (Se sube con margen negativo para superponerse al banner) */}
             <div style={{ 
               borderRadius: '50%', 
               border: '6px solid var(--white)', 
@@ -81,127 +92,121 @@ export default function ClientePerfil({ onLogout }) {
               <Avatar size="lg" imageUrl={profileData.avatar} icon="fa-user" />
             </div>
             
-            {/* TEXTOS */}
             <div style={{ paddingBottom: '16px' }}>
-              <h1 style={{ margin: 0, fontSize: '28px', fontWeight: '900', color: 'var(--color-dark)', display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <h1 style={{ margin: 0, fontSize: '24px', fontWeight: '900', color: 'var(--color-dark)', display: 'flex', alignItems: 'center', gap: '12px' }}>
                 {profileData.name}
                 <Badge text={profileData.roleLabel} color="success" />
               </h1>
-              <p style={{ margin: '6px 0 0 0', fontSize: '15px', color: 'var(--text-light)', display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <p style={{ margin: '6px 0 0 0', fontSize: '14px', color: 'var(--text-light)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '16px' }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <MapPin size={16} /> {profileData.location}
+                  <MapPin size={14} /> {profileData.location}
                 </span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <CheckCircle size={16} color="var(--color-success)" /> Cuenta {profileData.status}
+                  <CheckCircle size={14} color="var(--color-success)" /> Cuenta {profileData.status}
                 </span>
               </p>
             </div>
 
           </div>
 
-          {/* Botones de Acción */}
-          <div style={{ paddingBottom: '24px', display: 'flex', gap: '12px' }}>
-            <Button variant="outline-dark" onClick={() => setIsModalOpen(true)}>
-              <Edit2 size={16} style={{ marginRight: '8px' }} /> Editar Perfil
+          <div style={{ paddingBottom: '20px', display: 'flex', gap: '10px' }}>
+            <Button variant="outline-dark" size="sm" onClick={() => setIsModalOpen(true)}>
+              <Edit2 size={14} style={{ marginRight: '6px' }} /> Editar Perfil
             </Button>
-            <Button variant="danger" onClick={onLogout}>
-              <LogOut size={16} style={{ marginRight: '8px' }} /> Cerrar Sesión
+            <Button variant="danger" size="sm" onClick={onLogout}>
+              <LogOut size={14} style={{ marginRight: '6px' }} /> Cerrar Sesión
             </Button>
           </div>
         </div>
 
-        {/* CUERPO DEL PERFIL */}
-        <div style={{ padding: '0 40px 40px 40px' }}>
+        <div style={{ padding: '0 40px 32px 40px' }}>
           
           <SectionHeading eyebrow="Información" title="Datos de Contacto y Seguridad" />
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px', marginBottom: '40px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginBottom: '32px' }}>
             
             <div style={infoBoxStyle}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 'bold', color: 'var(--text-light)', textTransform: 'uppercase' }}>
-                <Phone size={16} color="var(--color-primary)" /> Teléfono
+              <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: '700', color: 'var(--text-light)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                <Phone size={14} color="var(--color-primary)" /> Teléfono
               </span>
-              <span style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--color-dark)' }}>{profileData.phone}</span>
+              <span style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--color-dark)' }}>{profileData.phone}</span>
             </div>
 
             <div style={infoBoxStyle}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 'bold', color: 'var(--text-light)', textTransform: 'uppercase' }}>
-                <Mail size={16} color="var(--color-primary)" /> Correo Electrónico
+              <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: '700', color: 'var(--text-light)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                <Mail size={14} color="var(--color-primary)" /> Correo Electrónico
               </span>
-              <span style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--color-dark)' }}>{profileData.email}</span>
+              <span style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--color-dark)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{profileData.email}</span>
             </div>
 
             <div style={infoBoxStyle}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 'bold', color: 'var(--text-light)', textTransform: 'uppercase' }}>
-                <Lock size={16} color="var(--color-primary)" /> Contraseña
+              <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: '700', color: 'var(--text-light)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                <Lock size={14} color="var(--color-primary)" /> Contraseña
               </span>
-              <span style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--color-dark)', fontFamily: 'monospace' }}>••••••••••••</span>
+              <span style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--color-dark)', fontFamily: 'monospace' }}>••••••••••••</span>
             </div>
 
           </div>
 
           <SectionHeading eyebrow="Actividad" title="Resumen de Servicios" />
 
-          {/* MÉTRICAS ADAPTADAS AL CLIENTE */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '24px' }}>
-            <div style={{ ...infoBoxStyle, borderLeft: '4px solid var(--color-primary)' }}>
-              <Map size={24} color="var(--color-primary)" style={{ marginBottom: '8px' }} />
-              <span style={{ fontSize: '28px', fontWeight: '900', color: 'var(--color-dark)' }}>450</span>
-              <span style={{ fontSize: '14px', color: 'var(--text-light)', fontWeight: '500' }}>Hectáreas Atendidas</span>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
+            <div style={{ ...statBoxStyle, borderLeft: '4px solid var(--color-primary)' }}>
+              <Map size={22} color="var(--color-primary)" style={{ marginBottom: '8px' }} />
+              <span style={{ fontSize: '26px', fontWeight: '900', color: 'var(--color-dark)' }}>450</span>
+              <span style={{ fontSize: '13px', color: 'var(--text-light)', fontWeight: '500' }}>Hectáreas Atendidas</span>
             </div>
 
-            <div style={{ ...infoBoxStyle, borderLeft: '4px solid var(--color-info)' }}>
-              <Drone size={24} color="var(--color-info)" style={{ marginBottom: '8px' }} />
-              <span style={{ fontSize: '28px', fontWeight: '900', color: 'var(--color-dark)' }}>12</span>
-              <span style={{ fontSize: '14px', color: 'var(--text-light)', fontWeight: '500' }}>Servicios Contratados</span>
+            <div style={{ ...statBoxStyle, borderLeft: '4px solid var(--color-info)' }}>
+              <Plane size={22} color="var(--color-info)" style={{ marginBottom: '8px' }} />
+              <span style={{ fontSize: '26px', fontWeight: '900', color: 'var(--color-dark)' }}>12</span>
+              <span style={{ fontSize: '13px', color: 'var(--text-light)', fontWeight: '500' }}>Servicios Contratados</span>
             </div>
 
-            <div style={{ ...infoBoxStyle, borderLeft: '4px solid var(--color-success)' }}>
-              <TrendingUp size={24} color="var(--color-success)" style={{ marginBottom: '8px' }} />
-              <span style={{ fontSize: '28px', fontWeight: '900', color: 'var(--color-dark)' }}>L 15,000</span>
-              <span style={{ fontSize: '14px', color: 'var(--text-light)', fontWeight: '500' }}>Ahorro Estimado</span>
+            <div style={{ ...statBoxStyle, borderLeft: '4px solid var(--color-success)' }}>
+              <TrendingUp size={22} color="var(--color-success)" style={{ marginBottom: '8px' }} />
+              <span style={{ fontSize: '26px', fontWeight: '900', color: 'var(--color-dark)' }}>L 15,000</span>
+              <span style={{ fontSize: '13px', color: 'var(--text-light)', fontWeight: '500' }}>Ahorro Estimado</span>
             </div>
           </div>
 
         </div>
 
-        {/* FOOTER DEL PERFIL */}
-        <div style={{ borderTop: '1px solid var(--light-gray)', padding: '20px 40px', backgroundColor: 'var(--bg-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontSize: '13px', color: 'var(--text-light)', fontWeight: '500' }}>
+        <div style={{ borderTop: '1px solid var(--light-gray)', padding: '16px 40px', backgroundColor: 'var(--bg-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+          <span style={{ fontSize: '12px', color: 'var(--text-light)', fontWeight: '500' }}>
             Cliente desde: {profileData.joinDate}
           </span>
-          <span style={{ fontSize: '13px', color: 'var(--text-light)', fontWeight: 'bold', letterSpacing: '1px' }}>
+          <span style={{ fontSize: '12px', color: 'var(--text-light)', fontWeight: 'bold', letterSpacing: '1px' }}>
             4 NEXUS SOLUTIONS
           </span>
         </div>
 
       </div>
 
-      {/* MODAL DE EDICIÓN */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Editar Credenciales">
         <form 
           onSubmit={(e) => { e.preventDefault(); setIsModalOpen(false); }} 
-          style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}
+          style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}
         >
           <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: 'var(--text-light)', marginBottom: '8px' }}>Teléfono</label>
-            <Input defaultValue={profileData.phone} />
+            <label style={labelStyle}>Teléfono</label>
+            <Input defaultValue={profileData.phone} icon="fa-phone" />
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: 'var(--text-light)', marginBottom: '8px' }}>Correo Electrónico</label>
-            <Input defaultValue={profileData.email} type="email" />
+            <label style={labelStyle}>Correo Electrónico</label>
+            <Input defaultValue={profileData.email} type="email" icon="fa-envelope" />
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: 'var(--text-light)', marginBottom: '8px' }}>Nueva Contraseña</label>
-            <Input type="password" placeholder="Dejar en blanco para no cambiar" />
+            <label style={labelStyle}>Nueva Contraseña</label>
+            <Input type="password" placeholder="Dejar en blanco para no cambiar" icon="fa-lock" />
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', paddingTop: '16px', borderTop: '1px solid var(--light-gray)', marginTop: '8px' }}>
-            <Button variant="outline-dark" type="button" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
-            <Button variant="primary" type="submit">
-              <Save size={16} style={{ marginRight: '8px' }} /> Guardar Cambios
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', paddingTop: '16px', borderTop: '1px solid var(--light-gray)', marginTop: '8px' }}>
+            <Button variant="outline-dark" size="sm" type="button" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
+            <Button variant="primary" size="sm" type="submit">
+              <Save size={14} style={{ marginRight: '6px' }} /> Guardar Cambios
             </Button>
           </div>
         </form>

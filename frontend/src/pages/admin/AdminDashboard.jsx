@@ -55,7 +55,6 @@ export default function AdminDashboard() {
       fontFamily: "'Roboto', sans-serif"
     }}>
       
-      {/* HEADER */}
       <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '20px', marginBottom: '32px', paddingBottom: '20px', borderBottom: '1px solid var(--light-gray)' }}>
         <div style={{ textAlign: 'left' }}>
           <h1 style={{ margin: 0, fontSize: '28px', fontWeight: '900', color: 'var(--color-dark)' }}>Panel de Control Administrativo</h1>
@@ -65,7 +64,6 @@ export default function AdminDashboard() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
           <Badge text="Super admin root" color="primary" />
           
-          {/* BOTÓN DE NOTIFICACIONES CUADRADO (Sin la propiedad round) */}
           <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
             <IconButton 
               icon="fa-bell" 
@@ -81,7 +79,6 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* MÉTRICAS GLOBALES */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px', marginBottom: '32px' }}>
         <div style={cardStyle}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
@@ -128,7 +125,6 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* TABS */}
       <div style={{ marginBottom: '24px' }}>
         <Tabs 
           tabs={["Métricas y Finanzas", "Mapa en Vivo", "Simulador de Vuelo", "Flota y Personal"]} 
@@ -137,7 +133,6 @@ export default function AdminDashboard() {
         />
       </div>
 
-      {/* PESTAÑA 0: MÉTRICAS Y FINANZAS */}
       {activeTab === 0 && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '24px' }}>
           <div style={panelStyle}>
@@ -176,7 +171,6 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* PESTAÑA 1: MAPA EN VIVO */}
       {activeTab === 1 && (
         <div style={panelStyle}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
@@ -202,7 +196,6 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* PESTAÑA 2: SIMULADOR */}
       {activeTab === 2 && (
         <div style={panelStyle}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', paddingBottom: '16px', borderBottom: '1px solid var(--light-gray)' }}>
@@ -237,7 +230,6 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* PESTAÑA 3: FLOTA Y PERSONAL */}
       {activeTab === 3 && (
         <div style={panelStyle}>
           <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -276,7 +268,6 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* BANNER INFERIOR */}
       <div style={{ border: '1px solid var(--color-primary)', padding: '32px', backgroundColor: 'var(--white)', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '24px', textAlign: 'left', borderRadius: '8px', width: '100%', boxSizing: 'border-box', marginTop: '30px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
           <div style={{ padding: '16px', color: 'var(--color-primary)', backgroundColor: 'rgba(4, 201, 166, 0.1)', borderRadius: '12px' }}>

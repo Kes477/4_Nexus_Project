@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
 import { Users, ShieldCheck, Wrench, Eye, MapPin, Calendar, Mail, Phone } from 'lucide-react';
 
-// Importación estricta de tus componentes UI
 import { Button, SearchBar, Select, Badge, Modal, Tabs } from '../../components/ui';
 
 export default function AdminUsuarios() {
-  // Cambiamos activeTab a un índice numérico (0, 1, 2) porque tu componente Tabs lo requiere así
   const [activeTab, setActiveTab] = useState(0); 
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -39,10 +37,8 @@ export default function AdminUsuarios() {
     });
   };
 
-  // Seleccionamos el dataset según el índice de la pestaña
   const currentData = activeTab === 0 ? clients : activeTab === 1 ? pilots : techs;
 
-  // Estilos para la tabla
   const tableHeaderStyle = {
     backgroundColor: 'var(--bg-color)',
     borderBottom: '2px solid var(--light-gray)',
@@ -73,13 +69,11 @@ export default function AdminUsuarios() {
       fontFamily: "'Roboto', sans-serif"
     }}>
       
-      {/* HEADER */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '32px', paddingBottom: '20px', borderBottom: '1px solid var(--light-gray)' }}>
         <h1 style={{ margin: 0, fontSize: '28px', fontWeight: '900', color: 'var(--color-dark)' }}>Panel de Control e Inspección Operativa</h1>
         <p style={{ margin: 0, fontSize: '15px', color: 'var(--text-light)', fontWeight: '500' }}>Valida cuentas de clientes, certificaciones de pilotos, técnicos y aprueba reservas.</p>
       </div>
 
-      {/* COMPONENTE TABS DE TU KIT UI */}
       <div style={{ marginBottom: '24px' }}>
         <Tabs 
           tabs={[
@@ -92,7 +86,6 @@ export default function AdminUsuarios() {
         />
       </div>
 
-      {/* FILTROS Y BÚSQUEDA (Componentes de tu Kit UI) */}
       <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
         <div style={{ flex: 1, minWidth: '250px', maxWidth: '400px' }}>
           <SearchBar 
@@ -115,7 +108,6 @@ export default function AdminUsuarios() {
         </div>
       </div>
 
-      {/* TABLA DE DATOS */}
       <div style={{ backgroundColor: 'var(--white)', border: '1px solid var(--light-gray)', borderRadius: '8px', overflow: 'hidden', width: '100%', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '800px' }}>
@@ -153,11 +145,9 @@ export default function AdminUsuarios() {
                   <td style={{ ...tableCellStyle, fontWeight: '500' }}>{item.companyOrDept}</td>
                   <td style={{ ...tableCellStyle, color: 'var(--text-light)' }}>{item.loc}</td>
                   <td style={{ ...tableCellStyle, textAlign: 'center' }}>
-                    {/* Componente Badge de tu Kit UI */}
                     <Badge text={item.status} color={item.status === "Activo" ? "success" : item.status === "Pendiente" ? "info" : "warning"} />
                   </td>
                   <td style={{ ...tableCellStyle, textAlign: 'center' }}>
-                    {/* Componente Button de tu Kit UI */}
                     <Button variant="outline-dark" size="sm" onClick={() => setSelectedUser(item)}>
                       <Eye size={14} style={{ marginRight: '6px' }} /> Ver
                     </Button>
@@ -176,7 +166,6 @@ export default function AdminUsuarios() {
         </div>
       </div>
 
-      {/* MODAL DE DETALLE (Componente de tu Kit UI) */}
       <Modal isOpen={!!selectedUser} onClose={() => setSelectedUser(null)} title="Ficha de Registro Operativo">
         {selectedUser && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', fontSize: '14px' }}>

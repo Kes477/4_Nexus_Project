@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Download, Eye, Calendar, MapPin, User, ShieldAlert } from 'lucide-react';
 
-// Importación estricta de tus componentes UI
 import { Button, SearchBar, Select, Badge, Modal, SectionHeading } from '../../components/ui';
 
 export default function AdminHistorial() {
@@ -9,7 +8,6 @@ export default function AdminHistorial() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedLog, setSelectedLog] = useState(null);
 
-  // Datos de prueba ampliados
   const logs = [
     { id: 'ADM-2026-301', targetModule: 'Módulo de Usuarios', responsible: 'Lic. Claudia Benítez', date: '21 Jul 2026, 08:30 AM', status: 'completed', terminalIp: '192.168.1.45', actionDetails: 'Asignación de privilegios avanzados a nuevos operadores de campo.', securityLevel: 'Alto', duration: '15 min', affectedCount: '12 usuarios' },
     { id: 'ADM-2026-300', targetModule: 'Servidor Central', responsible: 'Ing. Fernando Rivas', date: '21 Jul 2026, 07:15 AM', status: 'completed', terminalIp: '192.168.1.12', actionDetails: 'Modificación de umbrales de alerta por ráfagas de viento y protocolos RTH.', securityLevel: 'Crítico', duration: '45 min', affectedCount: '4 servidores' },
@@ -19,7 +17,6 @@ export default function AdminHistorial() {
     { id: 'ADM-2026-296', targetModule: 'Firewall Perimetral', responsible: 'Lic. Claudia Benítez', date: '18 Jul 2026, 09:00 AM', status: 'completed', terminalIp: '192.168.1.45', actionDetails: 'Inspección de intentos de acceso fallidos desde redes externas.', securityLevel: 'Medio', duration: '50 min', affectedCount: 'Todos los nodos' },
   ];
 
-  // Lógica de filtrado
   const filteredLogs = logs.filter(log => {
     const matchesSearch = 
       log.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -37,7 +34,6 @@ export default function AdminHistorial() {
     return <Badge text="Abortado" color="danger" />;
   };
 
-  // Estilos para la tabla (Estilos en línea nativos)
   const tableHeaderStyle = {
     backgroundColor: 'var(--bg-color)',
     borderBottom: '2px solid var(--light-gray)',
@@ -68,7 +64,6 @@ export default function AdminHistorial() {
       fontFamily: "'Roboto', sans-serif"
     }}>
       
-      {/* HEADER CON SECTIONHEADING */}
       <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-end', gap: '20px', marginBottom: '32px', paddingBottom: '20px', borderBottom: '1px solid var(--light-gray)' }}>
         <SectionHeading 
           eyebrow="Auditoría" 
@@ -83,7 +78,6 @@ export default function AdminHistorial() {
         </Button>
       </div>
 
-      {/* FILTROS Y BÚSQUEDA */}
       <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '16px', marginBottom: '24px', backgroundColor: 'var(--white)', padding: '16px', borderRadius: '8px', border: '1px solid var(--light-gray)' }}>
         <div style={{ flex: 1, minWidth: '250px', maxWidth: '400px' }}>
           <SearchBar 
@@ -93,7 +87,6 @@ export default function AdminHistorial() {
           />
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          {/* USO CORRECTO DEL COMPONENTE SELECT */}
           <Select 
             options={[
               { value: "all", label: "Todos los estados" }, 
@@ -107,7 +100,6 @@ export default function AdminHistorial() {
         </div>
       </div>
 
-      {/* TABLA DE DATOS */}
       <div style={{ backgroundColor: 'var(--white)', border: '1px solid var(--light-gray)', borderRadius: '8px', overflow: 'hidden', width: '100%', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '800px' }}>
@@ -146,7 +138,6 @@ export default function AdminHistorial() {
                       {getStatusBadge(log.status)}
                     </td>
                     <td style={{ ...tableCellStyle, textAlign: 'center' }}>
-                      {/* USO CORRECTO DEL COMPONENTE BUTTON */}
                       <Button variant="outline-dark" size="sm">
                         <Eye size={14} style={{ marginRight: '6px' }} /> Ver Detalle
                       </Button>
@@ -165,12 +156,10 @@ export default function AdminHistorial() {
         </div>
       </div>
 
-      {/* MODAL DE DETALLE DE BITÁCORA */}
       <Modal isOpen={!!selectedLog} onClose={() => setSelectedLog(null)} title={`Detalle de Bitácora: ${selectedLog?.id}`}>
         {selectedLog && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', fontSize: '14px' }}>
             
-            {/* Info General */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', padding: '16px', backgroundColor: 'var(--bg-color)', borderRadius: '8px', border: '1px solid var(--light-gray)' }}>
               <div>
                 <span style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', color: 'var(--text-light)', textTransform: 'uppercase', marginBottom: '4px' }}>
@@ -190,7 +179,6 @@ export default function AdminHistorial() {
               </div>
             </div>
 
-            {/* Métricas de la acción */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
               <div style={{ padding: '12px', backgroundColor: 'var(--bg-color)', borderRadius: '8px', textAlign: 'center', border: '1px solid var(--light-gray)' }}>
                 <span style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', color: 'var(--text-light)' }}>Duración</span>
@@ -206,7 +194,6 @@ export default function AdminHistorial() {
               </div>
             </div>
 
-            {/* Acción detallada */}
             <div style={{ padding: '16px', backgroundColor: 'rgba(45, 210, 246, 0.05)', border: '1px solid var(--color-info)', borderRadius: '8px' }}>
               <h4 style={{ margin: '0 0 8px 0', fontSize: '13px', fontWeight: 'bold', color: 'var(--color-info)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <ShieldAlert size={16} /> Acción Ejecutada en {selectedLog.targetModule}
@@ -216,7 +203,6 @@ export default function AdminHistorial() {
               </p>
             </div>
 
-            {/* Botón de cierre */}
             <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '16px', borderTop: '1px solid var(--light-gray)', marginTop: '8px' }}>
               <Button variant="primary" onClick={() => setSelectedLog(null)}>
                 Cerrar Bitácora

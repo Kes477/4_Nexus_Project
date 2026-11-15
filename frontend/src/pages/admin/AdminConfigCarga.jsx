@@ -1,12 +1,10 @@
 import React from 'react';
 import { ChevronLeft, MapPin, Package } from 'lucide-react';
 
-// Importación estricta de tus componentes UI
 import { Button, Input } from '../../components/ui';
 
 export default function AdminConfigCarga({ onNext, onBack }) {
   
-  // Estilos reutilizables
   const containerStyle = {
     width: '100%',
     minHeight: '100vh',
@@ -48,7 +46,6 @@ export default function AdminConfigCarga({ onNext, onBack }) {
   return (
     <div style={containerStyle}>
       
-      {/* Botón Volver */}
       <Button 
         variant="outline-dark" 
         size="sm" 
@@ -58,7 +55,6 @@ export default function AdminConfigCarga({ onNext, onBack }) {
         <ChevronLeft size={16} style={{ marginRight: '6px' }} /> Volver al Panel
       </Button>
 
-      {/* Título Principal */}
       <h2 style={{ 
         margin: '0 0 32px 0', 
         fontSize: '28px', 
@@ -70,16 +66,13 @@ export default function AdminConfigCarga({ onNext, onBack }) {
         Configuración: Transporte de Carga
       </h2>
       
-      {/* Contenedor de 2 Columnas */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '32px' }}>
         
-        {/* PANEL IZQUIERDO: MAPA Y COORDENADAS */}
         <div style={{ ...panelStyle, flex: 1, minWidth: '400px' }}>
           <h3 style={{ ...sectionTitleStyle, color: 'var(--color-primary)' }}>
             <MapPin size={20} /> 1. Puntos de Origen y Destino
           </h3>
           
-          {/* Simulación del Mapa */}
           <div style={{ 
             height: '300px', 
             width: '100%', 
@@ -97,7 +90,6 @@ export default function AdminConfigCarga({ onNext, onBack }) {
             [ Mapa Interactivo - Seleccionar Ruta ]
           </div>
 
-          {/* Inputs de Coordenadas */}
           <div style={{ display: 'flex', gap: '16px' }}>
             <div style={{ flex: 1 }}>
               <label style={labelStyle}>Punto A (Recolección)</label>
@@ -110,7 +102,6 @@ export default function AdminConfigCarga({ onNext, onBack }) {
           </div>
         </div>
 
-        {/* PANEL DERECHO: ESPECIFICACIONES Y ACCIÓN */}
         <div style={{ width: '400px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
           
           <div style={panelStyle}>

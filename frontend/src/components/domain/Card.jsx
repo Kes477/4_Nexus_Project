@@ -1,8 +1,11 @@
 import { Check } from "lucide-react";
+import { useNavigate } from 'react-router-dom';
 import { Button } from "../ui/Button";
 
+/* TARJETA DE SERVICIO / SUSCRIPCIÓN (ServiceCard) */
 export const ServiceCard = ({ service }) => {
     const Icon = service.icon;
+    const navigate = useNavigate();
 
     return (
         <article
@@ -77,15 +80,22 @@ export const ServiceCard = ({ service }) => {
                 ))}
             </ul>
 
-            <Button variant={service.destacado ? "primary" : "outline-dark"} style={{ width: "100%", padding: "10px" }}>
+            {/* BOTÓN SELECCIONAR -> REDIRIGE A LOGIN */}
+            <Button 
+                variant={service.destacado ? "primary" : "outline-dark"} 
+                style={{ width: "100%", padding: "10px" }}
+                onClick={() => navigate('/login')}
+            >
                 Seleccionar
             </Button>
         </article>
     );
 };
 
+/* TARJETA DE PRODUCTO / DRON (ProductCard) */
 export const ProductCard = ({ product }) => {
     const Icon = product.icon;
+    const navigate = useNavigate();
 
     return (
         <article
@@ -172,7 +182,12 @@ export const ProductCard = ({ product }) => {
                     </span>
                 </div>
 
-                <Button variant="primary" style={{ width: "100%", padding: "10px" }}>
+                {/* BOTÓN COTIZAR -> REDIRIGE A FORMULARIO-CONTACTO */}
+                <Button 
+                    variant="primary" 
+                    style={{ width: "100%", padding: "10px" }}
+                    onClick={() => navigate('/formulario-contacto')}
+                >
                     Cotizar Equipo
                 </Button>
             </div>

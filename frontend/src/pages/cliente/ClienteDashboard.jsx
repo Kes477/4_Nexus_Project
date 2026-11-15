@@ -1,5 +1,4 @@
 import { useState } from 'react';
-// Nota: Si 'Droplets' te da error, cámbialo a 'Droplet' (singular) aquí y en la línea 14
 import { Droplets, Clock, Radio, CheckCircle2, BarChart3 } from 'lucide-react';
 import { Tabs, Badge, Button, IconButton } from '../../components/ui'; 
 
@@ -21,7 +20,6 @@ export const ClienteDashboard = () => {
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             
-            {/* Cabecera */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--light-gray)', paddingBottom: '15px' }}>
                 <div>
                     <h1 style={{ margin: 0, fontSize: '24px', color: 'var(--color-dark)', fontWeight: '800' }}>Dashboard de Servicios</h1>
@@ -44,7 +42,6 @@ export const ClienteDashboard = () => {
                 </div>
             </div>
 
-            {/* Tarjetas de Métricas */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '15px' }}>
                 {metricas.map((m, i) => (
                     <div key={i} className="card" style={{ textAlign: 'left', padding: '20px' }}>
@@ -58,10 +55,8 @@ export const ClienteDashboard = () => {
                 ))}
             </div>
 
-            {/* Gráfico y Tabs */}
             <div className="card" style={{ padding: 0, textAlign: 'left', overflow: 'hidden' }}>
                 
-                {/* Contenedor de las pestañas */}
                 <div style={{ padding: '15px 20px', borderBottom: '1px solid var(--light-gray)', background: 'var(--bg-color)', display: 'flex' }}>
                     <Tabs 
                         tabs={tabLabels} 
@@ -76,7 +71,6 @@ export const ClienteDashboard = () => {
                             <BarChart3 size={20} color="var(--color-primary)"/> Rendimiento ({currentTabName})
                         </h3>
                         
-                        {/* Selector de tiempo */}
                         <div style={{ display: 'flex', background: 'var(--bg-color)', borderRadius: '6px', padding: '4px', gap: '4px' }}>
                             {['semana', 'mes', 'año'].map(p => (
                                 <Button 
@@ -92,7 +86,6 @@ export const ClienteDashboard = () => {
                         </div>
                     </div>
                     
-                    {/* Simulación de Gráfico */}
                     <div style={{ height: '250px', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-around', borderBottom: '2px solid var(--light-gray)', paddingBottom: '10px' }}>
                         {[40, 70, 45, 90, 60, 100, 80].map((height, i) => (
                             <div key={i} style={{ width: '40px', height: `${height}%`, background: 'rgba(4, 201, 166, 0.3)', borderRadius: '4px 4px 0 0', position: 'relative' }}>
