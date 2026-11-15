@@ -1,4 +1,6 @@
-from django.test import TestCase
+from django.urls import reverse
+from rest_framework import status
+from rest_framework.test import APITestCase
 from decimal import Decimal
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
@@ -9,7 +11,7 @@ from .models import Almacen, Inventario, MovimientoInventario
 
 Tipo = MovimientoInventario.Tipo
 
-class InventarioBaseTest(TestCase):
+class InventarioBaseTest(APITestCase):
     ###########     Datos comunes de un Dron con 10 unidades
     def setUp(self):
         self.categoria = Categoria.objects.create(nombre = 'Fotografía')
@@ -163,3 +165,96 @@ class InventarioServiciosTests(InventarioBaseTest):
         tipos = list(MovimientoInventario.objects.order_by('id').values_list('tipo', flat=True))
         self.assertEqual(tipos, [Tipo.ENTRADA, Tipo.RESERVA, Tipo.SALIDA])
         self.assertStock(disponible=13, reservada=0)
+
+
+########## PRUEBAS PARA API DE INVENTARIO ####################
+
+class InventarioAPITests(InventarioBaseTest):
+
+    def setUp(self):
+        super().setUp()
+        self.admin = Usuario.objects.create_superuser(
+            email='admin@nexus.com',
+            password='Clave-segura-123',
+            no_identificacion='0801199900099',
+            first_name='Admin',
+            last_name='Nexus',
+        )
+        self.url_lista = reverse('inventario-list')
+        self.url_entrada = reverse('inventario-entrada', args=[self.inventario.pk])
+        self.url_ajuste = reverse('inventario-ajuste', args=[self.inventario.pk])
+
+    def test_sin_sesion_responde_401(self):
+        respuesta = self.client.get(self.url_lista)
+        self.assertEqual(respuesta.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_usuario_no_admin_responde_403(self):
+        self.client.force_authenticate(user=self.usuario)
+        respuesta = self.client.get(self.url_lista)
+        self.assertEqual(respuesta.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_admin_ve_el_stock(self):
+        self.client.force_authenticate(user=self.admin)
+        respuesta = self.client.get(self.url_lista)
+
+        self.assertEqual(respuesta.status_code, status.HTTP_200_OK)
+        self.assertEqual(respuesta.data[0]['sku'], 'MINI5-STD')
+        self.assertEqual(respuesta.data[0]['producto'], 'Mini 5 Pro')
+        self.assertEqual(respuesta.data[0]['cantidad_disponible'], 10)
+
+    def test_entrada_por_api(self):
+        self.client.force_authenticate(user=self.admin)
+        respuesta = self.client.post(
+            self.url_entrada, {'cantidad': 5, 'motivo': 'Compra'}, format='json'
+        )
+
+        self.assertEqual(respuesta.status_code, status.HTTP_200_OK)
+        self.assertEqual(respuesta.data['cantidad_disponible'], 15)
+        self.assertEqual(MovimientoInventario.objects.get().usuario, self.admin)
+
+    def test_entrada_con_cantidad_invalida(self):
+        self.client.force_authenticate(user=self.admin)
+        respuesta = self.client.post(self.url_entrada, {'cantidad': 0}, format='json')
+
+        self.assertEqual(respuesta.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertStock(disponible=10, reservada=0)
+
+    def test_ajuste_por_api(self):
+        self.client.force_authenticate(user=self.admin)
+        respuesta = self.client.post(
+            self.url_ajuste, {'conteo_real': 8, 'motivo': '2 dañados'}, format='json'
+        )
+
+        self.assertEqual(respuesta.status_code, status.HTTP_200_OK)
+        self.assertEqual(respuesta.data['cantidad_disponible'], 8)
+
+    def test_ajuste_sin_motivo(self):
+        self.client.force_authenticate(user=self.admin)
+        respuesta = self.client.post(self.url_ajuste, {'conteo_real': 8}, format='json')
+
+        self.assertEqual(respuesta.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertStock(disponible=10, reservada=0)
+
+    def test_error_del_servicio_responde_400(self):
+        self.client.force_authenticate(user=self.admin)
+        respuesta = self.client.post(
+            self.url_ajuste, {'conteo_real': 10, 'motivo': 'Conteo'}, format='json'
+        )
+        self.assertEqual(respuesta.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_cantidades_no_se_editan_directo(self):
+        self.client.force_authenticate(user=self.admin)
+        url = reverse('inventario-detail', args=[self.inventario.pk])
+        respuesta = self.client.patch(url, {'cantidad_disponible': 999}, format='json')
+
+        self.assertEqual(respuesta.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertStock(disponible=10, reservada=0)
+
+    def test_kardex_por_api(self):
+        self.client.force_authenticate(user=self.admin)
+        self.client.post(self.url_entrada, {'cantidad': 5}, format='json')
+
+        respuesta = self.client.get(reverse('movimiento-list'))
+        self.assertEqual(len(respuesta.data), 1)
+        self.assertEqual(respuesta.data[0]['tipo'], 'ENTRADA')
+        self.assertEqual(respuesta.data[0]['usuario'], 'Admin Nexus')
