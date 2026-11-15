@@ -1,7 +1,8 @@
-from django.db.models import Min
+from django.db.models import Min, Exists, OuterRef
 from rest_framework import permissions, viewsets
+from inventario.models import Inventario
 from .models import Categoria, Producto
-from .serializers import (CategoriaSerializer, ProductoDetalleSerializer, ProductoListaSerializer,)
+from .serializers import (CategoriaSerializer,ProductoDetalleSerializer, ProductoListaSerializer)
 
 class CategoriaViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Categoria.objects.all()
@@ -20,12 +21,17 @@ class ProductoViewSet(viewsets.ReadOnlyModelViewSet):
     ordering_fields = ['precio_desde','fecha_publicacion','nombre']
 
     def get_queryset(self):
+        hay_stock = Inventario.objects.filter(
+            variante__producto = OuterRef('pk'),
+            cantidad_disponible__gt = 0,
+        ) 
         return (
             Producto.objects.filter(activo=True)
             .select_related('categoria','articulo')
-            .prefetch_related('articulo__imagenes', 'variantes__atributos')
-            .annotate(precio_desde=Min('variantes__precio'))
+            .prefetch_related('articulo__imagenes', 'variantes__atributos','variantes__inventarios',)
+            .annotate(precio_desde=Min('variantes__precio'), disponible = Exists(hay_stock))
         )
+    
     def get_serializer_class(self):
         if self.action == 'retrieve':
             return ProductoDetalleSerializer
