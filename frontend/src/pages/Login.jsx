@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { Layers, Navigation, Wrench, Shield, ChevronLeft, ArrowRight, Check, Home } from 'lucide-react';
-import { Input, Button, Alert } from '../components/ui';
+import { Input, Button, Alert, IconButton, Checkbox } from '../components/ui';
 import {useSesion} from '../hooks/useSesion';
 
 const carouselImages = [

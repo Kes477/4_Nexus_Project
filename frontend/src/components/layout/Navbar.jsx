@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Drone, ChevronDown, User, LogOut, LayoutDashboard, FileText, CreditCard, Plane, MessageSquare, Shield, Navigation } from 'lucide-react';
+import { Drone, ChevronDown, User, LogOut, LayoutDashboard, FileText, CreditCard, Plane, MessageSquare, Shield, Navigation, Sun, Moon } from 'lucide-react';
 import { Button } from '../ui';
 import { useSesion } from '../../hooks/useSesion';
+import { useTheme } from '../../context/ThemeContext'; 
 
 const Navbar = () => {
     const location = useLocation();
@@ -11,20 +12,27 @@ const Navbar = () => {
     const [isUserOpen, setIsUserOpen] = useState(false);
     const [hoveredPath, setHoveredPath] = useState(null);
 
-     // El usuario y su rol vienen de la sesión real (Django)
+    // Estado para controlar el hover del botón del tema
+    const [isThemeHovered, setIsThemeHovered] = useState(false);
+
+    // Hook del tema
+    const { theme, toggleTheme } = useTheme();
+
+    // Sesión
     const { usuario, rol, cerrarSesion } = useSesion();
     const userRole = rol || 'cliente';
 
-    // 1. DETECTAMOS LA RUTA BASE SEGÚN EL ROL
     const basePath = userRole === 'admin' ? '/admin' : '/cliente';
-
-    // 2. EL NAVBAR SE MUESTRA EN DASHBOARD SI ESTAMOS EN /cliente O /admin
     const isDashboard = location.pathname.startsWith('/cliente') || location.pathname.startsWith('/admin') || location.pathname.startsWith('/dashboard');
-
-    // 3. CONTEXTO: ¿estamos en el landing o en otra página pública?
     const isLanding = location.pathname === '/';
 
-    // 4. ITEMS DEL NAV PÚBLICO
+    // Paleta de colores para el botón del tema
+    const isLight = theme === 'light';
+    const colorLuna = '#8b5cf6'; // Violeta
+    const colorSol = '#f1be26';  // Amarillo
+    const bgLuna = 'rgba(139, 92, 246, 0.1)'; // Violeta transparente
+    const bgSol = 'rgba(241, 190, 38, 0.1)';  // Amarillo transparente
+
     const publicNavItems = [
         { id: 'inicio', label: 'Inicio', dedicatedPath: null },
         { id: 'nosotros', label: 'Nosotros', dedicatedPath: null },
@@ -68,7 +76,6 @@ const Navbar = () => {
         zIndex: 1001
     };
 
-    // Renderiza un link público según el contexto
     const renderPublicLink = (item) => {
         if (isLanding) {
             return (
@@ -95,7 +102,7 @@ const Navbar = () => {
 
     return (
         <nav className="navbar">
-            {/* El logo lleva a la base correspondiente */}
+            {/* Logo */}
             <Link to={isDashboard ? basePath : "/"} style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none' }}>
                 <div style={{ background: 'var(--color-primary)', padding: '8px', borderRadius: '8px', color: 'var(--white)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <Drone size={24} />
@@ -106,14 +113,12 @@ const Navbar = () => {
             </Link>
 
             <div className="nav-links" style={{ display: 'flex', alignItems: 'center', gap: '30px' }}>
-
                 {!isDashboard ? (
                     <>
                         {publicNavItems.map(renderPublicLink)}
                     </>
                 ) : (
                     <>
-                        {/* Dashboard Dinámico */}
                         <Link
                             to={basePath}
                             style={linkStyle(basePath)}
@@ -136,7 +141,6 @@ const Navbar = () => {
 
                             {isServicesOpen && (
                                 <div style={dropdownStyle}>
-                                    {/* MENÚ CLIENTE */}
                                     {userRole === 'cliente' && (
                                         <>
                                             <Link to={`${basePath}/suscripciones`} style={linkStyle(`${basePath}/suscripciones`)} onClick={() => setIsServicesOpen(false)} onMouseEnter={() => setHoveredPath(`${basePath}/suscripciones`)} onMouseLeave={() => setHoveredPath(null)}>
@@ -154,7 +158,6 @@ const Navbar = () => {
                                         </>
                                     )}
 
-                                    {/* MENÚ ADMINISTRADOR */}
                                     {userRole === 'admin' && (
                                         <>
                                             <Link to={`${basePath}/usuarios`} style={linkStyle(`${basePath}/usuarios`)} onClick={() => setIsServicesOpen(false)} onMouseEnter={() => setHoveredPath(`${basePath}/usuarios`)} onMouseLeave={() => setHoveredPath(null)}>
@@ -175,7 +178,6 @@ const Navbar = () => {
                             )}
                         </div>
 
-                        {/* Soporte Dinámico */}
                         <Link
                             to={`${basePath}/soporte`}
                             style={linkStyle(`${basePath}/soporte`)}
@@ -189,6 +191,40 @@ const Navbar = () => {
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                
+                {/* Botón de cambio de tema CIRCULAR y mejorado */}
+                <button
+                    onClick={toggleTheme}
+                    onMouseEnter={() => setIsThemeHovered(true)}
+                    onMouseLeave={() => setIsThemeHovered(false)}
+                    style={{
+                        width: '40px',
+                        height: '40px',
+                        borderRadius: '50%', // Forma circular
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)', // Transición con un pequeño rebote
+                        border: `2px solid ${isLight ? colorLuna : colorSol}`,
+                        // Fondo transparente por defecto, color sólido en hover
+                        background: isThemeHovered ? (isLight ? colorLuna : colorSol) : (isLight ? bgLuna : bgSol),
+                        // Color del ícono
+                        color: isThemeHovered 
+                            ? (isLight ? '#ffffff' : '#2c365e') // Blanco para luna, Oscuro para sol
+                            : (isLight ? colorLuna : colorSol),
+                        // Efecto de resplandor (glow) en hover
+                        boxShadow: isThemeHovered 
+                            ? `0 0 15px ${isLight ? 'rgba(139, 92, 246, 0.4)' : 'rgba(241, 190, 38, 0.5)'}` 
+                            : 'none',
+                        // Efecto de escala en hover
+                        transform: isThemeHovered ? 'scale(1.05)' : 'scale(1)'
+                    }}
+                    title={isLight ? 'Cambiar a modo oscuro' : 'Cambiar a modo claro'}
+                >
+                    {isLight ? <Moon size={20} /> : <Sun size={20} />}
+                </button>
+
                 {!isDashboard ? (
                     <Link to={usuario ? basePath: '/login'}>
                         <Button variant="outline-dark" size="sm">{usuario ? 'Ir a mi panel': 'Acceso clientes'}</Button>
@@ -217,7 +253,6 @@ const Navbar = () => {
 
                             {isUserOpen && (
                                 <div style={{ ...dropdownStyle, left: 'auto', right: 0 }}>
-                                    {/* Perfil Dinámico */}
                                     <Link to={`${basePath}/perfil`} style={linkStyle(`${basePath}/perfil`)} onClick={() => setIsUserOpen(false)}
                                         onMouseEnter={() => setHoveredPath(`${basePath}/perfil`)} onMouseLeave={() => setHoveredPath(null)}>
                                         <User size={16} /> Mi Perfil
