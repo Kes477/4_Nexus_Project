@@ -1,30 +1,71 @@
 
-from rest_framework import mixins, permissions, viewsets
-from rest_framework.exceptions import PermissionDenied
+"""
+MÓDULO: REPARACIONES
+ARCHIVO: views.py
 
+RESPONSABILIDAD:
+    Gestionar las solicitudes HTTP relacionadas con los equipos
+    de clientes y las órdenes de servicio.
+
+PRINCIPIO SOLID: SRP (Single Responsibility Principle)
+
+Aplicación:
+    Las vistas gestionan las solicitudes, los permisos y las
+    respuestas HTTP.
+
+    La operación de actualización de estado se delega a
+    ServicioOrdenReparacion, evitando que la vista implemente
+    directamente toda la lógica de negocio.
+
+PATRÓN ARQUITECTÓNICO:
+    Service Layer (Capa de servicios).
+
+NOTA:
+    Esta separación representa una aplicación parcial de SRP.
+    Algunas reglas de negocio todavía permanecen en las vistas.
+"""
+
+from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.db.models import Q
+from django.shortcuts import get_object_or_404
+
+from rest_framework import mixins, permissions, status, viewsets
+from rest_framework.exceptions import PermissionDenied
+from rest_framework.response import Response
 
 from .models import EquipoCliente, OrdenServicio
-
-
 from .serializers import (
     EquipoClienteSerializer,
     OrdenServicioSerializer,
     AsignarTecnicoSerializer,
-    CambiarEstadoSerializer
+    CambiarEstadoSerializer,
 )
-
-
+from .servicios import ServicioOrdenReparacion
 
 class EquipoClienteViewSet(
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
     viewsets.GenericViewSet
 ):
+    """
+    Gestiona la consulta y el registro de equipos de clientes.
+
+    PRINCIPIO SRP:
+        Este ViewSet se concentra en las operaciones HTTP
+        relacionadas con los equipos registrados.
+    """
+
     serializer_class = EquipoClienteSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
+        """
+        Devuelve únicamente los equipos del cliente autenticado.
+
+        La consulta limita el acceso a los registros
+        pertenecientes al usuario actual.
+        """
         usuario = self.request.user
 
         return EquipoCliente.objects.filter(
@@ -35,9 +76,12 @@ class EquipoClienteViewSet(
         )
 
     def create(self, request, *args, **kwargs):
-        from rest_framework.response import Response
-        from rest_framework import status
+        """
+        Registra un equipo asociado al cliente autenticado.
 
+        Valida los datos y comprueba que el usuario
+        tenga un perfil de cliente.
+        """
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -55,17 +99,37 @@ class EquipoClienteViewSet(
             status=status.HTTP_201_CREATED
         )
 
-
 class OrdenServicioViewSet(
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
     mixins.CreateModelMixin,
     viewsets.GenericViewSet
 ):
+    """
+    Gestiona las solicitudes HTTP de las órdenes de reparación.
+
+    PRINCIPIO SOLID: SRP
+
+    Responsabilidades:
+        - Controlar el acceso a las órdenes.
+        - Validar los datos recibidos.
+        - Comprobar permisos.
+        - Devolver respuestas HTTP.
+
+    La actualización del estado se delega a una clase
+    de servicio especializada.
+    """
+
     serializer_class = OrdenServicioSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_permissions(self):
+        """
+        Exige permisos adicionales para crear órdenes.
+
+        Las demás acciones requieren autenticación y aplican
+        las comprobaciones correspondientes.
+        """
         if self.action == 'create':
             return [
                 permissions.IsAuthenticated(),
@@ -77,9 +141,15 @@ class OrdenServicioViewSet(
         ]
 
     def get_queryset(self):
+        """
+        Determina las órdenes visibles para el usuario.
+
+        - Personal con permiso de consulta: todas las órdenes.
+        - Clientes: órdenes de sus propios equipos.
+        - Técnicos: órdenes que tienen asignadas.
+        """
         usuario = self.request.user
 
-        # Personal autorizado para consultar todas las órdenes
         if usuario.has_perm('reparaciones.view_ordenservicio'):
             return (
                 OrdenServicio.objects
@@ -91,7 +161,6 @@ class OrdenServicioViewSet(
                 .all()
             )
 
-        # Acceso restringido para clientes y técnicos
         filtros = Q(pk__in=[])
 
         if hasattr(usuario, 'perfil_cliente'):
@@ -116,12 +185,17 @@ class OrdenServicioViewSet(
         )
 
     def asignar_tecnico(self, request, pk=None):
-        from django.core.exceptions import ValidationError
-        from django.db import transaction
-        from django.shortcuts import get_object_or_404
-        from rest_framework import status
-        from rest_framework.response import Response
+        """
+        Asigna un técnico disponible a una orden abierta.
 
+        Reglas:
+            - El usuario necesita permiso de modificación.
+            - La orden no puede estar cerrada.
+            - El técnico debe estar disponible.
+
+        La operación se realiza dentro de una transacción
+        y bloquea la orden durante la actualización.
+        """
         if not request.user.has_perm(
             'reparaciones.change_ordenservicio'
         ):
@@ -180,11 +254,28 @@ class OrdenServicioViewSet(
         )
 
     def cambiar_estado(self, request, pk=None):
-        from django.db import transaction
-        from django.shortcuts import get_object_or_404
-        from django.utils import timezone
-        from rest_framework import status
-        from rest_framework.response import Response
+        """
+        Procesa una solicitud de cambio de estado.
+
+        PRINCIPIO SOLID: SRP
+        -------------------
+        Esta vista:
+            1. Valida la solicitud HTTP.
+            2. Comprueba los permisos del usuario.
+            3. Controla la transacción.
+            4. Devuelve la respuesta correspondiente.
+
+        ServicioOrdenReparacion:
+            1. Comprueba la transición.
+            2. Actualiza el estado.
+            3. Registra la fecha de cierre cuando corresponde.
+            4. Guarda los cambios.
+
+        PATRÓN STATE:
+            La validación de transiciones se realiza mediante
+            OrdenServicio.puede_cambiar_a(), que puede delegar
+            las reglas a las clases de estados.py.
+        """
 
         serializer = CambiarEstadoSerializer(
             data=request.data
@@ -210,6 +301,7 @@ class OrdenServicioViewSet(
                 pk=pk
             )
 
+            # Verificar si el cambio corresponde al técnico.
             if nuevo_estado in estados_tecnicos:
                 if (
                     orden.tecnico_id is None
@@ -220,6 +312,7 @@ class OrdenServicioViewSet(
                         'Solo el técnico asignado puede avanzar esta orden.'
                     )
 
+            # Verificar permisos para cerrar órdenes.
             elif nuevo_estado in estados_administrativos:
                 if not request.user.has_perm(
                     'reparaciones.change_ordenservicio'
@@ -228,6 +321,7 @@ class OrdenServicioViewSet(
                         'No tiene permiso para cerrar órdenes.'
                     )
 
+            # Validar la transición antes de ejecutar el servicio.
             if not orden.puede_cambiar_a(nuevo_estado):
                 return Response(
                     {
@@ -242,17 +336,25 @@ class OrdenServicioViewSet(
             if nuevo_estado in estados_tecnicos:
                 if orden.tecnico is None:
                     return Response(
-                        {'detail': 'La orden no tiene técnico asignado.'},
+                        {
+                            'detail': 'La orden no tiene técnico asignado.'
+                        },
                         status=status.HTTP_400_BAD_REQUEST
                     )
 
-            orden.estado = nuevo_estado
+            # ==================================================
+            # PRINCIPIO SOLID: SRP - RESPONSABILIDAD ÚNICA
+            #
+            # La vista delega la operación de negocio al servicio.
+            # El servicio actualiza el estado y la fecha de cierre.
+            #
+            # Se conserva el bloqueo de la base de datos para
+            # proteger la operación ante solicitudes concurrentes.
+            # ==================================================
 
-            if nuevo_estado in estados_administrativos:
-                orden.fecha_cierre = timezone.now()
-
-            orden.save(
-                update_fields=['estado', 'fecha_cierre']
+            ServicioOrdenReparacion.cambiar_estado(
+                orden,
+                nuevo_estado
             )
 
         return Response(
