@@ -6,8 +6,7 @@ import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import { SearchBar, Select, Modal, Button, Loader } from '../components/ui';
 import { ServiceCard } from '../components/domain/Card';
-
-const API_URL = 'http://localhost:8000/api/catalogo/productos/';
+import { getProductos } from '../api/droneService';
 
 const formatPrice = (precioDesde) =>
     precioDesde
@@ -54,10 +53,7 @@ export const Suscription = () => {
     useEffect(() => {
         const fetchSuscripciones = async () => {
             try {
-                const respuesta = await fetch(API_URL);
-                if (!respuesta.ok) throw new Error('Error al cargar los planes');
-
-                const data = await respuesta.json();
+                const data = await getProductos();
                 const subs = data.filter((item) => item.tipo_producto === 'SUSCRIPCION');
                 setSuscripciones(subs.map(adaptSuscripcion));
             } catch (err) {
