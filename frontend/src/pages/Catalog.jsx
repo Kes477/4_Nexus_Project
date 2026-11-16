@@ -6,8 +6,8 @@ import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import { SearchBar, Select, Modal, Button, Loader } from '../components/ui';
 import DroneCard from '../components/domain/DroneCard';
+import {getProductos} from '../api/droneService';
 
-const API_URL = 'http://localhost:8000/api/catalogo/productos/';
 
 const formatPrice = (precioDesde) =>
     precioDesde
@@ -57,10 +57,8 @@ export const Catalog = () => {
     useEffect(() => {
         const fetchDrones = async () => {
             try {
-                const respuesta = await fetch(API_URL);
-                if (!respuesta.ok) throw new Error('Error al cargar el catálogo');
+                const data = await getProductos();
 
-                const data = await respuesta.json();
                 const articulos = data.filter((item) => item.tipo_producto === 'ARTICULO');
                 setDrones(articulos.map(adaptDron));
             } catch (err) {

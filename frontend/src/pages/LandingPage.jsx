@@ -7,6 +7,7 @@ import {
 import { Navbar, Footer } from '../components/layout';
 import { Button } from '../components/ui';
 import { ServiceCard, ProductCard } from '../components/domain/Card';
+import { getProductos } from '../api/droneService'; 
 
 // ============================================================================
 // ==== PATRÓN ADAPTER ====
@@ -461,9 +462,7 @@ const LandingPage = () => {
     useEffect(() => {
         const fetchProductos = async () => {
             try {
-                const respuesta = await fetch('http://localhost:8000/api/catalogo/productos/');
-                if (!respuesta.ok) throw new Error('Error al cargar el catálogo');
-                const data = await respuesta.json();
+                const data = await getProductos();
                 setDrones(data.filter((item) => item.tipo_producto === 'ARTICULO'));
                 setSuscripciones(data.filter((item) => item.tipo_producto === 'SUSCRIPCION'));
             } catch (error) {
