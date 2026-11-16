@@ -445,9 +445,7 @@ const LandingPage = () => {
     useEffect(() => {
         const fetchProductos = async () => {
             try {
-                const respuesta = await fetch(`${import.meta.env.VITE_API_URL}/catalogo/productos/`);
-                if (!respuesta.ok) throw new Error('Error al cargar el catálogo');
-                const data = await respuesta.json();
+                const data = await getProductos();
                 setDrones(data.filter((item) => item.tipo_producto === 'ARTICULO'));
                 setSuscripciones(data.filter((item) => item.tipo_producto === 'SUSCRIPCION'));
             } catch (error) {

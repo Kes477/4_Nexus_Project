@@ -6,8 +6,7 @@ import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import { SearchBar, Select, Modal, Button, Loader } from '../components/ui';
 import { ServiceCard } from '../components/domain/Card';
-
-const API_URL = 'http://localhost:8000/api/catalogo/productos/';
+import { getProductos } from '../api/droneService';
 
 const formatPrice = (precioDesde) =>
     precioDesde
@@ -67,30 +66,8 @@ export const Suscription = () => {
     useEffect(() => {
         const fetchSuscripciones = async () => {
             try {
-                // 👈 Usamos fetch directo para evitar que un servicio externo filtre los datos
-                const respuesta = await fetch(API_URL);
-                if (!respuesta.ok) throw new Error(`Error HTTP: ${respuesta.status}`);
-                
-                const data = await respuesta.json();
-                
-                // Manejo de paginación (por si Django devuelve { count, results })
-                const lista = data.results ? data.results : data;
-                
-                // 👈 DEBUG: Abre la consola (F12) para ver qué está llegando
-                console.log("1. Datos crudos del backend:", lista);
-
-                // 👈 Filtro flexible: Busca "SUSCRIP" en cualquier parte del texto
-                const subs = lista.filter((item) => {
-                    const tipo = String(item.tipo_producto || '').toUpperCase();
-                    return tipo.includes('SUSCRIP') || tipo.includes('PLAN');
-                });
-
-                console.log("2. Suscripciones encontradas después del filtro:", subs);
-
-                if (subs.length === 0 && lista.length > 0) {
-                    console.warn("⚠️ Se encontraron productos, pero ninguno es de tipo SUSCRIPCION. Revisa cómo se llama el campo en tu backend.");
-                }
-
+                const data = await getProductos();
+                const subs = data.filter((item) => item.tipo_producto === 'SUSCRIPCION');
                 setSuscripciones(subs.map(adaptSuscripcion));
             } catch (err) {
                 console.error('❌ Error al traer los planes:', err);

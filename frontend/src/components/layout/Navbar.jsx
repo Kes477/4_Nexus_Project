@@ -11,7 +11,7 @@ const Navbar = () => {
     const [isUserOpen, setIsUserOpen] = useState(false);
     const [hoveredPath, setHoveredPath] = useState(null);
 
-    // El usuario y su rol vienen de la sesión real (Django)
+     // El usuario y su rol vienen de la sesión real (Django)
     const { usuario, rol, cerrarSesion } = useSesion();
     const userRole = rol || 'cliente';
 
@@ -224,7 +224,7 @@ const Navbar = () => {
                                     </Link>
                                     <hr style={{ border: 'none', borderTop: '1px solid var(--light-gray)', margin: '5px 0' }} />
                                     <button
-                                        onClick={() => { setIsUserOpen(false); cerrarSesion(); navigate('/login'); }}
+                                         onClick={() => { setIsUserOpen(false); cerrarSesion(); navigate('/login'); }}
                                         style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'none', border: 'none', padding: '10px 16px', fontSize: '14px', fontWeight: '600', color: 'var(--color-danger)', cursor: 'pointer', borderRadius: '8px', textAlign: 'left', width: '100%', transition: 'all 0.2s' }}
                                         onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(240, 37, 88, 0.05)'}
                                         onMouseLeave={(e) => e.currentTarget.style.background = 'none'}

@@ -1,8 +1,14 @@
 import { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { Layers, Navigation, Wrench, Shield, ChevronLeft, ArrowRight, Check } from 'lucide-react';
-import { Input, Button, Alert, IconButton, Checkbox } from '../components/ui';
-import { useSesion } from '../hooks/useSesion';
+import { Layers, Navigation, Wrench, Shield, ChevronLeft, ArrowRight, Check, Home } from 'lucide-react';
+import { Input, Button, Alert } from '../components/ui';
+import {useSesion} from '../hooks/useSesion';
+
+const carouselImages = [
+    "https://images.unsplash.com/photo-1508614589041-895b88991e3e?q=80&w=1000&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1579829366248-204fe8413f31?q=80&w=1000&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1473968512647-3e447244af8f?q=80&w=1000&auto=format&fit=crop"
+];
 
 const Login = () => {
     const navigate = useNavigate();

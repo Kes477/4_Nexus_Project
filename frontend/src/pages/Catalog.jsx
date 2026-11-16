@@ -5,8 +5,9 @@ import { ShoppingBag } from 'lucide-react';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import { SearchBar, Select, Modal, Button, Loader } from '../components/ui';
-import { ItemProductCard } from '../components/domain/ItemCard';
-import { getProductos } from '../api/droneService';
+import DroneCard from '../components/domain/DroneCard';
+import {getProductos} from '../api/droneService';
+
 
 const formatPrice = (precioDesde) =>
     precioDesde
@@ -59,11 +60,8 @@ export const Catalog = () => {
         const fetchDrones = async () => {
             try {
                 const data = await getProductos();
-                
-                // 👈 CORRECCIÓN 2: Manejo de paginación (si Django devuelve { results: [...] })
-                const lista = data.results ? data.results : data;
-                
-                const articulos = lista.filter((item) => item.tipo_producto === 'ARTICULO');
+
+                const articulos = data.filter((item) => item.tipo_producto === 'ARTICULO');
                 setDrones(articulos.map(adaptDron));
             } catch (err) {
                 console.error('Error al traer el catálogo:', err);
