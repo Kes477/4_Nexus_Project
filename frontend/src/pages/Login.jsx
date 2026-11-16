@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { Layers, Navigation, Wrench, Shield, ChevronLeft, ArrowRight, Check, ShieldCheck, Activity, Plane } from 'lucide-react';
+import { Layers, Navigation, Wrench, Shield, ChevronLeft, ArrowRight, Check } from 'lucide-react';
 import { Input, Button, Alert, IconButton, Checkbox } from '../components/ui';
+import { useSesion } from '../hooks/useSesion';
 
 const Login = () => {
     const navigate = useNavigate();
     const location = useLocation();
+    const { iniciarSesion } = useSesion();
 
     const redirectTo = location.state?.from || '/cliente';
     const loginMessage = location.state?.message;
@@ -52,33 +54,21 @@ const Login = () => {
         setIsLoading(true);
 
         try {
-            const response = await fetch(`${API_URL}/auth/login/`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password })
-            });
+            const usuario = await iniciarSesion(email, password);
+            const destino = usuario.is_staff ? '/admin' : redirectTo;
 
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.detail || 'Credenciales incorrectas');
-            }
-
-            localStorage.setItem('access_token', data.access);
-            localStorage.setItem('refresh_token', data.refresh);
-            
-            const rolBackend = data.usuario.is_staff ? 'admin' : 'cliente';
-            localStorage.setItem('user_role', rolBackend);
-            localStorage.setItem('user_email', data.usuario.email);
-
-            navigate(redirectTo, {
+            navigate(destino, {
                 replace: true,
                 state: location.state?.selectedDrone
                     ? { selectedDrone: location.state.selectedDrone }
                     : undefined,
             });
         } catch (error) {
-            setErrorMsg(error.message);
+            if (error.response?.status === 401) {
+                setErrorMsg('Correo o contraseña incorrectos.');
+            } else {
+                setErrorMsg('No se pudo conectar con el servidor. Intenta de nuevo.');
+            }
         } finally {
             setIsLoading(false);
         }
@@ -134,17 +124,17 @@ const Login = () => {
     };
 
     const roles = [
-        { key: 'cliente', label: 'Cliente', icon: <Layers size={16} /> },
-        { key: 'piloto', label: 'Piloto', icon: <Navigation size={16} /> },
-        { key: 'tecnico', label: 'Técnico', icon: <Wrench size={16} /> },
-        { key: 'admin', label: 'Admin', icon: <Shield size={16} /> },
+        { key: 'cliente', label: 'Cliente', icon: <Layers size={14} /> },
+        { key: 'piloto', label: 'Piloto', icon: <Navigation size={14} /> },
+        { key: 'tecnico', label: 'Técnico', icon: <Wrench size={14} /> },
+        { key: 'admin', label: 'Admin', icon: <Shield size={14} /> },
     ];
 
     const getIdentificacionConfig = () => {
         switch (selectedRole) {
-            case 'piloto': return { label: 'Licencia de Piloto', placeholder: 'AHAC-RPAS-2026-XXXX', icon: "fa-id-card" };
-            case 'admin': return { label: 'Clave de Empresa', placeholder: 'ADM-2026-X9', icon: "fa-key" };
-            default: return { label: 'Identificación (DNI / RTN)', placeholder: '0801-1990-00000', icon: "fa-id-card" };
+            case 'piloto': return { label: 'Licencia de Piloto', icon: "fa-id-card" };
+            case 'admin': return { label: 'Clave de Empresa', icon: "fa-key" };
+            default: return { label: 'Identificación (DNI / RTN)', icon: "fa-id-card" };
         }
     };
 
@@ -209,12 +199,12 @@ const Login = () => {
                             <form onSubmit={submitLogin} style={{ width: '100%', maxWidth: '360px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
                                 <div>
                                     <label style={labelStyle}>Correo Electrónico</label>
-                                    <Input type="email" icon="fa-envelope" placeholder="nombre@empresa.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                                    <Input type="email" icon="fa-envelope" value={email} onChange={(e) => setEmail(e.target.value)} required />
                                 </div>
                                 <div>
                                     <label style={labelStyle}>Contraseña</label>
                                     <div style={{ position: 'relative' }}>
-                                        <Input type={mostrarPassword ? "text" : "password"} icon="fa-lock" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                                        <Input type={mostrarPassword ? "text" : "password"} icon="fa-lock" value={password} onChange={(e) => setPassword(e.target.value)} required />
                                         <button type="button" onClick={() => setMostrarPassword(!mostrarPassword)} style={toggleEyeStyle}><i className={`fas ${mostrarPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i></button>
                                     </div>
                                 </div>
@@ -238,19 +228,19 @@ const Login = () => {
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                                         <div>
                                             <label style={labelStyle}>Correo Electrónico</label>
-                                            <Input type="email" icon="fa-envelope" placeholder="nombre@empresa.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+                                            <Input type="email" icon="fa-envelope" value={email} onChange={(e) => setEmail(e.target.value)} />
                                         </div>
                                         <div>
                                             <label style={labelStyle}>Contraseña</label>
                                             <div style={{ position: 'relative' }}>
-                                                <Input type={mostrarPassword ? "text" : "password"} icon="fa-lock" placeholder="Mínimo 8 caracteres" value={password} onChange={(e) => setPassword(e.target.value)} />
+                                                <Input type={mostrarPassword ? "text" : "password"} icon="fa-lock" value={password} onChange={(e) => setPassword(e.target.value)} />
                                                 <button type="button" onClick={() => setMostrarPassword(!mostrarPassword)} style={toggleEyeStyle}><i className={`fas ${mostrarPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i></button>
                                             </div>
                                         </div>
                                         <div>
                                             <label style={labelStyle}>Confirmar Contraseña</label>
                                             <div style={{ position: 'relative' }}>
-                                                <Input type={mostrarConfirmarPassword ? "text" : "password"} icon="fa-lock" placeholder="Repite tu contraseña" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+                                                <Input type={mostrarConfirmarPassword ? "text" : "password"} icon="fa-lock" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
                                                 <button type="button" onClick={() => setMostrarConfirmarPassword(!mostrarConfirmarPassword)} style={toggleEyeStyle}><i className={`fas ${mostrarConfirmarPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i></button>
                                             </div>
                                         </div>
@@ -261,31 +251,50 @@ const Login = () => {
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                         <div>
                                             <label style={labelStyle}>Selecciona tu rol</label>
-                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+                                            <div style={{ display: 'flex', gap: '4px' }}>
                                                 {roles.map((r) => (
-                                                    <button key={r.key} type="button" onClick={() => setSelectedRole(r.key)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px', fontSize: '12px', fontWeight: 'bold', borderRadius: '8px', border: `2px solid ${selectedRole === r.key ? 'var(--color-primary)' : 'var(--light-gray)'}`, cursor: 'pointer', background: selectedRole === r.key ? 'rgba(4, 201, 166, 0.05)' : 'transparent', color: selectedRole === r.key ? 'var(--color-primary)' : 'var(--text-light)' }}>
+                                                    <button 
+                                                        key={r.key} 
+                                                        type="button" 
+                                                        onClick={() => setSelectedRole(r.key)} 
+                                                        style={{ 
+                                                            flex: 1,
+                                                            display: 'flex', 
+                                                            alignItems: 'center', 
+                                                            justifyContent: 'center',
+                                                            gap: '4px', 
+                                                            padding: '8px 2px', 
+                                                            fontSize: '11px', 
+                                                            fontWeight: 'bold', 
+                                                            borderRadius: '8px', 
+                                                            border: `2px solid ${selectedRole === r.key ? 'var(--color-primary)' : 'var(--light-gray)'}`, 
+                                                            cursor: 'pointer', 
+                                                            background: selectedRole === r.key ? 'rgba(4, 201, 166, 0.05)' : 'transparent', 
+                                                            color: selectedRole === r.key ? 'var(--color-primary)' : 'var(--text-light)' 
+                                                        }}
+                                                    >
                                                         {r.icon} {r.label}
                                                     </button>
                                                 ))}
                                             </div>
                                         </div>
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                                            <div>
-                                                <label style={labelStyle}>Nombre</label>
-                                                <Input type="text" icon="fa-user" placeholder="Ej. Juan" value={nombres} onChange={(e) => setNombres(e.target.value)} />
-                                            </div>
-                                            <div>
-                                                <label style={labelStyle}>Apellido</label>
-                                                <Input type="text" icon="fa-user" placeholder="Ej. Pérez" value={apellidos} onChange={(e) => setApellidos(e.target.value)} />
-                                            </div>
+
+                                        <div>
+                                            <label style={labelStyle}>Nombre</label>
+                                            <Input type="text" icon="fa-user" value={nombres} onChange={(e) => setNombres(e.target.value)} />
                                         </div>
                                         <div>
+                                            <label style={labelStyle}>Apellido</label>
+                                            <Input type="text" icon="fa-user" value={apellidos} onChange={(e) => setApellidos(e.target.value)} />
+                                        </div>
+
+                                        <div>
                                             <label style={labelStyle}>Teléfono</label>
-                                            <Input type="tel" icon="fa-phone" placeholder="+504 9999-0000" value={telefono} onChange={(e) => setTelefono(e.target.value)} />
+                                            <Input type="tel" icon="fa-phone" value={telefono} onChange={(e) => setTelefono(e.target.value)} />
                                         </div>
                                         <div>
                                             <label style={labelStyle}>{getIdentificacionConfig().label}</label>
-                                            <Input type="text" icon={getIdentificacionConfig().icon} placeholder={getIdentificacionConfig().placeholder} value={identificacion} onChange={(e) => setIdentificacion(e.target.value)} />
+                                            <Input type="text" icon={getIdentificacionConfig().icon} value={identificacion} onChange={(e) => setIdentificacion(e.target.value)} />
                                         </div>
                                     </div>
                                 )}

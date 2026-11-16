@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Home, ChevronLeft, ChevronRight, Check, Send, Phone, Mail, MapPin, Clock, MessageSquare } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Check, Send, Phone, Mail, MapPin, Clock, MessageSquare } from 'lucide-react';
 import { Input, Button, Alert, Checkbox, IconButton } from '../components/ui';
 
 const TIPOS_CONSULTA = [
@@ -317,7 +317,6 @@ const FormularioContacto = () => {
                                             <Input
                                                 type="text"
                                                 icon="fa-user"
-                                                placeholder="Ej. Juan Pérez"
                                                 value={nombre}
                                                 onChange={(e) => setNombre(e.target.value)}
                                                 disabled={isLoading}
@@ -330,7 +329,6 @@ const FormularioContacto = () => {
                                             <Input
                                                 type="email"
                                                 icon="fa-envelope"
-                                                placeholder="usuario@ejemplo.hn"
                                                 value={email}
                                                 onChange={(e) => setEmail(e.target.value)}
                                                 disabled={isLoading}
@@ -343,7 +341,6 @@ const FormularioContacto = () => {
                                             <Input
                                                 type="tel"
                                                 icon="fa-phone"
-                                                placeholder="+504 9999-0000"
                                                 value={telefono}
                                                 onChange={(e) => setTelefono(e.target.value)}
                                                 disabled={isLoading}
@@ -387,7 +384,6 @@ const FormularioContacto = () => {
                                             <Input
                                                 type="text"
                                                 icon="fa-tag"
-                                                placeholder="Motivo breve de tu consulta"
                                                 value={asunto}
                                                 onChange={(e) => setAsunto(e.target.value)}
                                                 disabled={isLoading}
@@ -399,7 +395,6 @@ const FormularioContacto = () => {
                                             <textarea
                                                 value={mensaje}
                                                 onChange={(e) => setMensaje(e.target.value)}
-                                                placeholder="Describe tu necesidad, equipo o proyecto..."
                                                 style={textareaStyle}
                                                 disabled={isLoading}
                                                 onFocus={(e) => e.target.style.borderColor = 'var(--color-primary)'}

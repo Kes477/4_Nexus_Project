@@ -7,6 +7,7 @@ import {
 import { Navbar, Footer } from '../components/layout';
 import { Button } from '../components/ui';
 import { ServiceCard, ProductCard } from '../components/domain/Card';
+import { getProductos } from '../api/droneService'; 
 
 // ============================================================================
 // ==== PATRÓN ADAPTER ====
@@ -54,12 +55,6 @@ const paddingNormal = { padding: '30px 20px', width: '100%' };
 const containerStyle = { maxWidth: '1400px', margin: '0 auto', padding: '0 20px' };
 const titleStyle = { fontSize: '36px', color: 'var(--color-dark)', lineHeight: '1.2', marginBottom: '20px' };
 const subtitleStyle = { color: 'var(--text-light)', fontSize: '18px', marginBottom: '30px' };
-
-// ============================================================================
-// ==== PATRÓN CONTAINER / PRESENTATIONAL ====
-// Los componentes de esta sección son PRESENTACIONALES: reciben props,
-// no manejan estado global ni fetch. LandingPage (abajo) es el CONTAINER.
-// ============================================================================
 
 const HeroSection = ({ onSolicitar, onExplorarEquipos }) => (
     <section id="inicio" style={{ ...paddingLarge, background: 'var(--white)', ...scrollAnchorStyle }}>
@@ -426,12 +421,6 @@ const ContactoSection = ({ onContactar }) => (
         </div>
     </section>
 );
-
-// ============================================================================
-// ==== CONTAINER ====
-// LandingPage maneja estado, fetch, hash-routing y compone las secciones
-// presentacionales. No contiene JSX de layout salvo el wrapper global.
-// ============================================================================
 
 const LandingPage = () => {
     const navigate = useNavigate();

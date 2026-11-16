@@ -1,5 +1,6 @@
 import { Routes, Route } from 'react-router-dom';
-
+import RutaProtegida from './components/auth/RutaProtegida';
+import {useSesion} from './hooks/useSesion';
 // --- PÁGINAS PÚBLICAS ---
 import LandingPage from './pages/LandingPage';
 import Login from './pages/Login';
@@ -34,6 +35,8 @@ import AdminCheckout from './pages/admin/AdminCheckout';
 import AdminTracking from './pages/admin/AdminTracking';
 
 function App() {
+  const {cerrarSesion}=useSesion();
+
   return (
     <Routes>
       {/* 1. RUTAS PÚBLICAS */}
@@ -44,54 +47,38 @@ function App() {
       <Route path="/formulario-contacto" element={<FormularioContacto />} />
 
       {/* 2. RUTAS PRIVADAS DEL CLIENTE */}
-      <Route path="/cliente" element={<ClienteLayout />}>
-        <Route index element={<ClienteDashboard />} />
-        <Route path="suscripciones" element={<ClienteSuscripciones />} />
-        <Route path="drones" element={<ClienteDrones />} />
+      <Route element={<RutaProtegida rol="cliente" />}>
+        <Route path="/cliente" element={<ClienteLayout />}>
+          <Route index element={<ClienteDashboard />} />
+          <Route path="suscripciones" element={<ClienteSuscripciones />} />
+          <Route path="drones" element={<ClienteDrones />} />
 
-        <Route path="servicios" element={<ClienteServicios />} />
-        <Route path="historial" element={<ClienteHistorial />} />
-        <Route path="soporte" element={<ClienteSoporte />} />
+          <Route path="servicios" element={<ClienteServicios />} />
+          <Route path="historial" element={<ClienteHistorial />} />
+          <Route path="soporte" element={<ClienteSoporte />} />
 
-        <Route
-          path="perfil"
-          element={
-            <ClientePerfil
-              onLogout={() => {
-                localStorage.removeItem('user_role');
-                window.location.href = '/login';
-              }}
-            />
-          }
-        />
+          <Route path="perfil" element={<ClientePerfil onLogout={cerrarSesion} />} />
+        </Route>
       </Route>
 
       {/* 3. RUTAS PRIVADAS DEL ADMINISTRADOR */}
-      <Route path="/admin" element={<AdminLayout />}>
-        <Route index element={<AdminDashboard />} />
+      <Route element={<RutaProtegida rol="admin" />}>
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<AdminDashboard />} />
 
-        <Route path="usuarios" element={<AdminUsuarios />} />
-        <Route path="precios" element={<AdminPrecios />} />
-        <Route path="historial" element={<AdminHistorial />} />
-        <Route path="soporte" element={<AdminSoporte />} />
+          <Route path="usuarios" element={<AdminUsuarios />} />
+          <Route path="precios" element={<AdminPrecios />} />
+          <Route path="historial" element={<AdminHistorial />} />
+          <Route path="soporte" element={<AdminSoporte />} />
 
-        <Route
-          path="perfil"
-          element={
-            <AdminPerfil
-              onLogout={() => {
-                localStorage.removeItem('user_role');
-                window.location.href = '/login';
-              }}
-            />
-          }
-        />
+          <Route path="perfil" element={<AdminPerfil onLogout={cerrarSesion} />} />
 
-        {/* Sub-rutas de Operaciones */}
-        <Route path="operaciones" element={<AdminOperaciones />} />
-        <Route path="operaciones/config-carga" element={<AdminConfigCarga />} />
-        <Route path="operaciones/checkout" element={<AdminCheckout />} />
-        <Route path="operaciones/tracking" element={<AdminTracking />} />
+          {/* Sub-rutas de Operaciones */}
+          <Route path="operaciones" element={<AdminOperaciones />} />
+          <Route path="operaciones/config-carga" element={<AdminConfigCarga />} />
+          <Route path="operaciones/checkout" element={<AdminCheckout />} />
+          <Route path="operaciones/tracking" element={<AdminTracking />} />
+        </Route>
       </Route>
 
       {/* 4. RUTA COMODÍN PARA ERRORES 404 */}

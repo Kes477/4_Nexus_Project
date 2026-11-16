@@ -6,8 +6,7 @@ import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import { SearchBar, Select, Modal, Button, Loader } from '../components/ui';
 import { ItemProductCard } from '../components/domain/ItemCard';
-
-const API_URL = 'http://localhost:8000/api/catalogo/productos/';
+import { getProductos } from '../api/droneService';
 
 const formatPrice = (precioDesde) =>
     precioDesde
@@ -17,18 +16,20 @@ const formatPrice = (precioDesde) =>
           })
         : 'Consultar';
 
+// 👈 CORRECCIÓN 1: Adaptamos al formato que espera ItemProductCard (en español)
 const adaptDron = (item) => ({
     id: item.id,
-    name: item.nombre,
-    description: item.descripcion || 'Sin descripción disponible.',
-    price: formatPrice(item.precio_desde),
-    numericPrice: Number(item.precio_desde) || 0,
+    // Propiedades para ItemProductCard
+    nombre: item.nombre,
+    precio: formatPrice(item.precio_desde),
+    desc: item.descripcion || 'Sin descripción disponible.',
+    imagen: item.imagen_principal || null,
+    categoria: item.marca || item.categoria || 'Otros',
+    destacado: item.es_nuevo === true,
     rating: item.rating ?? 5,
-    isNew: item.es_nuevo === true,
-    category: item.marca || item.categoria || 'Otros',
+    // Propiedades extra para los filtros
+    numericPrice: Number(item.precio_desde) || 0,
     size: Number(item.tamano ?? item.tamaño ?? item.peso ?? item.capacidad_carga ?? 0) || 0,
-    image: item.imagen_principal || null,
-    hasImage: Boolean(item.imagen_principal),
     battery: item.autonomia || '45 min',
     stock: item.stock || null,
 });
@@ -57,11 +58,12 @@ export const Catalog = () => {
     useEffect(() => {
         const fetchDrones = async () => {
             try {
-                const respuesta = await fetch(API_URL);
-                if (!respuesta.ok) throw new Error('Error al cargar el catálogo');
-
-                const data = await respuesta.json();
-                const articulos = data.filter((item) => item.tipo_producto === 'ARTICULO');
+                const data = await getProductos();
+                
+                // 👈 CORRECCIÓN 2: Manejo de paginación (si Django devuelve { results: [...] })
+                const lista = data.results ? data.results : data;
+                
+                const articulos = lista.filter((item) => item.tipo_producto === 'ARTICULO');
                 setDrones(articulos.map(adaptDron));
             } catch (err) {
                 console.error('Error al traer el catálogo:', err);
@@ -75,7 +77,7 @@ export const Catalog = () => {
     }, []);
 
     const categoriasOptions = useMemo(() => {
-        const cats = ['Todas', ...new Set(drones.map((d) => d.category))];
+        const cats = ['Todas', ...new Set(drones.map((d) => d.categoria))];
         return cats.map((cat) => ({
             value: cat,
             label: cat === 'Todas' ? 'Todas las categorías' : cat,
@@ -84,9 +86,9 @@ export const Catalog = () => {
 
     const dronesFiltrados = useMemo(() => {
         const filtrados = drones.filter((dron) => {
-            const texto = `${dron.name} ${dron.description}`.toLowerCase();
+            const texto = `${dron.nombre} ${dron.desc}`.toLowerCase();
             const matchesSearch = texto.includes(searchTerm.toLowerCase());
-            const matchesCategory = selectedCategory === 'Todas' || dron.category === selectedCategory;
+            const matchesCategory = selectedCategory === 'Todas' || dron.categoria === selectedCategory;
             return matchesSearch && matchesCategory;
         });
 
@@ -108,7 +110,7 @@ export const Catalog = () => {
                 ordenados.sort((a, b) => b.size - a.size);
                 break;
             case 'categoria':
-                ordenados.sort((a, b) => a.category.localeCompare(b.category));
+                ordenados.sort((a, b) => a.categoria.localeCompare(b.categoria));
                 break;
             default:
                 break;
@@ -124,7 +126,7 @@ export const Catalog = () => {
                 from: '/cliente/drones',
                 selectedDrone: dronParaComprar,
                 message: dronParaComprar
-                    ? `Inicia sesión para comprar el ${dronParaComprar.name}.`
+                    ? `Inicia sesión para comprar el ${dronParaComprar.nombre}.`
                     : 'Inicia sesión para continuar con tu compra.',
             },
         });
@@ -247,14 +249,15 @@ export const Catalog = () => {
             <Modal
                 isOpen={!!selectedDrone}
                 onClose={() => setSelectedDrone(null)}
-                title={selectedDrone?.name}
+                title={selectedDrone?.nombre}
             >
                 {selectedDrone && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                        {selectedDrone.hasImage ? (
+                        {/* 👈 CORRECCIÓN 3: Actualizamos las propiedades del modal al español */}
+                        {selectedDrone.imagen ? (
                             <img
-                                src={selectedDrone.image}
-                                alt={selectedDrone.name}
+                                src={selectedDrone.imagen}
+                                alt={selectedDrone.nombre}
                                 style={{ width: '100%', height: '200px', objectFit: 'cover', borderRadius: '8px' }}
                             />
                         ) : (
@@ -267,13 +270,13 @@ export const Catalog = () => {
                             </div>
                         )}
                         <p style={{ color: 'var(--text-light)', lineHeight: '1.5', fontSize: '14px' }}>
-                            {selectedDrone.description}
+                            {selectedDrone.desc}
                         </p>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--light-gray)', paddingTop: '15px' }}>
                             <div>
                                 <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-light)', fontWeight: 'bold' }}>PRECIO</span>
                                 <strong style={{ fontSize: '22px', color: 'var(--color-primary)' }}>
-                                    {selectedDrone.price === 'Consultar' ? 'Consultar' : `L ${selectedDrone.price}`}
+                                    {selectedDrone.precio === 'Consultar' ? 'Consultar' : `L ${selectedDrone.precio}`}
                                 </strong>
                             </div>
 

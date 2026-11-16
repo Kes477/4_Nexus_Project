@@ -20,10 +20,14 @@ class AtributoVarianteSerializer(serializers.ModelSerializer):
 
 class VarianteSerializer(serializers.ModelSerializer):
     atributos = AtributoVarianteSerializer(many=True, read_only=True)
+    disponible = serializers.SerializerMethodField()
     
     class Meta:
         model = Variante
-        fields = ['id', 'sku', 'precio', 'atributos']
+        fields = ['id', 'sku', 'precio', 'disponible','atributos']
+
+    def get_disponible(self, obj):
+        return any(inv.cantidad_disponible>0 for inv in obj.inventarios.all())
 
 class ArticulosSerializer(serializers.ModelSerializer):
     imagenes = ImagenArticuloSerializer(many=True, read_only=True)
@@ -35,12 +39,13 @@ class ProductoListaSerializer(serializers.ModelSerializer):
     categoria = serializers.StringRelatedField()
     marca = serializers.CharField(source='articulo.marca', read_only=True, default=None)
     precio_desde = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
+    disponible = serializers.BooleanField(read_only=True)
     imagen_principal = serializers.SerializerMethodField() 
 
 
     class Meta:
         model = Producto
-        fields = ['id', 'nombre', 'descripcion','categoria', 'tipo_producto','marca', 'precio_desde', 'imagen_principal']
+        fields = ['id', 'nombre', 'descripcion','categoria', 'tipo_producto','marca', 'precio_desde', 'disponible','imagen_principal']
     
     def get_imagen_principal(self, obj):
         articulo = getattr(obj,'articulo', None)

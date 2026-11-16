@@ -1,13 +1,21 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ShieldCheck, Award, Check, ArrowLeft, CreditCard } from 'lucide-react';
-import { Button, Input, Tabs } from '../../components/ui';
+import { Button, Input, Tabs, Loader, Alert } from '../../components/ui';
 import { ItemProductCard } from '../../components/domain/ItemCard'; 
 
 export const ClienteDrones = () => {
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+
     const [activeTab, setActiveTab] = useState('mis-drones');
     const [selectedDrone, setSelectedDrone] = useState(null);
     const [isProcessing, setIsProcessing] = useState(false);
     const [paymentSuccess, setPaymentSuccess] = useState(false);
+
+    // Estados para los datos del backend
+    const [misDrones, setMisDrones] = useState([]);
+    const [catalogo, setCatalogo] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [errorMsg, setErrorMsg] = useState(null);
 
     const [cardData, setCardData] = useState({
         number: '',
@@ -19,18 +27,64 @@ export const ClienteDrones = () => {
     const tabLabels = ['Mis Drones', 'Comprar'];
     const activeTabIndex = activeTab === 'mis-drones' ? 0 : 1;
 
-    const misDrones = [
-        { id: 1, nombre: 'BioScout Micro I', modelo: 'Micro-Agro 2026', estado: 'Operativo', bateria: 92, horas: 14.5, rating: 5 },
-        { id: 2, nombre: 'AgroNano Pro V1', modelo: 'Invernadero-Scan', estado: 'En mantenimiento', bateria: 45, horas: 32.0, rating: 4 },
-        { id: 3, nombre: 'BioHawk Mini', modelo: 'Campo Abierto', estado: 'Operativo', bateria: 88, horas: 10.2, rating: 5 },
-    ];
+    // 1. Cargar datos del backend
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const token = localStorage.getItem('access_token');
+                
+                // Hacemos ambas peticiones en paralelo para mayor velocidad
+                const [resOwned, resCatalog] = await Promise.all([
+                    fetch(`${API_URL}/cliente/drones/`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    }),
+                    fetch(`${API_URL}/catalogo/productos/`)
+                ]);
 
-    const catalogo = [
-        { id: 1, nombre: 'BioScout Micro II', precio: '45,000', desc: 'Micro dron ultraligero para mapeo sensorizado.', categoria: 'Micro', destacado: true, rating: 5, imagen: 'https://images.unsplash.com/photo-1508614589041-895b88991e3e?q=80&w=600&auto=format&fit=crop' },
-        { id: 2, nombre: 'AgroNano Pro', precio: '62,000', desc: 'Diseñado para inspección foliar cercana.', categoria: 'Micro', destacado: false, rating: 4, imagen: 'https://images.unsplash.com/photo-1579829366248-204fe8413f31?q=80&w=600&auto=format&fit=crop' },
-        { id: 3, nombre: 'BioHawk Mini', precio: '115,000', desc: 'Dron compacto para supervisión de parcelas medianas.', categoria: 'Mini', destacado: true, rating: 5, imagen: 'https://images.unsplash.com/photo-1473968512647-3e447244af8f?q=80&w=600&auto=format&fit=crop' },
-        { id: 4, nombre: 'GeoMapper S-200', precio: '210,000', desc: 'Aeronave de precisión topográfica para levantamientos 3D.', categoria: 'Pequeño', destacado: false, rating: 5, imagen: 'https://images.unsplash.com/photo-1524143986875-3b098d78b363?q=80&w=600&auto=format&fit=crop' },
-    ];
+                if (!resOwned.ok || !resCatalog.ok) throw new Error('Error al cargar los datos');
+
+                const dataOwned = await resOwned.json();
+                const dataCatalog = await resCatalog.json();
+
+                // Adaptamos "Mis Drones" al formato de la tarjeta
+                const ownedAdapted = dataOwned.map(dron => ({
+                    id: dron.id,
+                    nombre: dron.nombre,
+                    modelo: dron.modelo || 'Modelo Estándar',
+                    estado: dron.estado || 'Operativo',
+                    bateria: dron.bateria || 100,
+                    horas: dron.horas_vuelo || 0,
+                    rating: 5 // Puedes ajustar esto si tu backend tiene rating
+                }));
+                setMisDrones(ownedAdapted);
+
+                // Adaptamos el Catálogo (solo traemos los que sean ARTICULO)
+                const catalogAdapted = dataCatalog
+                    .filter(item => item.tipo_producto === 'ARTICULO')
+                    .map(dron => ({
+                        id: dron.id,
+                        nombre: dron.nombre,
+                        precio: dron.precio_desde 
+                            ? Number(dron.precio_desde).toLocaleString('en-US') 
+                            : 'Consultar',
+                        desc: dron.descripcion || 'Sin descripción.',
+                        categoria: dron.marca || 'General',
+                        destacado: dron.destacado || false,
+                        rating: 5,
+                        imagen: dron.imagen_principal || null
+                    }));
+                setCatalogo(catalogAdapted);
+
+            } catch (error) {
+                console.error(error);
+                setErrorMsg('No pudimos cargar la información. Verifica tu conexión.');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchData();
+    }, [API_URL]);
 
     const getCardGradient = (num) => {
         const cleanNum = num.replace(/\s/g, '');
@@ -69,12 +123,25 @@ export const ClienteDrones = () => {
     };
 
     const handleSupportRequest = (drone) => {
-        console.log("Solicitando ayuda técnica para:", drone.nombre || drone.name);
+        console.log("Solicitando ayuda técnica para:", drone.nombre);
+        // Aquí podrías redirigir a un formulario o abrir un modal
     };
+
+    if (loading) {
+        return (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+                <Loader text="Cargando drones..." />
+            </div>
+        );
+    }
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             
+            {errorMsg && (
+                <Alert type="danger" title="Atención" message={errorMsg} onClose={() => setErrorMsg(null)} />
+            )}
+
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
                     <h1 style={{ margin: 0, fontSize: '24px', color: 'var(--color-dark)', fontWeight: '800' }}>Adquisición y Estado de Drones</h1>
@@ -102,24 +169,30 @@ export const ClienteDrones = () => {
                                 <Check size={30} />
                             </div>
                             <h2 style={{ color: 'var(--color-dark)', marginBottom: '10px' }}>¡Compra Exitosa!</h2>
-                            <p style={{ color: 'var(--text-light)', fontSize: '15px' }}>Has adquirido el <strong>{selectedDrone.nombre || selectedDrone.name}</strong>.</p>
+                            <p style={{ color: 'var(--text-light)', fontSize: '15px' }}>Has adquirido el <strong>{selectedDrone.nombre}</strong>.</p>
                         </div>
                     ) : (
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '30px', alignItems: 'center' }}>
                             
                             <div style={{ background: 'var(--bg-color)', padding: '20px', borderRadius: '12px', border: '1px solid var(--light-gray)' }}>
-                                <img 
-                                    src={selectedDrone.imagen || selectedDrone.image} 
-                                    alt={selectedDrone.nombre || selectedDrone.name} 
-                                    style={{ width: '100%', height: '180px', objectFit: 'cover', borderRadius: '8px', marginBottom: '15px' }} 
-                                />
+                                {selectedDrone.imagen ? (
+                                    <img 
+                                        src={selectedDrone.imagen} 
+                                        alt={selectedDrone.nombre} 
+                                        style={{ width: '100%', height: '180px', objectFit: 'cover', borderRadius: '8px', marginBottom: '15px' }} 
+                                    />
+                                ) : (
+                                    <div style={{ width: '100%', height: '180px', background: 'var(--white)', borderRadius: '8px', marginBottom: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <i className="fa-solid fa-image" style={{ fontSize: '50px', color: 'var(--light-gray)' }}></i>
+                                    </div>
+                                )}
                                 <span style={{ background: 'rgba(4, 201, 166, 0.1)', color: 'var(--color-primary)', padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold' }}>Resumen de Compra</span>
-                                <h2 style={{ fontSize: '22px', color: 'var(--color-dark)', margin: '10px 0 8px 0' }}>{selectedDrone.nombre || selectedDrone.name}</h2>
-                                <p style={{ color: 'var(--text-light)', fontSize: '14px', marginBottom: '15px', lineHeight: '1.4' }}>{selectedDrone.desc || selectedDrone.description}</p>
+                                <h2 style={{ fontSize: '22px', color: 'var(--color-dark)', margin: '10px 0 8px 0' }}>{selectedDrone.nombre}</h2>
+                                <p style={{ color: 'var(--text-light)', fontSize: '14px', marginBottom: '15px', lineHeight: '1.4' }}>{selectedDrone.desc}</p>
                                 <hr style={{ border: 'none', borderTop: '1px solid var(--light-gray)', margin: '15px 0' }} />
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <span style={{ color: 'var(--text-light)', fontWeight: 'bold', fontSize: '14px' }}>Total:</span>
-                                    <h3 style={{ fontSize: '24px', color: 'var(--color-primary)', margin: 0 }}>L {selectedDrone.precio || selectedDrone.price}</h3>
+                                    <h3 style={{ fontSize: '24px', color: 'var(--color-primary)', margin: 0 }}>L {selectedDrone.precio}</h3>
                                 </div>
                             </div>
                             
@@ -200,7 +273,7 @@ export const ClienteDrones = () => {
                                             disabled={isProcessing} 
                                             style={{ marginTop: '5px', width: '100%', padding: '12px', fontSize: '15px' }}
                                         >
-                                            {isProcessing ? 'Procesando...' : <><ShieldCheck size={18} /> Pagar L {selectedDrone.precio || selectedDrone.price}</>}
+                                            {isProcessing ? 'Procesando...' : <><ShieldCheck size={18} /> Pagar L {selectedDrone.precio}</>}
                                         </Button>
                                     </div>
                                 </div>
@@ -219,31 +292,43 @@ export const ClienteDrones = () => {
                     </div>
 
                     {activeTab === 'mis-drones' && (
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '15px', alignItems: 'stretch', marginTop: '10px' }}>
-                            {misDrones.map(dron => (
-                                <div key={dron.id} style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                                    <ItemProductCard 
-                                        item={dron} 
-                                        mode="owned" 
-                                        onAction={handleSupportRequest} 
-                                    />
-                                </div>
-                            ))}
-                        </div>
+                        misDrones.length > 0 ? (
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '15px', alignItems: 'stretch', marginTop: '10px' }}>
+                                {misDrones.map(dron => (
+                                    <div key={dron.id} style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                                        <ItemProductCard 
+                                            item={dron} 
+                                            mode="owned" 
+                                            onAction={handleSupportRequest} 
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-light)' }}>
+                                No tienes drones registrados aún.
+                            </div>
+                        )
                     )}
 
                     {activeTab === 'comprar' && (
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '15px', alignItems: 'stretch', marginTop: '10px' }}>
-                            {catalogo.map(dron => (
-                                <div key={dron.id} style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                                    <ItemProductCard 
-                                        item={dron} 
-                                        mode="catalog" 
-                                        onAction={setSelectedDrone} 
-                                    />
-                                </div>
-                            ))}
-                        </div>
+                        catalogo.length > 0 ? (
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '15px', alignItems: 'stretch', marginTop: '10px' }}>
+                                {catalogo.map(dron => (
+                                    <div key={dron.id} style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                                        <ItemProductCard 
+                                            item={dron} 
+                                            mode="catalog" 
+                                            onAction={setSelectedDrone} 
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-light)' }}>
+                                No hay drones disponibles en el catálogo.
+                            </div>
+                        )
                     )}
                 </>
             )}

@@ -1,11 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Zap, CreditCard, Check, Star } from 'lucide-react';
+import { Shield, Zap, CreditCard, Check } from 'lucide-react';
 
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import { SearchBar, Select, Modal, Button, Loader } from '../components/ui';
-import { ItemServiceCard } from '../components/domain/ItemCard';
+import { ServiceCard } from '../components/domain/Card';
 
 const API_URL = 'http://localhost:8000/api/catalogo/productos/';
 
@@ -30,12 +30,12 @@ const adaptSuscripcion = (item, idx) => {
         id: item.id,
         number: String(idx + 1).padStart(2, '0'),
         icon: idx % 2 === 0 ? Shield : Zap,
-        title: item.nombre,
-        description: item.descripcion || 'Plan de servicios aéreos diseñado para potenciar tu operación.',
+        title: item.nombre || item.name || 'Plan sin nombre',
+        description: item.descripcion || item.description || 'Plan de servicios aéreos diseñado para potenciar tu operación.',
         price: formatPrice(item.precio_desde),
         precioNumerico: Number(item.precio_desde) || 0,
         period: item.periodo || '/mes',
-        destacado: item.destacado === true,
+        destacado: item.destacado === true || item.es_nuevo === true,
         features: (Array.isArray(item.caracteristicas) && item.caracteristicas.length > 0)
             ? item.caracteristicas
             : (Array.isArray(item.features) && item.features.length > 0)
@@ -67,14 +67,33 @@ export const Suscription = () => {
     useEffect(() => {
         const fetchSuscripciones = async () => {
             try {
+                // 👈 Usamos fetch directo para evitar que un servicio externo filtre los datos
                 const respuesta = await fetch(API_URL);
-                if (!respuesta.ok) throw new Error('Error al cargar los planes');
-
+                if (!respuesta.ok) throw new Error(`Error HTTP: ${respuesta.status}`);
+                
                 const data = await respuesta.json();
-                const subs = data.filter((item) => item.tipo_producto === 'SUSCRIPCION');
+                
+                // Manejo de paginación (por si Django devuelve { count, results })
+                const lista = data.results ? data.results : data;
+                
+                // 👈 DEBUG: Abre la consola (F12) para ver qué está llegando
+                console.log("1. Datos crudos del backend:", lista);
+
+                // 👈 Filtro flexible: Busca "SUSCRIP" en cualquier parte del texto
+                const subs = lista.filter((item) => {
+                    const tipo = String(item.tipo_producto || '').toUpperCase();
+                    return tipo.includes('SUSCRIP') || tipo.includes('PLAN');
+                });
+
+                console.log("2. Suscripciones encontradas después del filtro:", subs);
+
+                if (subs.length === 0 && lista.length > 0) {
+                    console.warn("⚠️ Se encontraron productos, pero ninguno es de tipo SUSCRIPCION. Revisa cómo se llama el campo en tu backend.");
+                }
+
                 setSuscripciones(subs.map(adaptSuscripcion));
             } catch (err) {
-                console.error('Error al traer los planes:', err);
+                console.error('❌ Error al traer los planes:', err);
                 setError('No pudimos cargar los planes. Intenta nuevamente.');
             } finally {
                 setLoading(false);
@@ -225,9 +244,9 @@ export const Suscription = () => {
                         }}>
                             {suscripcionesFiltradas.map((suscripcion) => (
                                 <div key={suscripcion.id} style={{ display: 'flex', justifyContent: 'center', height: '100%' }}>
-                                    <ItemServiceCard
-                                        item={suscripcion}
-                                        onAction={setSelected}
+                                    <ServiceCard
+                                        service={suscripcion}
+                                        onSuscribir={setSelected}
                                     />
                                 </div>
                             ))}

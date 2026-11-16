@@ -7,6 +7,7 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 from .models import (Articulo, AtributoVariante, Categoria, ImagenArticulo, Producto, Variante,)
+from inventario.models import Almacen, Inventario
 
 def crear_dron(categoria, nombre, precios, activo=True):
     #crea un tipo de articulo con su ficha técnica y variantes
@@ -180,3 +181,45 @@ class CatalogoAPITest(APITestCase):
         respuesta = self.client.get(reverse('categoria-list'))
         self.assertEqual(respuesta.status_code, status.HTTP_200_OK)
         self.assertEqual(len(respuesta.data),2)
+
+
+########### PRUEBAS DE DISPONIBILIDAD CATÁLOGO, INVENTARIO ##############
+
+class CatalogoDisponibilidadTests(APITestCase):
+
+    def setUp(self):
+        categoria = Categoria.objects.create(nombre='Fotografía')
+        self.producto, _ = crear_dron(categoria, 'Mini 5 Pro', ['18500', '25000'])
+        self.estandar, self.combo = self.producto.variantes.order_by('precio')
+        self.almacen = Almacen.objects.create(nombre='Tegucigalpa', direccion='Centro')
+
+    def producto_en_lista(self):
+        return self.client.get(reverse('producto-list')).data[0]
+
+    def test_sin_inventario_no_disponible(self):
+        self.assertFalse(self.producto_en_lista()['disponible'])
+
+    def test_solo_reservado_no_disponible(self):
+        Inventario.objects.create(
+            almacen=self.almacen, variante=self.estandar,
+            cantidad_disponible=0, cantidad_reservada=2,
+        )
+        self.assertFalse(self.producto_en_lista()['disponible'])
+
+    def test_disponible_por_variante(self):
+        Inventario.objects.create(
+            almacen=self.almacen, variante=self.estandar, cantidad_disponible=3
+        )
+        self.assertTrue(self.producto_en_lista()['disponible'])
+
+        detalle = self.client.get(reverse('producto-detail', args=[self.producto.id])).data
+        self.assertTrue(detalle['variantes'][0]['disponible'])
+        self.assertFalse(detalle['variantes'][1]['disponible'])
+
+    def test_no_revela_cantidades(self):
+        Inventario.objects.create(
+            almacen=self.almacen, variante=self.estandar, cantidad_disponible=3
+        )
+        url = reverse('producto-detail', args=[self.producto.id])
+        contenido = self.client.get(url).content.decode()
+        self.assertNotIn('cantidad', contenido)

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Drone, ChevronDown, User, LogOut, LayoutDashboard, FileText, CreditCard, Plane, MessageSquare, Shield, Navigation } from 'lucide-react';
 import { Button } from '../ui';
+import { useSesion } from '../../hooks/useSesion';
 
 const Navbar = () => {
     const location = useLocation();
@@ -10,8 +11,9 @@ const Navbar = () => {
     const [isUserOpen, setIsUserOpen] = useState(false);
     const [hoveredPath, setHoveredPath] = useState(null);
 
-    // Obtenemos el rol del localStorage (guardado desde el Login)
-    const [userRole] = useState(localStorage.getItem('user_role') || 'cliente');
+    // El usuario y su rol vienen de la sesión real (Django)
+    const { usuario, rol, cerrarSesion } = useSesion();
+    const userRole = rol || 'cliente';
 
     // 1. DETECTAMOS LA RUTA BASE SEGÚN EL ROL
     const basePath = userRole === 'admin' ? '/admin' : '/cliente';
@@ -64,15 +66,6 @@ const Navbar = () => {
         flexDirection: 'column',
         gap: '6px',
         zIndex: 1001
-    };
-
-    // FUNCIÓN PARA CERRAR SESIÓN (Limpia rol y tokens)
-    const handleLogout = () => {
-        localStorage.removeItem('user_role');
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
-        localStorage.removeItem('user_email');
-        navigate('/login');
     };
 
     // Renderiza un link público según el contexto
@@ -197,13 +190,11 @@ const Navbar = () => {
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                 {!isDashboard ? (
-                    <Link to="/login">
-                        <Button variant="outline-dark" size="sm">Acceso clientes</Button>
+                    <Link to={usuario ? basePath: '/login'}>
+                        <Button variant="outline-dark" size="sm">{usuario ? 'Ir a mi panel': 'Acceso clientes'}</Button>
                     </Link>
                 ) : (
                     <>
-                        {/* EL SELECTOR DE ROLES HA SIDO ELIMINADO DE AQUÍ */}
-
                         <div style={{ position: 'relative' }}>
                             <button
                                 onClick={() => setIsUserOpen(!isUserOpen)}
@@ -218,9 +209,9 @@ const Navbar = () => {
                                 }}
                             >
                                 <div style={{ background: 'var(--color-primary)', color: 'white', width: '28px', height: '28px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '14px', textTransform: 'uppercase' }}>
-                                    {userRole.charAt(0)}
+                                    {(usuario?.first_name || userRole).charAt(0)}
                                 </div>
-                                <span style={{ fontSize: '14px', fontWeight: 'bold', color: hoveredPath === 'user' ? 'var(--color-primary)' : 'var(--color-dark)', textTransform: 'capitalize' }}>{userRole}</span>
+                                <span style={{ fontSize: '14px', fontWeight: 'bold', color: hoveredPath === 'user' ? 'var(--color-primary)' : 'var(--color-dark)', textTransform: 'capitalize' }}>{usuario?.first_name || userRole}</span>
                                 <ChevronDown size={16} color={hoveredPath === 'user' ? 'var(--color-primary)' : 'var(--text-light)'} />
                             </button>
 
@@ -233,7 +224,7 @@ const Navbar = () => {
                                     </Link>
                                     <hr style={{ border: 'none', borderTop: '1px solid var(--light-gray)', margin: '5px 0' }} />
                                     <button
-                                        onClick={handleLogout}
+                                        onClick={() => { setIsUserOpen(false); cerrarSesion(); navigate('/login'); }}
                                         style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'none', border: 'none', padding: '10px 16px', fontSize: '14px', fontWeight: '600', color: 'var(--color-danger)', cursor: 'pointer', borderRadius: '8px', textAlign: 'left', width: '100%', transition: 'all 0.2s' }}
                                         onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(240, 37, 88, 0.05)'}
                                         onMouseLeave={(e) => e.currentTarget.style.background = 'none'}

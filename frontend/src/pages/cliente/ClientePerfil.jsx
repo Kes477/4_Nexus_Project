@@ -1,21 +1,126 @@
-import React, { useState } from 'react';
-import { Edit2, Phone, Mail, Lock, LogOut, Save, MapPin, CheckCircle, Map, Plane, TrendingUp } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Edit2, Phone, Mail, Lock, LogOut, Save, MapPin, CheckCircle, Map, Plane, TrendingUp, Loader } from 'lucide-react';
 
-import { Button, Avatar, Badge, Modal, Input, SectionHeading } from '../../components/ui';
+import { Button, Avatar, Badge, Modal, Input, SectionHeading, Alert } from '../../components/ui';
 
 export default function ClientePerfil({ onLogout }) {
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
   
-  const [profileData] = useState({
-    name: "Juan Pérez", 
-    email: "juan.perez@fincaelvalle.hn",
-    phone: "+504 8877-6655", 
-    avatar: "src/img/cliente_perfil.png", 
-    roleLabel: "Cliente Premium",
-    location: "Finca El Valle, Danlí",
-    joinDate: "15 de Marzo, 2025",
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
+  
+  // Estado para mostrar/ocultar la contraseña en el modal
+  const [showPassword, setShowPassword] = useState(false);
+
+  // Estado para los datos del perfil
+  const [profileData, setProfileData] = useState({
+    name: "", 
+    email: "",
+    phone: "", 
+    avatar: "", 
+    roleLabel: "Cliente",
+    location: "No especificada",
+    joinDate: "Reciente",
     status: "Activo"
   });
+
+  // Estado para el formulario de edición
+  const [editForm, setEditForm] = useState({
+    phone: "",
+    email: "",
+    password: ""
+  });
+
+  useEffect(() => {
+    const fetchPerfil = async () => {
+      try {
+        const token = localStorage.getItem('access_token');
+        if (!token) throw new Error('No hay sesión activa');
+
+        const response = await fetch(`${API_URL}/auth/perfil/`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) throw new Error('Error al cargar el perfil');
+        
+        const data = await response.json();
+        
+        setProfileData({
+          name: `${data.first_name || ''} ${data.last_name || ''}`.trim() || 'Usuario',
+          email: data.email || '',
+          phone: data.telefono || '',
+          avatar: data.avatar || null, 
+          roleLabel: data.role === 'admin' ? 'Administrador' : 'Cliente',
+          location: data.ubicacion || "Tegucigalpa, Honduras",
+          joinDate: data.date_joined ? new Date(data.date_joined).toLocaleDateString('es-HN', { year: 'numeric', month: 'long', day: 'numeric' }) : "Reciente",
+          status: data.is_active ? "Activa" : "Inactiva"
+        });
+
+        setEditForm({
+          phone: data.telefono || '',
+          email: data.email || '',
+          password: ''
+        });
+
+      } catch (error) {
+        console.error(error);
+        setErrorMsg('No se pudieron cargar los datos del perfil.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPerfil();
+  }, [API_URL]);
+
+  const handleUpdateProfile = async (e) => {
+    e.preventDefault();
+    setIsSaving(true);
+    setErrorMsg(null);
+
+    try {
+      const token = localStorage.getItem('access_token');
+      
+      const bodyData = {
+        telefono: editForm.phone,
+        email: editForm.email
+      };
+      if (editForm.password.trim() !== "") {
+        bodyData.password = editForm.password;
+      }
+
+      const response = await fetch(`${API_URL}/auth/perfil/`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(bodyData)
+      });
+
+      if (!response.ok) throw new Error('Error al actualizar');
+
+      setProfileData(prev => ({
+        ...prev,
+        email: editForm.email,
+        phone: editForm.phone
+      }));
+
+      setIsModalOpen(false);
+      setShowPassword(false); // Reseteamos el ojo al cerrar
+      
+    } catch (error) {
+      console.error(error);
+      setErrorMsg('Hubo un problema al guardar los cambios.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const infoBoxStyle = {
     padding: '20px',
@@ -44,6 +149,26 @@ export default function ClientePerfil({ onLogout }) {
     letterSpacing: '0.5px'
   };
 
+  const toggleEyeStyle = { 
+    position: 'absolute', 
+    right: '15px', 
+    top: '50%', 
+    transform: 'translateY(-50%)', 
+    background: 'none', 
+    border: 'none', 
+    cursor: 'pointer', 
+    color: 'var(--text-light)', 
+    zIndex: 10 
+  };
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', background: 'var(--bg-color)' }}>
+        <Loader text="Cargando perfil..." />
+      </div>
+    );
+  }
+
   return (
     <div style={{ 
       width: '100%', 
@@ -58,6 +183,12 @@ export default function ClientePerfil({ onLogout }) {
       alignItems: 'center'
     }}>
       
+      {errorMsg && (
+        <div style={{ width: '100%', maxWidth: '1200px', marginBottom: '20px' }}>
+          <Alert type="danger" title="Atención" message={errorMsg} onClose={() => setErrorMsg(null)} />
+        </div>
+      )}
+
       <div style={{ 
         width: '100%', 
         maxWidth: '1200px', 
@@ -129,7 +260,7 @@ export default function ClientePerfil({ onLogout }) {
               <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: '700', color: 'var(--text-light)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 <Phone size={14} color="var(--color-primary)" /> Teléfono
               </span>
-              <span style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--color-dark)' }}>{profileData.phone}</span>
+              <span style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--color-dark)' }}>{profileData.phone || 'No registrado'}</span>
             </div>
 
             <div style={infoBoxStyle}>
@@ -183,30 +314,65 @@ export default function ClientePerfil({ onLogout }) {
 
       </div>
 
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Editar Credenciales">
+      <Modal isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); setShowPassword(false); }} title="Editar Credenciales">
         <form 
-          onSubmit={(e) => { e.preventDefault(); setIsModalOpen(false); }} 
+          onSubmit={handleUpdateProfile} 
           style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}
         >
           <div>
             <label style={labelStyle}>Teléfono</label>
-            <Input defaultValue={profileData.phone} icon="fa-phone" />
+            <Input 
+              value={editForm.phone} 
+              onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+              icon="fa-phone" 
+            />
           </div>
 
           <div>
             <label style={labelStyle}>Correo Electrónico</label>
-            <Input defaultValue={profileData.email} type="email" icon="fa-envelope" />
+            <Input 
+              value={editForm.email} 
+              onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+              type="email" 
+              icon="fa-envelope" 
+            />
           </div>
 
           <div>
-            <label style={labelStyle}>Nueva Contraseña</label>
-            <Input type="password" placeholder="Dejar en blanco para no cambiar" icon="fa-lock" />
+            <label style={labelStyle}>Nueva Contraseña (Opcional)</label>
+            <div style={{ position: 'relative' }}>
+              <Input 
+                type={showPassword ? "text" : "password"} 
+                value={editForm.password}
+                onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
+                placeholder="Dejar en blanco para no cambiar" 
+                icon="fa-lock" 
+              />
+              {/* 👈 BOTÓN DEL OJO AÑADIDO AQUÍ */}
+              <button 
+                type="button" 
+                onClick={() => setShowPassword(!showPassword)} 
+                style={toggleEyeStyle}
+              >
+                <i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+              </button>
+            </div>
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', paddingTop: '16px', borderTop: '1px solid var(--light-gray)', marginTop: '8px' }}>
-            <Button variant="outline-dark" size="sm" type="button" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
-            <Button variant="primary" size="sm" type="submit">
-              <Save size={14} style={{ marginRight: '6px' }} /> Guardar Cambios
+            <Button variant="outline-dark" size="sm" type="button" onClick={() => { setIsModalOpen(false); setShowPassword(false); }}>
+              Cancelar
+            </Button>
+            <Button variant="primary" size="sm" type="submit" disabled={isSaving}>
+              {isSaving ? (
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <i className="fas fa-circle-notch fa-spin"></i> Guardando...
+                </span>
+              ) : (
+                <>
+                  <Save size={14} style={{ marginRight: '6px' }} /> Guardar Cambios
+                </>
+              )}
             </Button>
           </div>
         </form>
