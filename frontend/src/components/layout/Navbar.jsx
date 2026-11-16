@@ -26,12 +26,7 @@ const Navbar = () => {
     const isDashboard = location.pathname.startsWith('/cliente') || location.pathname.startsWith('/admin') || location.pathname.startsWith('/dashboard');
     const isLanding = location.pathname === '/';
 
-    // Paleta de colores para el botón del tema
     const isLight = theme === 'light';
-    const colorLuna = '#8b5cf6'; // Violeta
-    const colorSol = '#f1be26';  // Amarillo
-    const bgLuna = 'rgba(139, 92, 246, 0.1)'; // Violeta transparente
-    const bgSol = 'rgba(241, 190, 38, 0.1)';  // Amarillo transparente
 
     const publicNavItems = [
         { id: 'inicio', label: 'Inicio', dedicatedPath: null },
@@ -192,7 +187,7 @@ const Navbar = () => {
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                 
-                {/* Botón de cambio de tema CIRCULAR y mejorado */}
+                {/* Botón de cambio de tema PROFESIONAL */}
                 <button
                     onClick={toggleTheme}
                     onMouseEnter={() => setIsThemeHovered(true)}
@@ -200,29 +195,21 @@ const Navbar = () => {
                     style={{
                         width: '40px',
                         height: '40px',
-                        borderRadius: '50%', // Forma circular
+                        borderRadius: '50%',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         cursor: 'pointer',
-                        transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)', // Transición con un pequeño rebote
-                        border: `2px solid ${isLight ? colorLuna : colorSol}`,
-                        // Fondo transparente por defecto, color sólido en hover
-                        background: isThemeHovered ? (isLight ? colorLuna : colorSol) : (isLight ? bgLuna : bgSol),
-                        // Color del ícono
-                        color: isThemeHovered 
-                            ? (isLight ? '#ffffff' : '#2c365e') // Blanco para luna, Oscuro para sol
-                            : (isLight ? colorLuna : colorSol),
-                        // Efecto de resplandor (glow) en hover
-                        boxShadow: isThemeHovered 
-                            ? `0 0 15px ${isLight ? 'rgba(139, 92, 246, 0.4)' : 'rgba(241, 190, 38, 0.5)'}` 
-                            : 'none',
-                        // Efecto de escala en hover
-                        transform: isThemeHovered ? 'scale(1.05)' : 'scale(1)'
+                        transition: 'all 0.2s ease',
+                        // Usa los mismos colores del botón de usuario para mantener simetría
+                        background: isThemeHovered ? 'rgba(4, 201, 166, 0.05)' : 'var(--bg-color)',
+                        border: isThemeHovered ? '1px solid var(--color-primary)' : '1px solid var(--light-gray)',
+                        color: isThemeHovered ? 'var(--color-primary)' : 'var(--color-dark)',
+                        padding: 0
                     }}
                     title={isLight ? 'Cambiar a modo oscuro' : 'Cambiar a modo claro'}
                 >
-                    {isLight ? <Moon size={20} /> : <Sun size={20} />}
+                    {isLight ? <Moon size={18} /> : <Sun size={18} />}
                 </button>
 
                 {!isDashboard ? (

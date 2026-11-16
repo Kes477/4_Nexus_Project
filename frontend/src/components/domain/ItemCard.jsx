@@ -5,7 +5,7 @@ import Badge from '../ui/Badge';
 import Stars from '../ui/Stars';
 
 /* =========================================================
-   TARJETA DE SERVICIO / SUSCRIPCIÓN (ItemServiceCard) - COMPACTA
+   TARJETA DE SERVICIO / SUSCRIPCIÓN (ItemServiceCard)
    ========================================================= */
 export const ItemServiceCard = ({ item, onAction }) => {
     const Icon = item.icon || Star;
@@ -23,12 +23,15 @@ export const ItemServiceCard = ({ item, onAction }) => {
         <article
             style={{
                 background: "var(--white)",
-                padding: "20px", // Reducido de 24px
-                borderRadius: "12px", // Reducido de 16px
+                padding: "20px",
+                borderRadius: "12px",
                 border: item.destacado ? "2px solid var(--color-primary)" : "1px solid var(--light-gray)",
                 display: "flex",
                 flexDirection: "column",
+                width: "100%",
                 height: "100%",
+                boxSizing: "border-box",
+                minHeight: "530px",
                 position: "relative",
                 boxShadow: item.destacado ? "0 8px 25px rgba(4, 201, 166, 0.15)" : "0 4px 15px rgba(0,0,0,0.04)",
                 transition: "transform 0.3s ease, box-shadow 0.3s ease",
@@ -53,7 +56,7 @@ export const ItemServiceCard = ({ item, onAction }) => {
                 </span>
             )}
 
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "16px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "16px", minHeight: "44px" }}>
                 <div style={{
                     background: "rgba(4, 201, 166, 0.1)", color: "var(--color-primary)",
                     padding: "10px", borderRadius: "10px", display: "flex", alignItems: "center", justifyContent: "center"
@@ -65,7 +68,7 @@ export const ItemServiceCard = ({ item, onAction }) => {
                 </span>
             </div>
 
-            <h3 style={{ color: "var(--color-dark)", fontSize: "18px", margin: "0 0 6px 0", fontWeight: "800" }}>
+            <h3 style={{ color: "var(--color-dark)", fontSize: "18px", margin: "0 0 6px 0", fontWeight: "800", minHeight: "24px" }}>
                 {item.title || item.name}
             </h3>
             
@@ -78,12 +81,12 @@ export const ItemServiceCard = ({ item, onAction }) => {
                 WebkitLineClamp: 3,
                 WebkitBoxOrient: "vertical",
                 overflow: "hidden",
-                minHeight: "58px"
+                minHeight: "58px" 
             }}>
                 {item.description || item.descripcion_corta}
             </p>
 
-            <div style={{ marginBottom: "16px", borderBottom: "1px solid var(--light-gray)", paddingBottom: "16px" }}>
+            <div style={{ marginBottom: "16px", borderBottom: "1px solid var(--light-gray)", paddingBottom: "16px", minHeight: "64px" }}>
                 <span style={{ fontSize: "26px", fontWeight: "900", color: "var(--color-dark)" }}>
                     {item.price?.toString().startsWith('L') ? item.price : `L ${item.price}`}
                 </span>
@@ -92,38 +95,40 @@ export const ItemServiceCard = ({ item, onAction }) => {
                 </span>
             </div>
 
-            {item.tags && item.tags.length > 0 && (
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "16px" }}>
-                    {item.tags.map((tag, i) => (
-                        <span key={i} style={{
-                            backgroundColor: "rgba(4, 201, 166, 0.1)", color: "var(--color-primary)",
-                            padding: "2px 8px", borderRadius: "6px", fontSize: "10px", fontWeight: "bold",
-                            display: "flex", alignItems: "center", gap: "4px"
-                        }}>
-                            <Sparkles size={10} /> {tag}
-                        </span>
-                    ))}
-                </div>
-            )}
-
-            {item.features && item.features.length > 0 && (
-                <div style={{ flexGrow: 1, display: "flex", flexDirection: "column", marginBottom: "16px" }}>
-                    <span style={{ fontSize: "11px", fontWeight: "bold", color: "var(--text-light)", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "10px", display: "block" }}>
-                        Beneficios:
-                    </span>
-                    
-                    <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "8px" }}>
-                        {item.features.map((feature, i) => (
-                            <li key={i} style={{ display: "flex", alignItems: "flex-start", gap: "8px", fontSize: "13px", color: "var(--color-dark)" }}>
-                                <div style={{ background: "rgba(4, 201, 166, 0.15)", padding: "3px", borderRadius: "50%", display: "flex", marginTop: "2px" }}>
-                                    <Check size={12} color="var(--color-primary)" strokeWidth={3} />
-                                </div>
-                                <span style={{ lineHeight: "1.4" }}>{feature}</span>
-                            </li>
+            <div style={{ flexGrow: 1, display: "flex", flexDirection: "column" }}>
+                {item.tags && item.tags.length > 0 && (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "16px", minHeight: "24px" }}>
+                        {item.tags.map((tag, i) => (
+                            <span key={i} style={{
+                                backgroundColor: "rgba(4, 201, 166, 0.1)", color: "var(--color-primary)",
+                                padding: "2px 8px", borderRadius: "6px", fontSize: "10px", fontWeight: "bold",
+                                display: "flex", alignItems: "center", gap: "4px"
+                            }}>
+                                <Sparkles size={10} /> {tag}
+                            </span>
                         ))}
-                    </ul>
-                </div>
-            )}
+                    </div>
+                )}
+
+                {item.features && item.features.length > 0 && (
+                    <div style={{ display: "flex", flexDirection: "column", marginBottom: "16px" }}>
+                        <span style={{ fontSize: "11px", fontWeight: "bold", color: "var(--text-light)", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "10px", display: "block" }}>
+                            Beneficios:
+                        </span>
+                        
+                        <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "8px" }}>
+                            {item.features.map((feature, i) => (
+                                <li key={i} style={{ display: "flex", alignItems: "flex-start", gap: "8px", fontSize: "13px", color: "var(--color-dark)" }}>
+                                    <div style={{ background: "rgba(4, 201, 166, 0.15)", padding: "3px", borderRadius: "50%", display: "flex", marginTop: "2px" }}>
+                                        <Check size={12} color="var(--color-primary)" strokeWidth={3} />
+                                    </div>
+                                    <span style={{ lineHeight: "1.4" }}>{feature}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
+            </div>
 
             <div style={{ marginTop: "auto" }}>
                 <Button 
@@ -140,9 +145,10 @@ export const ItemServiceCard = ({ item, onAction }) => {
 
 
 /* =========================================================
-   TARJETA DE PRODUCTO / DRON (ItemProductCard) - COMPACTA
+   TARJETA DE PRODUCTO / DRON (ItemProductCard)
    ========================================================= */
-export const ItemProductCard = ({ item, mode = 'catalog', onAction }) => {
+// 1. AGREGAMOS actionText A LAS PROPIEDADES (OCP)
+export const ItemProductCard = ({ item, mode = 'catalog', onAction, actionText }) => {
     const navigate = useNavigate();
     const isOwned = mode === 'owned';
 
@@ -161,7 +167,10 @@ export const ItemProductCard = ({ item, mode = 'catalog', onAction }) => {
         overflow: "hidden",
         display: "flex",
         flexDirection: "column",
-        height: "100%", 
+        width: "100%",
+        height: "100%",
+        boxSizing: "border-box",
+        minHeight: "530px",
         position: "relative",
         boxShadow: item.destacado ? "0 8px 25px rgba(4, 201, 166, 0.15)" : "0 4px 15px rgba(0,0,0,0.04)",
         transition: "transform 0.3s ease, box-shadow 0.3s ease",
@@ -185,7 +194,8 @@ export const ItemProductCard = ({ item, mode = 'catalog', onAction }) => {
         background: 'var(--bg-color)', 
         padding: '12px', 
         borderRadius: '8px', 
-        marginBottom: '16px' 
+        marginBottom: '16px',
+        minHeight: "86px" 
     };
 
     const title = item.title || item.name || item.nombre;
@@ -198,7 +208,7 @@ export const ItemProductCard = ({ item, mode = 'catalog', onAction }) => {
         <article style={cardStyle} {...hoverEffect}>
             
             {isOwned ? (
-                <div style={{ padding: "20px 20px 0 20px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <div style={{ padding: "20px 20px 0 20px", minHeight: "160px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                     <div style={{ background: "rgba(4, 201, 166, 0.1)", color: "var(--color-primary)", padding: "10px", borderRadius: "10px", display: "flex", alignItems: "center", justifyContent: "center" }}>
                         <Plane size={24} strokeWidth={2} />
                     </div>
@@ -230,7 +240,7 @@ export const ItemProductCard = ({ item, mode = 'catalog', onAction }) => {
 
             <div style={{ padding: "16px 20px 20px 20px", display: "flex", flexDirection: "column", flexGrow: 1 }}>
                 
-                <h3 style={{ color: "var(--color-dark)", fontSize: "18px", margin: "0 0 6px 0", fontWeight: "800", textAlign: isOwned ? 'center' : 'left' }}>
+                <h3 style={{ color: "var(--color-dark)", fontSize: "18px", margin: "0 0 6px 0", fontWeight: "800", textAlign: isOwned ? 'center' : 'left', minHeight: "24px" }}>
                     {title}
                 </h3>
 
@@ -268,7 +278,7 @@ export const ItemProductCard = ({ item, mode = 'catalog', onAction }) => {
                     </div>
                 ) : (
                     <>
-                        <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px', minHeight: "24px" }}>
                             <Stars rating={item.rating || 5} />
                             <span style={{ fontSize: '11px', color: 'var(--text-light)', fontWeight: 'bold' }}>({item.reviews || 12})</span>
                         </div>
@@ -303,7 +313,7 @@ export const ItemProductCard = ({ item, mode = 'catalog', onAction }) => {
                 <div style={{ marginTop: 'auto', borderTop: '1px solid var(--light-gray)', paddingTop: '16px' }}>
                     
                     {!isOwned && (
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '16px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '16px', minHeight: "44px" }}>
                             <div>
                                 <span style={{ fontSize: "10px", color: "var(--text-light)", fontWeight: "bold", textTransform: "uppercase", display: "block", marginBottom: "2px" }}>
                                     Precio
@@ -328,7 +338,8 @@ export const ItemProductCard = ({ item, mode = 'catalog', onAction }) => {
                         {isOwned ? (
                             <><Wrench size={16} /> Ayuda Técnica</>
                         ) : (
-                            <><ShoppingBag size={16} /> Cotizar Equipo</>
+                            // 2. USAMOS actionText CON VALOR POR DEFECTO
+                            <><ShoppingBag size={16} /> {actionText || 'Cotizar Equipo'}</>
                         )}
                     </Button>
                 </div>
