@@ -5,7 +5,10 @@ import { Shield, Zap, CreditCard, Check } from 'lucide-react';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import { SearchBar, Select, Modal, Button, Loader } from '../components/ui';
-import { ServiceCard } from '../components/domain/Card';
+
+// ✅ CORRECCIÓN 1: Importamos ItemServiceCard desde ItemCard
+import { ItemServiceCard } from '../components/domain/ItemCard'; 
+
 import { getProductos } from '../api/droneService';
 
 const formatPrice = (precioDesde) =>
@@ -221,9 +224,10 @@ export const Suscription = () => {
                         }}>
                             {suscripcionesFiltradas.map((suscripcion) => (
                                 <div key={suscripcion.id} style={{ display: 'flex', justifyContent: 'center', height: '100%' }}>
-                                    <ServiceCard
-                                        service={suscripcion}
-                                        onSuscribir={setSelected}
+                                    {/* ✅ CORRECCIÓN 2: Usamos ItemServiceCard con las props correctas (item y onAction) */}
+                                    <ItemServiceCard
+                                        item={suscripcion}
+                                        onAction={setSelected}
                                     />
                                 </div>
                             ))}

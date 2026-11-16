@@ -5,7 +5,10 @@ import { ShoppingBag } from 'lucide-react';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import { SearchBar, Select, Modal, Button, Loader } from '../components/ui';
-import DroneCard from '../components/domain/DroneCard';
+
+// ✅ IMPORTAMOS LA TARJETA CORRECTA DESDE ItemCard
+import { ItemProductCard } from '../components/domain/ItemCard'; 
+
 import {getProductos} from '../api/droneService';
 
 
