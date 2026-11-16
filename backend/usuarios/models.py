@@ -14,13 +14,13 @@ class UsuarioManager(BaseUserManager):
         return user
 
     def create_user(self, email, password=None, **extra):
-        extra.setdefault('is_staff', False)
-        extra.setdefault('is_superuser', False)
+        extra['is_staff'] = False
+        extra['is_superuser'] = False
         return self._create_user(email, password, **extra)
 
     def create_superuser(self, email, password=None, **extra):
-        extra.setdefault('is_staff', True)
-        extra.setdefault('is_superuser', True)
+        extra['is_staff'] = True
+        extra['is_superuser'] = True
         return self._create_user(email, password, **extra)
 
 
