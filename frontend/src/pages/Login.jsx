@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { Layers, Navigation, Wrench, Shield, ChevronLeft, ArrowRight, Check, Home } from 'lucide-react';
 import { Input, Button, Alert, IconButton, Checkbox } from '../components/ui';
-import {useSesion} from '../hooks/useSesion';
+import { useSesion } from '../hooks/useSesion';
 
 const carouselImages = [
     "https://images.unsplash.com/photo-1508614589041-895b88991e3e?q=80&w=1000&auto=format&fit=crop",
@@ -61,8 +61,34 @@ const Login = () => {
 
         try {
             const usuario = await iniciarSesion(email, password);
-            const destino = usuario.is_staff ? '/admin' : redirectTo;
+            
+            // Extraemos el rol del backend
+            let rolBackend = (usuario?.role || usuario?.rol || usuario?.rol_nombre || '').toLowerCase();
 
+            // 👇 SOLUCIÓN PROVISIONAL: Forzamos el rol si el correo incluye "piloto"
+            if (email.toLowerCase().includes('piloto') && (!rolBackend || rolBackend === 'cliente')) {
+                rolBackend = 'piloto';
+            }
+
+            let destino = '/cliente'; // Por defecto
+
+            // Evaluamos el rol para redirigir
+            if (usuario.is_staff || rolBackend === 'admin' || rolBackend === 'administrador') {
+                destino = '/admin';
+            } else if (rolBackend === 'piloto') {
+                destino = '/piloto';
+            } else if (rolBackend === 'tecnico' || rolBackend === 'técnico') {
+                destino = '/tecnico';
+            } else if (rolBackend === 'cliente') {
+                destino = '/cliente';
+            } else if (location.state?.from) {
+                destino = location.state.from;
+            }
+
+            // Guardamos el rol en localStorage para forzar la vista en el Navbar
+            localStorage.setItem('user_role', rolBackend || 'cliente');
+
+            // Redirigimos
             navigate(destino, {
                 replace: true,
                 state: location.state?.selectedDrone
