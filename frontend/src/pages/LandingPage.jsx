@@ -48,7 +48,6 @@ const adaptSuscripcionToService = (sub, idx) => ({
     features: ['Soporte técnico', 'Acceso a plataforma', 'Reportes mensuales'],
 });
 
-// URLs para la galería automática del Hero
 const HERO_IMAGES = [
     "https://storage.googleapis.com/cursopractica-imagenes-2026/img_drones/Autel_EVO_II_Pro_V3_4_3.png",
     "https://storage.googleapis.com/cursopractica-imagenes-2026/img_drones/Autel_EVO_Nano%2B_4_3.png",
@@ -69,7 +68,6 @@ const HeroSection = ({ onSolicitar, onExplorarEquipos }) => {
     const [currentImage, setCurrentImage] = useState(0);
 
     useEffect(() => {
-        // Cambiar de imagen cada 3.5 segundos
         const interval = setInterval(() => {
             setCurrentImage((prev) => (prev + 1) % HERO_IMAGES.length);
         }, 3500);
@@ -99,8 +97,6 @@ const HeroSection = ({ onSolicitar, onExplorarEquipos }) => {
                 </div>
 
                 <div style={{ flex: '1 1 500px', position: 'relative' }}>
-                    
-                    {/* GALERÍA AUTOMÁTICA */}
                     <div style={{ 
                         width: '100%', 
                         height: '450px', 
@@ -108,7 +104,7 @@ const HeroSection = ({ onSolicitar, onExplorarEquipos }) => {
                         boxShadow: '0 20px 40px rgba(0,0,0,0.1)', 
                         position: 'relative', 
                         overflow: 'hidden',
-                        backgroundColor: 'var(--bg-color)' // Fondo por si las imágenes tienen transparencias
+                        backgroundColor: 'var(--bg-color)'
                     }}>
                         {HERO_IMAGES.map((img, index) => (
                             <img
@@ -129,8 +125,6 @@ const HeroSection = ({ onSolicitar, onExplorarEquipos }) => {
                             />
                         ))}
                     </div>
-
-                    {/* Tarjetas Flotantes (Z-index para que estén por encima de las imágenes) */}
                     <div className="floating-card" style={{ top: '30px', left: '-20px', zIndex: 10 }}>
                         <div style={{ background: 'var(--bg-color)', padding: '10px', borderRadius: '8px' }}>
                             <Wrench size={20} color="var(--color-primary)" />

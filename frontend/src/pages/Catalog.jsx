@@ -6,7 +6,6 @@ import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import { SearchBar, Select, Modal, Button, Loader } from '../components/ui';
 
-// ✅ IMPORTAMOS LA TARJETA CORRECTA DESDE ItemCard
 import { ItemProductCard } from '../components/domain/ItemCard'; 
 
 import {getProductos} from '../api/droneService';
@@ -20,10 +19,8 @@ const formatPrice = (precioDesde) =>
           })
         : 'Consultar';
 
-// 👈 CORRECCIÓN 1: Adaptamos al formato que espera ItemProductCard (en español)
 const adaptDron = (item) => ({
     id: item.id,
-    // Propiedades para ItemProductCard
     nombre: item.nombre,
     precio: formatPrice(item.precio_desde),
     desc: item.descripcion || 'Sin descripción disponible.',
@@ -31,7 +28,6 @@ const adaptDron = (item) => ({
     categoria: item.marca || item.categoria || 'Otros',
     destacado: item.es_nuevo === true,
     rating: item.rating ?? 5,
-    // Propiedades extra para los filtros
     numericPrice: Number(item.precio_desde) || 0,
     size: Number(item.tamano ?? item.tamaño ?? item.peso ?? item.capacidad_carga ?? 0) || 0,
     battery: item.autonomia || '45 min',
@@ -254,7 +250,6 @@ export const Catalog = () => {
             >
                 {selectedDrone && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                        {/* 👈 CORRECCIÓN 3: Actualizamos las propiedades del modal al español */}
                         {selectedDrone.imagen ? (
                             <img
                                 src={selectedDrone.imagen}

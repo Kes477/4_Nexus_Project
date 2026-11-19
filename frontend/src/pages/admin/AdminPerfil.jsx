@@ -11,10 +11,8 @@ export default function AdminPerfil({ onLogout }) {
   const [errorMsg, setErrorMsg] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   
-  // Estado para mostrar/ocultar la contraseña en el modal
   const [showPassword, setShowPassword] = useState(false);
 
-  // Estado para los datos del perfil
   const [profileData, setProfileData] = useState({
     name: "", 
     email: "",
@@ -26,7 +24,6 @@ export default function AdminPerfil({ onLogout }) {
     status: "Activo"
   });
 
-  // Estado para el formulario de edición
   const [editForm, setEditForm] = useState({
     phone: "",
     email: "",
@@ -91,7 +88,6 @@ export default function AdminPerfil({ onLogout }) {
         email: editForm.email
       };
       
-      // Solo enviamos la contraseña si no está vacía
       if (editForm.password.trim() !== "") {
         bodyData.password = editForm.password;
       }
@@ -107,7 +103,6 @@ export default function AdminPerfil({ onLogout }) {
 
       if (!response.ok) throw new Error('Error al actualizar');
 
-      // Actualizamos la UI localmente sin recargar la página
       setProfileData(prev => ({
         ...prev,
         email: editForm.email,
@@ -115,7 +110,7 @@ export default function AdminPerfil({ onLogout }) {
       }));
 
       setIsModalOpen(false);
-      setShowPassword(false); // Reseteamos el ojo al cerrar
+      setShowPassword(false);
       
     } catch (error) {
       console.error(error);
