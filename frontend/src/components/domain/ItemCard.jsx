@@ -4,9 +4,7 @@ import { Button } from '../ui/Button';
 import Badge from '../ui/Badge';
 import Stars from '../ui/Stars';
 
-/* =========================================================
-   TARJETA DE SERVICIO / SUSCRIPCIÓN (ItemServiceCard)
-   ========================================================= */
+/* TARJETA DE SERVICIO / SUSCRIPCIÓN */
 export const ItemServiceCard = ({ item, onAction }) => {
     const Icon = item.icon || Star;
     const navigate = useNavigate();
@@ -144,9 +142,7 @@ export const ItemServiceCard = ({ item, onAction }) => {
 };
 
 
-/* =========================================================
-   TARJETA DE PRODUCTO / DRON (ItemProductCard)
-   ========================================================= */
+/* TARJETA DE PRODUCTO / DRON */
 // 1. AGREGAMOS actionText A LAS PROPIEDADES (OCP)
 export const ItemProductCard = ({ item, mode = 'catalog', onAction, actionText }) => {
     const navigate = useNavigate();

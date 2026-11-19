@@ -58,7 +58,6 @@ const CheckoutDron = ({ drone, onBack, onSuccess }) => {
         );
     }
 
-    // Estilos para inputs (Corrige el solapamiento de iconos)
     const inputStyleWithIcon = {
         fontSize: '13px',
         width: '100%',
@@ -68,12 +67,12 @@ const CheckoutDron = ({ drone, onBack, onSuccess }) => {
         paddingTop: '8px',
         paddingBottom: '8px',
         paddingRight: '10px',
-        paddingLeft: '40px' // Espacio para el icono
+        paddingLeft: '40px'
     };
 
     const inputStyleNoIcon = {
         ...inputStyleWithIcon,
-        paddingLeft: '10px' // Sin icono
+        paddingLeft: '10px'
     };
 
     return (
@@ -83,8 +82,6 @@ const CheckoutDron = ({ drone, onBack, onSuccess }) => {
             </button>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', alignItems: 'stretch' }}>
-                
-                {/* COLUMNA IZQUIERDA: Resumen del Pedido */}
                 <div style={{ flex: '1 1 320px', background: 'var(--white)', padding: '20px', borderRadius: '12px', border: '1px solid var(--light-gray)', boxShadow: '0 8px 20px rgba(0,0,0,0.03)', display: 'flex', flexDirection: 'column' }}>
                     <h2 style={{ fontSize: '16px', color: 'var(--color-dark)', margin: '0 0 15px 0', fontWeight: '800' }}>Resumen de tu Pedido</h2>
                     
@@ -127,7 +124,6 @@ const CheckoutDron = ({ drone, onBack, onSuccess }) => {
                     </div>
                 </div>
 
-                {/* COLUMNA DERECHA: Formulario de Pago */}
                 <div style={{ flex: '1 1 320px', background: 'var(--white)', padding: '20px', borderRadius: '12px', border: '1px solid var(--light-gray)', boxShadow: '0 8px 20px rgba(0,0,0,0.03)', display: 'flex', flexDirection: 'column' }}>
                     <h2 style={{ fontSize: '16px', color: 'var(--color-dark)', margin: '0 0 15px 0', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <CreditCard size={18} color="var(--color-primary)" /> Información de Pago
@@ -182,7 +178,6 @@ const CheckoutDron = ({ drone, onBack, onSuccess }) => {
                         </div>
                     </div>
 
-                    {/* Formulario Compacto */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', flexGrow: 1 }}>
                         <div>
                             <label style={{ display: 'block', fontSize: '10px', fontWeight: 'bold', color: 'var(--color-dark)', marginBottom: '4px' }}>Número de Tarjeta</label>
@@ -235,7 +230,6 @@ const CheckoutDron = ({ drone, onBack, onSuccess }) => {
                             </div>
                         </div>
                         
-                        {/* Botón en la parte inferior con altura fija para evitar que se agrande */}
                         <div style={{ marginTop: 'auto', paddingTop: '10px' }}>
                             <Button 
                                 variant="primary" 
@@ -243,7 +237,7 @@ const CheckoutDron = ({ drone, onBack, onSuccess }) => {
                                 disabled={isProcessing} 
                                 style={{ 
                                     width: '100%', 
-                                    height: '42px', // ALTURA FIJA para evitar saltos de layout
+                                    height: '42px',
                                     padding: '0 15px', 
                                     fontSize: '13px', 
                                     fontWeight: 'bold', 
