@@ -1,14 +1,8 @@
 import { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { Layers, Navigation, Wrench, Shield, ChevronLeft, ArrowRight, Check, Home } from 'lucide-react';
-import { Input, Button, Alert, IconButton, Checkbox } from '../components/ui';
-import {useSesion} from '../hooks/useSesion';
-
-const carouselImages = [
-    "https://images.unsplash.com/photo-1508614589041-895b88991e3e?q=80&w=1000&auto=format&fit=crop",
-    "https://images.unsplash.com/photo-1579829366248-204fe8413f31?q=80&w=1000&auto=format&fit=crop",
-    "https://images.unsplash.com/photo-1473968512647-3e447244af8f?q=80&w=1000&auto=format&fit=crop"
-];
+import { Layers, Navigation, Wrench, Shield, ChevronLeft, ArrowRight, Check, Home, FileText } from 'lucide-react';
+import { Input, Button, Alert, IconButton, Checkbox, Modal } from '../components/ui';
+import { useSesion } from '../hooks/useSesion';
 
 const Login = () => {
     const navigate = useNavigate();
@@ -24,12 +18,15 @@ const Login = () => {
     const [errorMsg, setErrorMsg] = useState(null);
     const [rememberMe, setRememberMe] = useState(false);
 
+    // Estados para Términos y Condiciones
+    const [termsAccepted, setTermsAccepted] = useState(false);
+    const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
+
     const [selectedRole, setSelectedRole] = useState('cliente');
     const [recoverMethod, setRecoverMethod] = useState('email');
 
     const [mostrarPassword, setMostrarPassword] = useState(false);
     const [mostrarConfirmarPassword, setMostrarConfirmarPassword] = useState(false);
-    const [codeDigits, setCodeDigits] = useState(["", "", "", "", "", ""]);
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -41,19 +38,6 @@ const Login = () => {
 
     const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
-    const handleDigitChange = (value, index) => {
-        const nextDigits = [...codeDigits];
-        nextDigits[index] = value.slice(-1);
-        setCodeDigits(nextDigits);
-        if (value && index < 5) document.getElementById(`digit-${index + 1}`)?.focus();
-    };
-
-    const handleKeyDown = (e, index) => {
-        if (e.key === "Backspace" && !codeDigits[index] && index > 0) {
-            document.getElementById(`digit-${index - 1}`)?.focus();
-        }
-    };
-
     const submitLogin = async (e) => {
         if (e) e.preventDefault();
         setErrorMsg(null);
@@ -61,7 +45,31 @@ const Login = () => {
 
         try {
             const usuario = await iniciarSesion(email, password);
-            const destino = usuario.is_staff ? '/admin' : redirectTo;
+            
+            let rolBackend = (usuario?.role || usuario?.rol || usuario?.rol_nombre || '').toLowerCase();
+
+            // Solución provisional si el backend no envía el rol
+            if (email.toLowerCase().includes('piloto') && (!rolBackend || rolBackend === 'cliente')) {
+                rolBackend = 'piloto';
+            }
+
+            let destino = '/cliente';
+
+            if (usuario.is_staff || rolBackend === 'admin' || rolBackend === 'administrador') {
+                destino = '/admin';
+            } else if (rolBackend === 'piloto') {
+                destino = '/piloto';
+            } else if (rolBackend === 'tecnico' || rolBackend === 'técnico') {
+                destino = '/tecnico';
+            } else if (rolBackend === 'cliente') {
+                destino = '/cliente';
+            } else if (rolBackend === 'vendedor') {
+                destino = '/vendedor';
+            } else if (location.state?.from) {
+                destino = location.state.from;
+            }
+
+            localStorage.setItem('user_role', rolBackend || 'cliente');
 
             navigate(destino, {
                 replace: true,
@@ -92,6 +100,10 @@ const Login = () => {
                 if (!nombres || !apellidos || !identificacion) return setErrorMsg("Por favor, llena todos los campos obligatorios.");
                 setRegSubStep(3);
             } else {
+                if (!termsAccepted) {
+                    return setErrorMsg("Debes aceptar los Términos y Condiciones para registrarte.");
+                }
+
                 setIsLoading(true);
                 try {
                     const response = await fetch(`${API_URL}/auth/registro/`, {
@@ -123,8 +135,6 @@ const Login = () => {
                 }
             }
         } else if (step === 'recover') {
-            setStep('verify');
-        } else if (step === 'verify') {
             setStep('success');
         }
     };
@@ -225,7 +235,7 @@ const Login = () => {
                             <div style={{ width: '100%', maxWidth: '360px' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--light-gray)', paddingBottom: '12px', marginBottom: '16px' }}>
                                     <span style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--color-dark)' }}>
-                                        {regSubStep === 1 ? "Credenciales de acceso" : regSubStep === 2 ? "Información personal" : "Verificación"}
+                                        {regSubStep === 1 ? "Credenciales de acceso" : regSubStep === 2 ? "Información personal" : "Verificación Final"}
                                     </span>
                                     <span style={{ fontSize: '10px', color: 'var(--color-primary)', fontWeight: 'bold', background: 'rgba(4, 201, 166, 0.1)', padding: '2px 8px', borderRadius: '20px' }}>Paso {regSubStep} de 3</span>
                                 </div>
@@ -310,7 +320,50 @@ const Login = () => {
                                         <div style={{ background: 'rgba(4, 201, 166, 0.1)', padding: '12px', borderRadius: '50%', color: 'var(--color-primary)' }}><Shield size={28} /></div>
                                         <div>
                                             <h3 style={{ margin: '0 0 6px 0', fontSize: '15px', color: 'var(--color-dark)' }}>Casi listo</h3>
-                                            <p style={{ fontSize: '12px', color: 'var(--text-light)', margin: 0, maxWidth: '260px' }}>Al hacer clic en "Enviar código", tu cuenta será creada y podrás ingresar al sistema.</p>
+                                            <p style={{ fontSize: '13px', color: 'var(--text-light)', margin: 0, maxWidth: '280px', lineHeight: '1.5' }}>
+                                                Al hacer clic en "Finalizar Registro", tu cuenta será creada y podrás ingresar inmediatamente al sistema.
+                                            </p>
+                                        </div>
+
+                                        <div style={{ 
+                                            display: 'flex', 
+                                            alignItems: 'flex-start', 
+                                            gap: '12px',
+                                            marginTop: '12px', 
+                                            width: '100%', 
+                                            textAlign: 'left', 
+                                            background: 'var(--bg-color)', 
+                                            padding: '16px', 
+                                            borderRadius: '8px', 
+                                            border: '1px solid var(--light-gray)',
+                                            boxSizing: 'border-box'
+                                        }}>
+                                            <div style={{ marginTop: '2px' }}>
+                                                <Checkbox 
+                                                    checked={termsAccepted} 
+                                                    onChange={() => setTermsAccepted(!termsAccepted)}
+                                                />
+                                            </div>
+                                            <div style={{ flex: 1 }}>
+                                                <span style={{ fontSize: '13px', color: 'var(--color-dark)', lineHeight: '1.6', fontWeight: '500', display: 'inline-block' }}>
+                                                    He leído y acepto los{' '}
+                                                    <button 
+                                                        type="button" 
+                                                        onClick={(e) => { e.preventDefault(); setIsTermsModalOpen(true); }}
+                                                        style={{ background: 'none', border: 'none', color: 'var(--color-primary)', padding: 0, fontSize: '13px', fontWeight: 'bold', cursor: 'pointer', textDecoration: 'underline' }}
+                                                    >
+                                                        Términos y Condiciones
+                                                    </button>{' '}
+                                                    y la{' '}
+                                                    <button 
+                                                        type="button" 
+                                                        onClick={(e) => { e.preventDefault(); setIsTermsModalOpen(true); }}
+                                                        style={{ background: 'none', border: 'none', color: 'var(--color-primary)', padding: 0, fontSize: '13px', fontWeight: 'bold', cursor: 'pointer', textDecoration: 'underline' }}
+                                                    >
+                                                        Política de Privacidad
+                                                    </button>.
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
                                 )}
@@ -322,7 +375,7 @@ const Login = () => {
                                 <div style={{ background: 'rgba(4, 201, 166, 0.1)', padding: '12px', borderRadius: '50%', color: 'var(--color-primary)' }}><Check size={28} /></div>
                                 <div>
                                     <h3 style={{ margin: '0 0 6px 0', fontSize: '20px', color: 'var(--color-primary)' }}>¡Registro Exitoso!</h3>
-                                    <p style={{ fontSize: '13px', color: 'var(--text-light)', margin: 0 }}>Tu cuenta ha sido confirmada. Ya puedes ingresar al sistema.</p>
+                                    <p style={{ fontSize: '13px', color: 'var(--text-light)', margin: 0 }}>Tu cuenta ha sido creada. Ya puedes ingresar al sistema.</p>
                                 </div>
                                 <Button variant="primary" size="sm" onClick={() => { setStep('login'); setRegSubStep(1); }} style={{ width: '100%', marginTop: '12px', padding: '10px' }}>Ir al inicio de sesión</Button>
                             </div>
@@ -335,14 +388,13 @@ const Login = () => {
                                 onClick={() => {
                                     setErrorMsg(null);
                                     if (step === 'register' && regSubStep > 1) setRegSubStep(prev => prev - 1);
-                                    else if (step === 'verify') { setStep('register'); setRegSubStep(3); }
                                     else if (step === 'recover') setStep('login');
                                     else navigate(-1);
                                 }}
                                 style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-light)', fontSize: '12px', fontWeight: 'bold' }}
                             >
                                 <ChevronLeft size={16} />
-                                {step === 'register' && regSubStep > 1 ? "Anterior" : step === 'verify' || step === 'recover' ? "Regresar" : "Cancelar"}
+                                {step === 'register' && regSubStep > 1 ? "Anterior" : step === 'recover' ? "Regresar" : "Cancelar"}
                             </button>
 
                             <Button
@@ -358,9 +410,8 @@ const Login = () => {
                                 {isLoading ? "Procesando..." : (
                                     <>
                                         {step === 'login' && "Ingresar al sistema"}
-                                        {step === 'register' && (regSubStep < 3 ? <span style={{display:'flex', alignItems:'center', gap:'6px'}}>Siguiente <ArrowRight size={14}/></span> : "Enviar código")}
-                                        {step === 'recover' && "Enviar código"}
-                                        {step === 'verify' && "Verificar código"}
+                                        {step === 'register' && (regSubStep < 3 ? <span style={{display:'flex', alignItems:'center', gap:'6px'}}>Siguiente <ArrowRight size={14}/></span> : "Finalizar Registro")}
+                                        {step === 'recover' && "Recuperar cuenta"}
                                     </>
                                 )}
                             </Button>
@@ -368,6 +419,82 @@ const Login = () => {
                     )}
                 </div>
             </div>
+
+            {/* MODAL DE TÉRMINOS Y CONDICIONES */}
+            <Modal 
+                isOpen={isTermsModalOpen} 
+                onClose={() => setIsTermsModalOpen(false)} 
+                title="Términos y Condiciones de Uso"
+                style={{ width: '1000px', maxWidth: '95vw' }}
+            >
+                <div style={{ 
+                    height: '450px', 
+                    overflowY: 'auto', 
+                    paddingRight: '15px', 
+                    fontSize: '13px', 
+                    color: 'var(--text-light)', 
+                    lineHeight: '1.7' 
+                }}>
+                    <h4 style={{ color: 'var(--color-dark)', marginBottom: '8px', fontSize: '15px' }}>1. Aceptación de los Términos</h4>
+                    <p style={{ marginBottom: '16px' }}>
+                        Al acceder y utilizar la plataforma 4 NEXUS, usted acepta estar sujeto a estos Términos y Condiciones, así como a todas las leyes y regulaciones aplicables. Si no está de acuerdo con alguno de estos términos, tiene prohibido usar o acceder a este sitio. Los materiales contenidos en este sitio web están protegidos por las leyes de derechos de autor y marcas registradas aplicables.
+                    </p>
+
+                    <h4 style={{ color: 'var(--color-dark)', marginBottom: '8px', fontSize: '15px' }}>2. Uso de la Plataforma y Servicios</h4>
+                    <p style={{ marginBottom: '16px' }}>
+                        Nuestra plataforma está diseñada para la gestión de vuelos autónomos, servicios de drones y operaciones relacionadas. Usted se compromete a utilizar los servicios de manera ética y de acuerdo con las regulaciones aeronáuticas vigentes en su país. Queda estrictamente prohibido el uso de la plataforma para actividades ilícitas, espionaje, o cualquier acción que viole la privacidad de terceros.
+                    </p>
+
+                    <h4 style={{ color: 'var(--color-dark)', marginBottom: '8px', fontSize: '15px' }}>3. Registro y Seguridad de la Cuenta</h4>
+                    <p style={{ marginBottom: '16px' }}>
+                        Para acceder a ciertas funciones, debe registrarse y crear una cuenta. Usted es responsable de mantener la confidencialidad de su contraseña y de todas las actividades que ocurran bajo su cuenta. Nos reservamos el derecho de suspender o cancelar cuentas que violen las normas de seguridad, presenten actividad sospechosa o incumplan estos términos. Usted acepta notificarnos inmediatamente cualquier uso no autorizado de su cuenta.
+                    </p>
+
+                    <h4 style={{ color: 'var(--color-dark)', marginBottom: '8px', fontSize: '15px' }}>4. Política de Privacidad y Datos Personales</h4>
+                    <p style={{ marginBottom: '16px' }}>
+                        Sus datos personales (nombre, correo electrónico, teléfono y documento de identidad) serán tratados de acuerdo con nuestra Política de Privacidad. Utilizamos esta información para la creación de su cuenta, la asignación de misiones, la facturación y la comunicación necesaria para el funcionamiento de la plataforma. No compartiremos su información con terceros sin su consentimiento, salvo que sea requerido por ley.
+                    </p>
+
+                    <h4 style={{ color: 'var(--color-dark)', marginBottom: '8px', fontSize: '15px' }}>5. Uso de Cookies y Tecnologías de Rastreo</h4>
+                    <p style={{ marginBottom: '16px' }}>
+                        Utilizamos cookies y tecnologías similares para rastrear la actividad en nuestra plataforma y mantener cierta información. Las cookies son archivos con una pequeña cantidad de datos que pueden incluir un identificador único anónimo. Se envían a su navegador desde un sitio web y se almacenan en el almacenamiento local de su dispositivo. Usted puede instruir a su navegador para rechazar todas las cookies o para indicar cuándo se envía una cookie.
+                    </p>
+
+                    <h4 style={{ color: 'var(--color-dark)', marginBottom: '8px', fontSize: '15px' }}>6. Obligaciones del Usuario</h4>
+                    <p style={{ marginBottom: '16px' }}>
+                        Usted se compromete a no utilizar la plataforma para ningún propósito que sea ilegal o prohibido por estos Términos. No debe realizar ingeniería inversa, descompilar o desensamblar ningún aspecto del software de la plataforma. Tampoco debe intentar obtener acceso no autorizado a los servidores o bases de datos de 4 NEXUS.
+                    </p>
+
+                    <h4 style={{ color: 'var(--color-dark)', marginBottom: '8px', fontSize: '15px' }}>7. Propiedad Intelectual</h4>
+                    <p style={{ marginBottom: '16px' }}>
+                        Todo el contenido, características y funcionalidades (incluyendo, pero no limitado a, toda la información, software, texto, pantallas, imágenes, video y audio, y el diseño, selección y arreglo de los mismos), son propiedad exclusiva de 4 NEXUS o sus licenciantes u otros proveedores de dicho material y están protegidos por las leyes de propiedad intelectual de Honduras y tratados internacionales.
+                    </p>
+
+                    <h4 style={{ color: 'var(--color-dark)', marginBottom: '8px', fontSize: '15px' }}>8. Limitación de Responsabilidad</h4>
+                    <p style={{ marginBottom: '16px' }}>
+                        En ningún caso 4 NEXUS será responsable de daños directos, indirectos, incidentales, especiales o consecuentes que resulten del uso o la imposibilidad de usar la plataforma. Usted asume la responsabilidad total por el uso de los drones y equipos operados a través de nuestra red, incluyendo el cumplimiento de todas las normativas locales de aviación civil.
+                    </p>
+
+                    <h4 style={{ color: 'var(--color-dark)', marginBottom: '8px', fontSize: '15px' }}>9. Resolución de Disputas y Legislación Aplicable</h4>
+                    <p style={{ marginBottom: '16px' }}>
+                        Cualquier disputa que surja en relación con estos Términos se resolverá de conformidad con las leyes de la República de Honduras. Las partes acuerdan someterse a la jurisdicción exclusiva de los tribunales de Tegucigalpa, renunciando a cualquier otro fuero que pudiera corresponderles.
+                    </p>
+
+                    <h4 style={{ color: 'var(--color-dark)', marginBottom: '8px', fontSize: '15px' }}>10. Modificaciones de los Términos</h4>
+                    <p style={{ marginBottom: '16px' }}>
+                        Nos reservamos el derecho de modificar o reemplazar estos Términos en cualquier momento. Si una revisión es material, le proporcionaremos un aviso con al menos 30 días de anticipación antes de que los nuevos términos entren en vigencia. Lo que constituye un cambio material será determinado a nuestra entera discreción.
+                    </p>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px', paddingTop: '15px', borderTop: '1px solid var(--light-gray)' }}>
+                    <Button variant="outline-dark" size="sm" onClick={() => setIsTermsModalOpen(false)}>
+                        Cerrar
+                    </Button>
+                    <Button variant="primary" size="sm" onClick={() => { setTermsAccepted(true); setIsTermsModalOpen(false); }}>
+                        Aceptar Términos
+                    </Button>
+                </div>
+            </Modal>
         </div>
     );
 };

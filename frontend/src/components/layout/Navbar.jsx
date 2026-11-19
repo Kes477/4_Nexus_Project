@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Drone, ChevronDown, User, LogOut, LayoutDashboard, FileText, CreditCard, Plane, MessageSquare, Shield, Navigation, Sun, Moon } from 'lucide-react';
 import { Button } from '../ui';
 import { useSesion } from '../../hooks/useSesion';
-import { useTheme } from '../../context/ThemeContext'; 
+import { useTheme } from '../../context/useTheme'; 
 
 const Navbar = () => {
     const location = useLocation();
@@ -11,19 +11,18 @@ const Navbar = () => {
     const [isServicesOpen, setIsServicesOpen] = useState(false);
     const [isUserOpen, setIsUserOpen] = useState(false);
     const [hoveredPath, setHoveredPath] = useState(null);
-
-    // Estado para controlar el hover del botón del tema
     const [isThemeHovered, setIsThemeHovered] = useState(false);
 
-    // Hook del tema
     const { theme, toggleTheme } = useTheme();
-
-    // Sesión
     const { usuario, rol, cerrarSesion } = useSesion();
-    const userRole = rol || 'cliente';
+    
+    let userRole = rol || 'cliente';
+    if (location.pathname.startsWith('/piloto')) userRole = 'piloto';
+    else if (location.pathname.startsWith('/admin')) userRole = 'admin';
+    else if (location.pathname.startsWith('/tecnico')) userRole = 'tecnico';
 
-    const basePath = userRole === 'admin' ? '/admin' : '/cliente';
-    const isDashboard = location.pathname.startsWith('/cliente') || location.pathname.startsWith('/admin') || location.pathname.startsWith('/dashboard');
+    const basePath = userRole === 'admin' ? '/admin' : userRole === 'piloto' ? '/piloto' : userRole === 'tecnico' ? '/tecnico' : '/cliente';
+    const isDashboard = location.pathname.startsWith('/cliente') || location.pathname.startsWith('/admin') || location.pathname.startsWith('/piloto') || location.pathname.startsWith('/tecnico') || location.pathname.startsWith('/dashboard');
     const isLanding = location.pathname === '/';
 
     const isLight = theme === 'light';
@@ -97,7 +96,6 @@ const Navbar = () => {
 
     return (
         <nav className="navbar">
-            {/* Logo */}
             <Link to={isDashboard ? basePath : "/"} style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none' }}>
                 <div style={{ background: 'var(--color-primary)', padding: '8px', borderRadius: '8px', color: 'var(--white)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <Drone size={24} />
@@ -169,6 +167,23 @@ const Navbar = () => {
                                             </Link>
                                         </>
                                     )}
+
+                                    {userRole === 'piloto' && (
+                                        <>
+                                            <Link to={`${basePath}/misiones`} style={linkStyle(`${basePath}/misiones`)} onClick={() => setIsServicesOpen(false)} onMouseEnter={() => setHoveredPath(`${basePath}/misiones`)} onMouseLeave={() => setHoveredPath(null)}>
+                                                <Navigation size={16} /> Mis Misiones
+                                            </Link>
+                                            <Link to={`${basePath}/bitacora`} style={linkStyle(`${basePath}/bitacora`)} onClick={() => setIsServicesOpen(false)} onMouseEnter={() => setHoveredPath(`${basePath}/bitacora`)} onMouseLeave={() => setHoveredPath(null)}>
+                                                <FileText size={16} /> Bitácora
+                                            </Link>
+                                            <Link to={`${basePath}/facturacion`} style={linkStyle(`${basePath}/facturacion`)} onClick={() => setIsServicesOpen(false)} onMouseEnter={() => setHoveredPath(`${basePath}/facturacion`)} onMouseLeave={() => setHoveredPath(null)}>
+                                                <CreditCard size={16} /> Facturación
+                                            </Link>
+                                            <Link to={`${basePath}/historial`} style={linkStyle(`${basePath}/historial`)} onClick={() => setIsServicesOpen(false)} onMouseEnter={() => setHoveredPath(`${basePath}/historial`)} onMouseLeave={() => setHoveredPath(null)}>
+                                                <Shield size={16} /> Calificaciones
+                                            </Link>
+                                        </>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -187,7 +202,6 @@ const Navbar = () => {
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                 
-                {/* Botón de cambio de tema PROFESIONAL */}
                 <button
                     onClick={toggleTheme}
                     onMouseEnter={() => setIsThemeHovered(true)}
@@ -201,7 +215,6 @@ const Navbar = () => {
                         justifyContent: 'center',
                         cursor: 'pointer',
                         transition: 'all 0.2s ease',
-                        // Usa los mismos colores del botón de usuario para mantener simetría
                         background: isThemeHovered ? 'rgba(4, 201, 166, 0.05)' : 'var(--bg-color)',
                         border: isThemeHovered ? '1px solid var(--color-primary)' : '1px solid var(--light-gray)',
                         color: isThemeHovered ? 'var(--color-primary)' : 'var(--color-dark)',
@@ -246,7 +259,7 @@ const Navbar = () => {
                                     </Link>
                                     <hr style={{ border: 'none', borderTop: '1px solid var(--light-gray)', margin: '5px 0' }} />
                                     <button
-                                         onClick={() => { setIsUserOpen(false); cerrarSesion(); navigate('/login'); }}
+                                        onClick={() => { setIsUserOpen(false); cerrarSesion(); navigate('/login'); }}
                                         style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'none', border: 'none', padding: '10px 16px', fontSize: '14px', fontWeight: '600', color: 'var(--color-danger)', cursor: 'pointer', borderRadius: '8px', textAlign: 'left', width: '100%', transition: 'all 0.2s' }}
                                         onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(240, 37, 88, 0.05)'}
                                         onMouseLeave={(e) => e.currentTarget.style.background = 'none'}

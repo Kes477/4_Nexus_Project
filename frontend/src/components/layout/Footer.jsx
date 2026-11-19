@@ -54,7 +54,7 @@ const Footer = () => {
                 <div>
                     <h4 style={{ color: 'var(--color-dark)', fontSize: '15px', marginBottom: '20px' }}>Contacto</h4>
                     <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '15px', color: 'var(--text-light)', fontSize: '13px' }}>
-                        <li style={{ display: 'flex', alignItems: 'center', gap: '10px' }}><Phone size={16} /> +504 9999-0000</li>
+                        <li style={{ display: 'flex', alignItems: 'center', gap: '10px' }}><Phone size={16} /> +504 9595-2026</li>
                         <li style={{ display: 'flex', alignItems: 'center', gap: '10px' }}><Mail size={16} /> soporte@4nexus.com</li>
                         <li style={{ display: 'flex', alignItems: 'center', gap: '10px' }}><MapPin size={16} /> Tegucigalpa, Honduras</li>
                     </ul>
