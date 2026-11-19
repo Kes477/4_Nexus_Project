@@ -208,7 +208,7 @@ const FormularioContacto = () => {
                                 </div>
                                 <div>
                                     <span style={{ display: 'block', fontSize: '11px', color: 'var(--light-gray)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '2px' }}>Llámanos</span>
-                                    <span style={{ fontSize: '14px', fontWeight: '500' }}>+504 9999-0000</span>
+                                    <span style={{ fontSize: '14px', fontWeight: '500' }}>+504 9595-2026</span>
                                 </div>
                             </div>
 

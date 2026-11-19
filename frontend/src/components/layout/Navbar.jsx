@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Drone, ChevronDown, User, LogOut, LayoutDashboard, FileText, CreditCard, Plane, MessageSquare, Shield, Navigation, Sun, Moon } from 'lucide-react';
 import { Button } from '../ui';
 import { useSesion } from '../../hooks/useSesion';
-import { useTheme } from '../../context/ThemeContext'; 
+import { useTheme } from '../../context/useTheme'; 
 
 const Navbar = () => {
     const location = useLocation();
@@ -16,7 +16,6 @@ const Navbar = () => {
     const { theme, toggleTheme } = useTheme();
     const { usuario, rol, cerrarSesion } = useSesion();
     
-    // 👇 SOLUCIÓN: Forzamos el rol basándonos en la URL actual
     let userRole = rol || 'cliente';
     if (location.pathname.startsWith('/piloto')) userRole = 'piloto';
     else if (location.pathname.startsWith('/admin')) userRole = 'admin';

@@ -48,6 +48,15 @@ const adaptSuscripcionToService = (sub, idx) => ({
     features: ['Soporte técnico', 'Acceso a plataforma', 'Reportes mensuales'],
 });
 
+// URLs para la galería automática del Hero
+const HERO_IMAGES = [
+    "https://storage.googleapis.com/cursopractica-imagenes-2026/img_drones/Autel_EVO_II_Pro_V3_4_3.png",
+    "https://storage.googleapis.com/cursopractica-imagenes-2026/img_drones/Autel_EVO_Nano%2B_4_3.png",
+    "https://storage.googleapis.com/cursopractica-imagenes-2026/img_drones/DJI_Air_3_4_3.png",
+    "https://storage.googleapis.com/cursopractica-imagenes-2026/img_drones/DJI_Inspire_3_4_3.png",
+    "https://storage.googleapis.com/cursopractica-imagenes-2026/img_drones/DJI_Mavic_Air_2S_4_3.png"
+];
+
 const scrollAnchorStyle = { scrollMarginTop: '80px' };
 const paddingLarge = { padding: '120px 20px', width: '100%' };
 const paddingCatalog = { padding: '20px 20px', width: '100%' };
@@ -56,56 +65,95 @@ const containerStyle = { maxWidth: '1400px', margin: '0 auto', padding: '0 20px'
 const titleStyle = { fontSize: '36px', color: 'var(--color-dark)', lineHeight: '1.2', marginBottom: '20px' };
 const subtitleStyle = { color: 'var(--text-light)', fontSize: '18px', marginBottom: '30px' };
 
-const HeroSection = ({ onSolicitar, onExplorarEquipos }) => (
-    <section id="inicio" style={{ ...paddingLarge, background: 'var(--white)', ...scrollAnchorStyle }}>
-        <div style={{ ...containerStyle, display: 'flex', flexWrap: 'wrap', gap: '50px', alignItems: 'center' }}>
-            <div style={{ flex: '1 1 500px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', marginBottom: '15px' }}>
-                    <span style={{ color: 'var(--text-light)', fontSize: '13px', letterSpacing: '1.5px', fontWeight: 'bold' }}>
-                        CENTRO DE INGENIERÍA Y SOPORTE AÉREO
-                    </span>
-                </div>
-                <h1 style={titleStyle}>
-                    La tecnología vuela. <br />
-                    <span style={{ color: 'var(--color-primary)' }}>Nosotros la mantenemos.</span>
-                </h1>
-                <p style={{ ...subtitleStyle, maxWidth: '550px' }}>
-                    Soluciones técnicas para drones profesionales. Diagnóstico, mantenimiento especializado y equipos para llevar cada operación más lejos.
-                </p>
-                <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', marginTop: '40px' }}>
-                    <Button variant="primary" onClick={onSolicitar}>Enviar una consulta</Button>
-                    <Button variant="outline-dark" onClick={onExplorarEquipos}>Explorar equipos</Button>
-                </div>
-            </div>
+const HeroSection = ({ onSolicitar, onExplorarEquipos }) => {
+    const [currentImage, setCurrentImage] = useState(0);
 
-            <div style={{ flex: '1 1 500px', position: 'relative' }}>
-                <img
-                    src="https://images.unsplash.com/photo-1508614589041-895b88991e3e?q=80&w=800&auto=format&fit=crop"
-                    alt="Dron"
-                    style={{ width: '100%', height: '450px', objectFit: 'cover', borderRadius: '16px', boxShadow: '0 20px 40px rgba(0,0,0,0.1)' }}
-                />
-                <div className="floating-card" style={{ top: '30px', left: '-20px' }}>
-                    <div style={{ background: 'var(--bg-color)', padding: '10px', borderRadius: '8px' }}>
-                        <Wrench size={20} color="var(--color-primary)" />
+    useEffect(() => {
+        // Cambiar de imagen cada 3.5 segundos
+        const interval = setInterval(() => {
+            setCurrentImage((prev) => (prev + 1) % HERO_IMAGES.length);
+        }, 3500);
+        return () => clearInterval(interval);
+    }, []);
+
+    return (
+        <section id="inicio" style={{ ...paddingLarge, background: 'var(--white)', ...scrollAnchorStyle }}>
+            <div style={{ ...containerStyle, display: 'flex', flexWrap: 'wrap', gap: '50px', alignItems: 'center' }}>
+                <div style={{ flex: '1 1 500px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '15px' }}>
+                        <span style={{ color: 'var(--text-light)', fontSize: '13px', letterSpacing: '1.5px', fontWeight: 'bold' }}>
+                            CENTRO DE INGENIERÍA Y SOPORTE AÉREO
+                        </span>
                     </div>
-                    <div>
-                        <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-light)', fontWeight: 'bold' }}>ENFOQUE</span>
-                        <span style={{ display: 'block', color: 'var(--color-dark)', fontWeight: 'bold', fontSize: '14px' }}>Precisión técnica</span>
+                    <h1 style={titleStyle}>
+                        La tecnología vuela. <br />
+                        <span style={{ color: 'var(--color-primary)' }}>Nosotros la mantenemos.</span>
+                    </h1>
+                    <p style={{ ...subtitleStyle, maxWidth: '550px' }}>
+                        Soluciones técnicas para drones profesionales. Diagnóstico, mantenimiento especializado y equipos para llevar cada operación más lejos.
+                    </p>
+                    <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', marginTop: '40px' }}>
+                        <Button variant="primary" onClick={onSolicitar}>Enviar una consulta</Button>
+                        <Button variant="outline-dark" onClick={onExplorarEquipos}>Explorar equipos</Button>
                     </div>
                 </div>
-                <div className="floating-card" style={{ bottom: '30px', right: '-20px' }}>
-                    <div style={{ background: 'var(--bg-color)', padding: '10px', borderRadius: '8px' }}>
-                        <Cpu size={20} color="var(--color-primary)" />
+
+                <div style={{ flex: '1 1 500px', position: 'relative' }}>
+                    
+                    {/* GALERÍA AUTOMÁTICA */}
+                    <div style={{ 
+                        width: '100%', 
+                        height: '450px', 
+                        borderRadius: '16px', 
+                        boxShadow: '0 20px 40px rgba(0,0,0,0.1)', 
+                        position: 'relative', 
+                        overflow: 'hidden',
+                        backgroundColor: 'var(--bg-color)' // Fondo por si las imágenes tienen transparencias
+                    }}>
+                        {HERO_IMAGES.map((img, index) => (
+                            <img
+                                key={index}
+                                src={img}
+                                alt={`Dron ${index + 1}`}
+                                style={{
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: 0,
+                                    width: '100%',
+                                    height: '100%',
+                                    objectFit: 'cover',
+                                    opacity: currentImage === index ? 1 : 0,
+                                    transition: 'opacity 1s ease-in-out',
+                                    zIndex: currentImage === index ? 1 : 0,
+                                }}
+                            />
+                        ))}
                     </div>
-                    <div>
-                        <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-light)', fontWeight: 'bold' }}>ESPECIALIDAD</span>
-                        <span style={{ display: 'block', color: 'var(--color-dark)', fontWeight: 'bold', fontSize: '14px' }}>Sistemas aéreos</span>
+
+                    {/* Tarjetas Flotantes (Z-index para que estén por encima de las imágenes) */}
+                    <div className="floating-card" style={{ top: '30px', left: '-20px', zIndex: 10 }}>
+                        <div style={{ background: 'var(--bg-color)', padding: '10px', borderRadius: '8px' }}>
+                            <Wrench size={20} color="var(--color-primary)" />
+                        </div>
+                        <div>
+                            <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-light)', fontWeight: 'bold' }}>ENFOQUE</span>
+                            <span style={{ display: 'block', color: 'var(--color-dark)', fontWeight: 'bold', fontSize: '14px' }}>Precisión técnica</span>
+                        </div>
+                    </div>
+                    <div className="floating-card" style={{ bottom: '30px', right: '-20px', zIndex: 10 }}>
+                        <div style={{ background: 'var(--bg-color)', padding: '10px', borderRadius: '8px' }}>
+                            <Cpu size={20} color="var(--color-primary)" />
+                        </div>
+                        <div>
+                            <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-light)', fontWeight: 'bold' }}>ESPECIALIDAD</span>
+                            <span style={{ display: 'block', color: 'var(--color-dark)', fontWeight: 'bold', fontSize: '14px' }}>Sistemas aéreos</span>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-    </section>
-);
+        </section>
+    );
+};
 
 const AboutSection = () => (
     <section id="nosotros" style={{ ...paddingLarge, background: 'var(--bg-color)', borderTop: '1px solid var(--light-gray)', ...scrollAnchorStyle }}>

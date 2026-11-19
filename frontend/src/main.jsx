@@ -3,13 +3,12 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App.jsx';
 import { AuthProvider } from './context/AuthProvider.jsx';
-import { ThemeProvider } from './context/ThemeContext.jsx'; // 1. Importamos el proveedor del tema
-import './index.css'; // Asegúrate de que aquí esté el CSS que te pasé
+import { ThemeProvider } from './context/ThemeProvider.jsx';
+import './index.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter>
-      {/* 2. Envolvemos la app con el ThemeProvider */}
       <ThemeProvider>
         <AuthProvider>
           <App />
