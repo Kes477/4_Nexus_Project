@@ -1,13 +1,21 @@
 import { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { Layers, Navigation, Wrench, Shield, ChevronLeft, ArrowRight, Check, Home, FileText } from 'lucide-react';
+import { Shield, ChevronLeft, ArrowRight, Check, Home, FileText } from 'lucide-react';
 import { Input, Button, Alert, IconButton, Checkbox, Modal } from '../components/ui';
 import { useSesion } from '../hooks/useSesion';
+
+const PANEL_POR_ROL = {
+    admin: '/admin',
+    piloto: '/piloto',
+    tecnico: '/tecnico',
+    vendedor: '/vendedor',
+
+};
 
 const Login = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    const { iniciarSesion } = useSesion();
+    const { iniciarSesion, registrarse } = useSesion();
 
     const redirectTo = location.state?.from || '/cliente';
     const loginMessage = location.state?.message;
@@ -22,9 +30,6 @@ const Login = () => {
     const [termsAccepted, setTermsAccepted] = useState(false);
     const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
 
-    const [selectedRole, setSelectedRole] = useState('cliente');
-    const [recoverMethod, setRecoverMethod] = useState('email');
-
     const [mostrarPassword, setMostrarPassword] = useState(false);
     const [mostrarConfirmarPassword, setMostrarConfirmarPassword] = useState(false);
 
@@ -36,7 +41,17 @@ const Login = () => {
     const [telefono, setTelefono] = useState('');
     const [identificacion, setIdentificacion] = useState('');
 
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+
+    const irAlPanel = (usuario) => {
+        const destino = PANEL_POR_ROL[usuario.rol] ?? redirectTo;
+
+        navigate(destino, {
+            replace: true,
+            state: location.state?.selectedDrone
+                ? { selectedDrone: location.state.selectedDrone }
+                : undefined,
+        });
+    };
 
     const submitLogin = async (e) => {
         if (e) e.preventDefault();
@@ -45,38 +60,7 @@ const Login = () => {
 
         try {
             const usuario = await iniciarSesion(email, password);
-            
-            let rolBackend = (usuario?.role || usuario?.rol || usuario?.rol_nombre || '').toLowerCase();
-
-            // Solución provisional si el backend no envía el rol
-            if (email.toLowerCase().includes('piloto') && (!rolBackend || rolBackend === 'cliente')) {
-                rolBackend = 'piloto';
-            }
-
-            let destino = '/cliente';
-
-            if (usuario.is_staff || rolBackend === 'admin' || rolBackend === 'administrador') {
-                destino = '/admin';
-            } else if (rolBackend === 'piloto') {
-                destino = '/piloto';
-            } else if (rolBackend === 'tecnico' || rolBackend === 'técnico') {
-                destino = '/tecnico';
-            } else if (rolBackend === 'cliente') {
-                destino = '/cliente';
-            } else if (rolBackend === 'vendedor') {
-                destino = '/vendedor';
-            } else if (location.state?.from) {
-                destino = location.state.from;
-            }
-
-            localStorage.setItem('user_role', rolBackend || 'cliente');
-
-            navigate(destino, {
-                replace: true,
-                state: location.state?.selectedDrone
-                    ? { selectedDrone: location.state.selectedDrone }
-                    : undefined,
-            });
+            irAlPanel(usuario);
         } catch (error) {
             if (error.response?.status === 401) {
                 setErrorMsg('Correo o contraseña incorrectos.');
@@ -106,30 +90,23 @@ const Login = () => {
 
                 setIsLoading(true);
                 try {
-                    const response = await fetch(`${API_URL}/auth/registro/`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            email,
-                            password,
-                            first_name: nombres,
-                            last_name: apellidos,
-                            no_identificacion: identificacion,
-                            telefono,
-                            role: selectedRole
-                        })
+                    const usuario = await registrarse({
+                        email,
+                        password,
+                        first_name: nombres,
+                        last_name: apellidos,
+                        no_identificacion: identificacion,
+                        telefono,
                     });
-
-                    const data = await response.json();
-
-                    if (!response.ok) {
-                        const msg = data.email ? data.email[0] : data.no_identificacion ? data.no_identificacion[0] : "Error al registrar.";
-                        throw new Error(msg);
-                    }
-
-                    setStep('success');
+                    irAlPanel(usuario);
                 } catch (error) {
-                    setErrorMsg(error.message);
+                    const errores = error.response?.data;
+                    if (!errores) {
+                        setErrorMsg('No se pudo conectar con el servidor. Intenta de nuevo.');
+                    } else {
+                        const primerCampo = Object.keys(errores)[0];
+                        setErrorMsg([].concat(errores[primerCampo])[0]);
+                    }
                 } finally {
                     setIsLoading(false);
                 }
@@ -139,20 +116,6 @@ const Login = () => {
         }
     };
 
-    const roles = [
-        { key: 'cliente', label: 'Cliente', icon: <Layers size={14} /> },
-        { key: 'piloto', label: 'Piloto', icon: <Navigation size={14} /> },
-        { key: 'tecnico', label: 'Técnico', icon: <Wrench size={14} /> },
-        { key: 'admin', label: 'Admin', icon: <Shield size={14} /> },
-    ];
-
-    const getIdentificacionConfig = () => {
-        switch (selectedRole) {
-            case 'piloto': return { label: 'Licencia de Piloto', icon: "fa-id-card" };
-            case 'admin': return { label: 'Clave de Empresa', icon: "fa-key" };
-            default: return { label: 'Identificación (DNI / RTN)', icon: "fa-id-card" };
-        }
-    };
 
     const labelStyle = { fontSize: '11px', fontWeight: '700', color: 'var(--text-light)', marginBottom: '6px', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' };
     const toggleEyeStyle = { position: 'absolute', right: '15px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-light)', zIndex: 10 };
@@ -205,6 +168,11 @@ const Login = () => {
                     )}
 
                     <div className="hide-scrollbar" style={{ padding: '24px 32px', flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', overflowY: 'auto' }}>
+                        {loginMessage && step ==='login' && !errorMsg &&(
+                            <div style={{ width: '100%', maxWidth: '360px', marginBottom: '16px' }} >
+                                <Alert type='info' title = 'Aviso' message={loginMessage}/>
+                            </div>    
+                        )}
                         {errorMsg && (
                             <div style={{ width: '100%', maxWidth: '360px', marginBottom: '16px' }}>
                                 <Alert type="danger" title="Atención" message={errorMsg} onClose={() => setErrorMsg(null)} />
@@ -266,36 +234,6 @@ const Login = () => {
                                 {regSubStep === 2 && (
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                         <div>
-                                            <label style={labelStyle}>Selecciona tu rol</label>
-                                            <div style={{ display: 'flex', gap: '4px' }}>
-                                                {roles.map((r) => (
-                                                    <button 
-                                                        key={r.key} 
-                                                        type="button" 
-                                                        onClick={() => setSelectedRole(r.key)} 
-                                                        style={{ 
-                                                            flex: 1,
-                                                            display: 'flex', 
-                                                            alignItems: 'center', 
-                                                            justifyContent: 'center',
-                                                            gap: '4px', 
-                                                            padding: '8px 2px', 
-                                                            fontSize: '11px', 
-                                                            fontWeight: 'bold', 
-                                                            borderRadius: '8px', 
-                                                            border: `2px solid ${selectedRole === r.key ? 'var(--color-primary)' : 'var(--light-gray)'}`, 
-                                                            cursor: 'pointer', 
-                                                            background: selectedRole === r.key ? 'rgba(4, 201, 166, 0.05)' : 'transparent', 
-                                                            color: selectedRole === r.key ? 'var(--color-primary)' : 'var(--text-light)' 
-                                                        }}
-                                                    >
-                                                        {r.icon} {r.label}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
-
-                                        <div>
                                             <label style={labelStyle}>Nombre</label>
                                             <Input type="text" icon="fa-user" value={nombres} onChange={(e) => setNombres(e.target.value)} />
                                         </div>
@@ -309,8 +247,8 @@ const Login = () => {
                                             <Input type="tel" icon="fa-phone" value={telefono} onChange={(e) => setTelefono(e.target.value)} />
                                         </div>
                                         <div>
-                                            <label style={labelStyle}>{getIdentificacionConfig().label}</label>
-                                            <Input type="text" icon={getIdentificacionConfig().icon} value={identificacion} onChange={(e) => setIdentificacion(e.target.value)} />
+                                            <label style={labelStyle}>Identificación (DNI / RTN)</label>
+                                            <Input type="text" icon="fa-id-card" value={identificacion} onChange={(e) => setIdentificacion(e.target.value)} />
                                         </div>
                                     </div>
                                 )}
