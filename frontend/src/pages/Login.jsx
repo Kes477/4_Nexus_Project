@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { Shield, ChevronLeft, ArrowRight, Check, Home, FileText } from 'lucide-react';
+import { Shield, ChevronLeft, ArrowRight, Check } from 'lucide-react';
+
 import { Input, Button, Alert, IconButton, Checkbox, Modal } from '../components/ui';
 import { useSesion } from '../hooks/useSesion';
 
@@ -19,16 +20,15 @@ const Login = () => {
 
     const redirectTo = location.state?.from || '/cliente';
     const loginMessage = location.state?.message;
-
     const [step, setStep] = useState('login');
     const [regSubStep, setRegSubStep] = useState(1);
     const [isLoading, setIsLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState(null);
     const [rememberMe, setRememberMe] = useState(false);
 
-    // Estados para Términos y Condiciones
     const [termsAccepted, setTermsAccepted] = useState(false);
     const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
+
 
     const [mostrarPassword, setMostrarPassword] = useState(false);
     const [mostrarConfirmarPassword, setMostrarConfirmarPassword] = useState(false);
@@ -358,7 +358,6 @@ const Login = () => {
                 </div>
             </div>
 
-            {/* MODAL DE TÉRMINOS Y CONDICIONES */}
             <Modal 
                 isOpen={isTermsModalOpen} 
                 onClose={() => setIsTermsModalOpen(false)} 

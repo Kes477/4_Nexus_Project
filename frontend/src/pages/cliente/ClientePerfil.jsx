@@ -348,7 +348,7 @@ export default function ClientePerfil({ onLogout }) {
                 placeholder="Dejar en blanco para no cambiar" 
                 icon="fa-lock" 
               />
-              {/* 👈 BOTÓN DEL OJO AÑADIDO AQUÍ */}
+              {/* BOTÓN DEL OJO PARA MOSTRAR/OCULTAR CONTRASEÑA */}
               <button 
                 type="button" 
                 onClick={() => setShowPassword(!showPassword)} 

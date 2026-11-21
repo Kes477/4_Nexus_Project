@@ -1,5 +1,5 @@
 const ProgressBar = ({ current, max, markerPosition }) => {
-    const percentage = Math.min((current / max) * 100, 100); // Evita pasar del 100%
+    const percentage = Math.min((current / max) * 100, 100);
     
     return (
         <div className="progress-container">
