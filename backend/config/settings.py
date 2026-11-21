@@ -55,10 +55,11 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'corsheaders',
     'django_filters',
-    # Aplicaciones dep Proyecto
+    # Aplicaciones del Proyecto
     'usuarios',
     'catalogo',
     'inventario',
+    'pilotos',
     'reparaciones',
 ]
 
