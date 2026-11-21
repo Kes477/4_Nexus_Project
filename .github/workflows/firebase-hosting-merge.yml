@@ -12,7 +12,7 @@ jobs:
       - run: npm ci && npm run build
         working-directory: ./frontend
         env:
-        VITE_API_URL: https://servicioci-37470965322.us-central1.run.app
+        VITE_API_URL: https://servicioci-37470965322.us-central1.run.app/api
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
