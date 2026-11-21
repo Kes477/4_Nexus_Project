@@ -1,19 +1,18 @@
 import { useEffect, useState } from "react";
 import { getPerfil, loginUser, logout } from "../api/authService";
-import { AuthContext} from "./authContext";
+import { AuthContext } from "./authContext";
 
-
-export function AuthProvider({children}){
+export function AuthProvider({ children }) {
     const [usuario, setUsuario] = useState(null);
-    const [cargando, setCargando] =  useState(()=> Boolean(localStorage.getItem('access_token')));
+    const [cargando, setCargando] = useState(() => Boolean(localStorage.getItem('access_token')));
 
-    useEffect(()=> {
+    useEffect(() => {
         if (!localStorage.getItem('access_token')) return;
 
         getPerfil()
-            .then((datos)=> setUsuario(datos))
-            .catch(()=>logout())
-            .finally(()=>setCargando(false));
+            .then((datos) => setUsuario(datos))
+            .catch(() => logout())
+            .finally(() => setCargando(false));
     }, []);
 
     async function iniciarSesion(email, password) {
@@ -22,17 +21,25 @@ export function AuthProvider({children}){
         return datos;        
     }
 
-    function cerrarSesion(){
+    function cerrarSesion() {
         logout();
         setUsuario(null);
     }
 
-    const rol = usuario ? (usuario.is_staff ? 'admin':'cliente'): null;
+    let rol = null;
+    if (usuario) {
+        if (usuario.is_staff) {
+            rol = 'admin';
+        } else if (usuario.role || usuario.rol) {
+            rol = (usuario.role || usuario.rol).toLowerCase();
+        } else {
+            rol = localStorage.getItem('user_role') || 'cliente';
+        }
+    }
 
-    return(
-        <AuthContext.Provider value={{usuario, rol, cargando, iniciarSesion, cerrarSesion}}>
+    return (
+        <AuthContext.Provider value={{ usuario, rol, cargando, iniciarSesion, cerrarSesion }}>
             {children}
         </AuthContext.Provider>
-
-    )
+    );
 }
