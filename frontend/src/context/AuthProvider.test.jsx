@@ -1,36 +1,49 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, act } from "@testing-library/react";
-import { useContext } from "react";
+import { useContext, useEffect } from "react";
 import { AuthProvider } from "./AuthProvider";
 import { AuthContext } from "./authContext";
-import { getPerfil, loginUser, logout } from "../api/authService";
+import { getPerfil, loginUser, logout, registerUser } from "../api/authService";
 
 // Simular las funciones de la API
 vi.mock("../api/authService", () => ({
   getPerfil: vi.fn(),
   loginUser: vi.fn(),
   logout: vi.fn(),
+  registerUser: vi.fn(),
 }));
 
 // Componente auxiliar para consultar el contexto
 let contextoActual;
 
 function ConsumidorPrueba() {
-  contextoActual = useContext(AuthContext);
+  const contexto = useContext(AuthContext);
+
+  useEffect(()=>{
+    contextoActual = contexto;
+  });
 
   return (
     <div>
       <span data-testid="usuario">
-        {contextoActual.usuario?.email ?? "Sin usuario"}
+        {contexto.usuario?.email ?? "Sin usuario"}
       </span>
       <span data-testid="rol">
-        {contextoActual.rol ?? "Sin rol"}
+        {contexto.rol ?? "Sin rol"}
       </span>
       <span data-testid="cargando">
-        {String(contextoActual.cargando)}
+        {String(contexto.cargando)}
       </span>
     </div>
+  );
+}
+
+function renderizar(){
+  render(
+    <AuthProvider>
+      <ConsumidorPrueba/>
+    </AuthProvider>
   );
 }
 
@@ -42,11 +55,7 @@ describe("AuthProvider", () => {
   });
 
   it("1. Inicializa sin usuario cuando no existe token", () => {
-    render(
-      <AuthProvider>
-        <ConsumidorPrueba />
-      </AuthProvider>
-    );
+    renderizar();
 
     expect(screen.getByTestId("usuario")).toHaveTextContent("Sin usuario");
     expect(screen.getByTestId("rol")).toHaveTextContent("Sin rol");
@@ -60,13 +69,10 @@ describe("AuthProvider", () => {
     getPerfil.mockResolvedValue({
       email: "cliente@test.com",
       is_staff: false,
+      rol: 'cliente', 
     });
 
-    render(
-      <AuthProvider>
-        <ConsumidorPrueba />
-      </AuthProvider>
-    );
+    renderizar();
 
     expect(screen.getByTestId("cargando")).toHaveTextContent("true");
 
@@ -83,15 +89,12 @@ describe("AuthProvider", () => {
     const usuario = {
       email: "cliente@test.com",
       is_staff: false,
+      rol:'cliente',
     };
 
     loginUser.mockResolvedValue(usuario);
 
-    render(
-      <AuthProvider>
-        <ConsumidorPrueba />
-      </AuthProvider>
-    );
+    renderizar();
 
     let resultado;
 
@@ -106,6 +109,7 @@ describe("AuthProvider", () => {
       "cliente@test.com",
       "password123"
     );
+   
     expect(resultado).toEqual(usuario);
     expect(screen.getByTestId("usuario")).toHaveTextContent("cliente@test.com");
     expect(screen.getByTestId("rol")).toHaveTextContent("cliente");
@@ -115,13 +119,10 @@ describe("AuthProvider", () => {
     loginUser.mockResolvedValue({
       email: "admin@test.com",
       is_staff: true,
+      rol:'admin',
     });
 
-    render(
-      <AuthProvider>
-        <ConsumidorPrueba />
-      </AuthProvider>
-    );
+    renderizar();
 
     await act(async () => {
       await contextoActual.iniciarSesion("admin@test.com", "password123");
@@ -134,13 +135,10 @@ describe("AuthProvider", () => {
     loginUser.mockResolvedValue({
       email: "cliente@test.com",
       is_staff: false,
+      rol:'cliente',
     });
 
-    render(
-      <AuthProvider>
-        <ConsumidorPrueba />
-      </AuthProvider>
-    );
+    renderizar();
 
     await act(async () => {
       await contextoActual.iniciarSesion("cliente@test.com", "password123");
@@ -160,11 +158,7 @@ describe("AuthProvider", () => {
 
     getPerfil.mockRejectedValue(new Error("Token inválido"));
 
-    render(
-      <AuthProvider>
-        <ConsumidorPrueba />
-      </AuthProvider>
-    );
+    renderizar();
 
     await waitFor(() => {
       expect(logout).toHaveBeenCalledOnce();
@@ -172,5 +166,35 @@ describe("AuthProvider", () => {
     });
 
     expect(screen.getByTestId("usuario")).toHaveTextContent("Sin usuario");
+  });
+
+  it("7 un piloto recibe un rol desde el backend", async () => {
+    loginUser.mockResolvedValue({
+      email: "piloto@test.com",
+      is_staff: false,
+      rol:'piloto',
+    });
+
+    renderizar();
+
+    await act(async() => {
+      await contextoActual.iniciarSesion('piloto@test.com','password123');
+    });
+
+    expect(screen.getByTestId('rol')).toHaveTextContent('piloto');
+  });
+
+  it("8 Registrarse deja la sesion iniciada como cliente", async () =>{
+    const datos = {email:'nuevo@test.com',password:'Drones-2026!'}
+    registerUser.mockResolvedValue({email:'nuevo@test.com', rol:'cliente'});
+
+    renderizar();
+
+    await act(async () => {
+      await contextoActual.registrarse(datos);
+    });
+    expect(registerUser).toHaveBeenCalledWith(datos);
+    expect(screen.getByTestId('usuario')).toHaveTextContent('nuevo@test.com');
+    expect(screen.getByTestId('rol')).toHaveTextContent('cliente');
   });
 });

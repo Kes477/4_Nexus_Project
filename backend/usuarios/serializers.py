@@ -1,12 +1,17 @@
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db import transaction
 
-from .models import Usuario
+from .models import Usuario, PerfilCliente
 
 class UsuarioSerializer(serializers.ModelSerializer):
+    rol = serializers.CharField(read_only = True)
+
     class Meta:
         model = Usuario
-        fields = ['id','email', 'first_name', 'last_name','no_identificacion', 'telefono', 'is_staff']
+        fields = ['id','email', 'first_name', 'last_name','no_identificacion', 'telefono', 'is_staff', 'rol']
         read_only_fields = ['is_staff']
 
 
@@ -16,36 +21,28 @@ class LoginSerializer(TokenObtainPairSerializer):
         data['usuario'] = UsuarioSerializer(self.user).data
         return data
     
-from .models import Usuario, PerfilCliente, Piloto, Tecnico
-
+    
 class RegistroSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True)
-    role = serializers.CharField(write_only=True, required=False, default='cliente')
+    """Registro público: solo crea CLIENTES.
+    Administradores, pilotos y técnicos los crea un administrador."""
+
+    password = serializers.CharField(write_only=True, style={'input_type': 'password'})
 
     class Meta:
         model = Usuario
-        fields = ['email', 'password', 'first_name', 'last_name', 'no_identificacion', 'telefono', 'role']
+        fields = ['email', 'password', 'first_name', 'last_name',
+                  'no_identificacion', 'telefono']
 
+    def validate(self, attrs):
+        usuario_temporal = Usuario(**{k: v for k, v in attrs.items() if k != 'password'})
+        try:
+            validate_password(attrs['password'], user=usuario_temporal)
+        except DjangoValidationError as error:
+            raise serializers.ValidationError({'password': list(error.messages)})
+        return attrs
+
+    @transaction.atomic
     def create(self, validated_data):
-        role = validated_data.pop('role', 'cliente')
-        password = validated_data.pop('password')
-        
-        # Crear el usuario
-        user = Usuario(**validated_data)
-        user.set_password(password)
-        user.save()
-
-        # Crear perfil según el rol seleccionado
-        if role == 'cliente':
-            PerfilCliente.objects.create(usuario=user)
-        elif role == 'piloto':
-            # Usamos la identificación como número de licencia
-            Piloto.objects.create(usuario=user, numero_licencia_aeronautica=user.no_identificacion, horas_vuelo_acumuladas=0)
-        elif role == 'tecnico':
-            Tecnico.objects.create(usuario=user, especialidad_tecnica='General')
-        elif role == 'admin':
-            user.is_staff = True
-            user.is_superuser = True
-            user.save()
-
-        return user
+        usuario = Usuario.objects.create_user(**validated_data)
+        PerfilCliente.objects.create(usuario=usuario)
+        return usuario

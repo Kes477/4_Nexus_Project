@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { getPerfil, loginUser, logout } from "../api/authService";
-import { AuthContext } from "./authContext";
+import { getPerfil, loginUser, logout, registerUser } from '../api/authService'; 
+import { AuthContext} from "./authContext";
 
 export function AuthProvider({ children }) {
     const [usuario, setUsuario] = useState(null);
@@ -21,24 +21,22 @@ export function AuthProvider({ children }) {
         return datos;        
     }
 
+    async function registrarse(datosRegistro){
+        const datos = await registerUser(datosRegistro);
+        setUsuario(datos);
+        return datos;
+    }
+
     function cerrarSesion() {
+
         logout();
         setUsuario(null);
     }
 
-    let rol = null;
-    if (usuario) {
-        if (usuario.is_staff) {
-            rol = 'admin';
-        } else if (usuario.role || usuario.rol) {
-            rol = (usuario.role || usuario.rol).toLowerCase();
-        } else {
-            rol = localStorage.getItem('user_role') || 'cliente';
-        }
-    }
+    const rol = usuario?.rol ?? null;    
 
     return (
-        <AuthContext.Provider value={{ usuario, rol, cargando, iniciarSesion, cerrarSesion }}>
+        <AuthContext.Provider value={{ usuario, rol, cargando, iniciarSesion, registrarse, cerrarSesion }}>
             {children}
         </AuthContext.Provider>
     );
