@@ -3,11 +3,41 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from .models import Usuario
 
+
 class UsuarioSerializer(serializers.ModelSerializer):
+    rol = serializers.SerializerMethodField()
+
     class Meta:
         model = Usuario
-        fields = ['id','email', 'first_name', 'last_name','no_identificacion', 'telefono', 'is_staff']
-        read_only_fields = ['is_staff']
+        fields = [
+            'id',
+            'email',
+            'first_name',
+            'last_name',
+            'no_identificacion',
+            'telefono',
+            'is_staff',
+            'rol'
+        ]
+        read_only_fields = ['is_staff', 'rol']
+
+    def get_rol(self, obj):
+        if obj.is_superuser or obj.is_staff:
+            return 'admin'
+
+        if hasattr(obj, 'perfil_tecnico'):
+            return 'tecnico'
+
+        if hasattr(obj, 'perfil_piloto'):
+            return 'piloto'
+
+        if hasattr(obj, 'perfil_vendedor'):
+            return 'vendedor'
+
+        if hasattr(obj, 'perfil_cliente'):
+            return 'cliente'
+
+        return None
 
 
 class LoginSerializer(TokenObtainPairSerializer):

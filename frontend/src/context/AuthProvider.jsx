@@ -27,7 +27,7 @@ export function AuthProvider({children}){
         setUsuario(null);
     }
 
-    const rol = usuario ? (usuario.is_staff ? 'admin':'cliente'): null;
+    const rol = usuario?.rol ?? null;
 
     return(
         <AuthContext.Provider value={{usuario, rol, cargando, iniciarSesion, cerrarSesion}}>
