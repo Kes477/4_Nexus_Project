@@ -737,40 +737,112 @@ class OrdenServicioAPITests(APITestCase):
             []
         )
 
-    def test_usuario_sin_permiso_no_puede_crear_orden(self):
-        Usuario = get_user_model()
 
-        usuario = Usuario.objects.create_user(
-            email='cliente.sinpermiso@example.com',
+    def crear_usuario_hu012(self, numero):
+        return get_user_model().objects.create_user(
+            email=f'hu012.{numero}@example.com',
             password='ClavePrueba123!',
-            no_identificacion='0801199900801',
-            first_name='Carlos',
-            last_name='Lopez'
+            no_identificacion=f'08011999008{numero:02d}',
+            first_name='Usuario',
+            last_name='Prueba'
         )
 
+    def crear_equipo_hu012(self, usuario):
         cliente = PerfilCliente.objects.create(
             usuario=usuario
         )
 
-        equipo = EquipoCliente.objects.create(
+        return EquipoCliente.objects.create(
             cliente=cliente,
             marca='DJI',
             modelo='Mini 4 Pro'
         )
 
-        self.client.force_authenticate(
-            user=usuario
-        )
+    def test_cliente_puede_solicitar_reparacion(self):
+        usuario = self.crear_usuario_hu012(1)
+        equipo = self.crear_equipo_hu012(usuario)
 
-        datos = {
-            'equipo': equipo.id,
-            'descripcion_problema': 'Falla en la cámara',
-            'observaciones': 'El equipo no enfoca correctamente'
-        }
+        self.client.force_authenticate(user=usuario)
 
         respuesta = self.client.post(
             self.url_ordenes,
-            datos,
+            {
+                'equipo': equipo.pk,
+                'descripcion_problema': 'Falla en la camara',
+                'estado': 'ENTREGADA',
+                'tecnico': 999999,
+                'observaciones': 'No autorizada',
+                'fecha_cierre': '2026-11-14T10:00:00Z'
+            },
+            format='json'
+        )
+
+        self.assertEqual(
+            respuesta.status_code,
+            status.HTTP_201_CREATED
+        )
+
+        self.assertEqual(OrdenServicio.objects.count(), 1)
+
+        orden = OrdenServicio.objects.get()
+
+        self.assertEqual(orden.equipo, equipo)
+
+        self.assertEqual(
+            orden.descripcion_problema,
+            'Falla en la camara'
+        )
+
+        self.assertEqual(
+            orden.estado,
+            OrdenServicio.Estado.RECIBIDA
+        )
+
+        self.assertIsNone(orden.tecnico)
+        self.assertIsNone(orden.fecha_cierre)
+        self.assertIsNotNone(orden.fecha_recepcion)
+        self.assertFalse(orden.observaciones)
+
+    def test_cliente_no_puede_solicitar_reparacion_ajena(self):
+        usuario = self.crear_usuario_hu012(2)
+        propietario = self.crear_usuario_hu012(3)
+
+        PerfilCliente.objects.create(usuario=usuario)
+
+        equipo = self.crear_equipo_hu012(propietario)
+
+        self.client.force_authenticate(user=usuario)
+
+        respuesta = self.client.post(
+            self.url_ordenes,
+            {
+                'equipo': equipo.pk,
+                'descripcion_problema': 'Falla del motor'
+            },
+            format='json'
+        )
+
+        self.assertEqual(
+            respuesta.status_code,
+            status.HTTP_400_BAD_REQUEST
+        )
+
+        self.assertIn('equipo', respuesta.data)
+        self.assertEqual(OrdenServicio.objects.count(), 0)
+
+    def test_usuario_sin_perfil_ni_permiso_no_puede_crear_orden(self):
+        usuario = self.crear_usuario_hu012(4)
+        propietario = self.crear_usuario_hu012(5)
+        equipo = self.crear_equipo_hu012(propietario)
+
+        self.client.force_authenticate(user=usuario)
+
+        respuesta = self.client.post(
+            self.url_ordenes,
+            {
+                'equipo': equipo.pk,
+                'descripcion_problema': 'Problema de bateria'
+            },
             format='json'
         )
 
@@ -779,10 +851,63 @@ class OrdenServicioAPITests(APITestCase):
             status.HTTP_403_FORBIDDEN
         )
 
-        self.assertEqual(
-            OrdenServicio.objects.count(),
-            0
+        self.assertEqual(OrdenServicio.objects.count(), 0)
+
+    def test_cliente_no_puede_crear_orden_sin_descripcion(self):
+        usuario = self.crear_usuario_hu012(6)
+        equipo = self.crear_equipo_hu012(usuario)
+
+        self.client.force_authenticate(user=usuario)
+
+        casos = [
+            {'equipo': equipo.pk},
+            {
+                'equipo': equipo.pk,
+                'descripcion_problema': ''
+            },
+            {
+                'equipo': equipo.pk,
+                'descripcion_problema': '   '
+            }
+        ]
+
+        for datos in casos:
+            with self.subTest(datos=datos):
+                respuesta = self.client.post(
+                    self.url_ordenes,
+                    datos,
+                    format='json'
+                )
+
+                self.assertEqual(
+                    respuesta.status_code,
+                    status.HTTP_400_BAD_REQUEST
+                )
+
+                self.assertIn(
+                    'descripcion_problema',
+                    respuesta.data
+                )
+
+        self.assertEqual(OrdenServicio.objects.count(), 0)
+
+    def test_usuario_no_autenticado_no_puede_crear_orden(self):
+        respuesta = self.client.post(
+            self.url_ordenes,
+            {
+                'equipo': 1,
+                'descripcion_problema': 'Falla en la camara'
+            },
+            format='json'
         )
+
+        self.assertEqual(
+            respuesta.status_code,
+            status.HTTP_401_UNAUTHORIZED
+        )
+
+        self.assertEqual(OrdenServicio.objects.count(), 0)
+
 
     def test_usuario_con_permiso_puede_crear_orden(self):
         Usuario = get_user_model()

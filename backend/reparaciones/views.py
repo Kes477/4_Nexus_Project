@@ -81,6 +81,7 @@ from .models import EquipoCliente, OrdenServicio
 from .serializers import (
     EquipoClienteSerializer,
     OrdenServicioSerializer,
+    SolicitudReparacionSerializer,
     AsignarTecnicoSerializer,
     CambiarEstadoSerializer,
 )
@@ -116,24 +117,52 @@ class EquipoClienteViewSet(
     permission_classes = [
         permissions.IsAuthenticated
     ]
-
+    
     def get_queryset(self):
         """
-        Obtiene los equipos del cliente autenticado.
+        Devuelve las ordenes accesibles para el usuario.
 
-        SEGURIDAD:
-            El usuario únicamente puede consultar
-            los equipos asociados a su perfil.
+        HU-013:
+        Optimiza la consulta de equipos, clientes
+        y tecnicos mediante select_related.
         """
 
         usuario = self.request.user
 
-        return EquipoCliente.objects.filter(
-            cliente__usuario=usuario
-        ).select_related(
-            "cliente",
-            "articulo"
+        queryset = OrdenServicio.objects.select_related(
+            "equipo",
+            "equipo__cliente",
+            "equipo__cliente__usuario",
+            "tecnico",
+            "tecnico__usuario"
         )
+
+        # Personal con permiso administrativo de consulta.
+
+        if usuario.has_perm(
+            "reparaciones.view_ordenservicio"
+        ):
+            return queryset.all()
+
+        filtros = Q(pk__in=[])
+
+        # El cliente consulta sus propias ordenes.
+
+        if hasattr(usuario, "perfil_cliente"):
+
+            filtros |= Q(
+                equipo__cliente__usuario=usuario
+            )
+
+        # El tecnico consulta las ordenes asignadas.
+
+        if hasattr(usuario, "perfil_tecnico"):
+
+            filtros |= Q(
+                tecnico__usuario=usuario
+            )
+
+        return queryset.filter(filtros).distinct()
 
     def create(self, request, *args, **kwargs):
         """
@@ -209,16 +238,19 @@ class OrdenServicioViewSet(
 
     def get_permissions(self):
         """
-        Determina los permisos requeridos por cada acción.
-
-        REGLAS:
-            - Crear órdenes requiere permisos del modelo.
-            - Las demás acciones requieren autenticación.
-            - Las operaciones especiales verifican
-              sus propios permisos adicionales.
+        Determina los permisos requeridos por cada accion.
         """
-
         if self.action == "create":
+            usuario = self.request.user
+
+            if (
+                usuario.is_authenticated
+                and hasattr(usuario, "perfil_cliente")
+            ):
+                return [
+                    permissions.IsAuthenticated()
+                ]
+
             return [
                 permissions.IsAuthenticated(),
                 permissions.DjangoModelPermissions()
@@ -228,8 +260,26 @@ class OrdenServicioViewSet(
             permissions.IsAuthenticated()
         ]
 
+    def get_serializer_class(self):
+        """
+        Selecciona el serializer segun el tipo de usuario.
+        """
+        usuario = self.request.user
+
+        if (
+            self.action == "create"
+            and usuario.is_authenticated
+            and hasattr(usuario, "perfil_cliente")
+            and not usuario.has_perm(
+                "reparaciones.add_ordenservicio"
+            )
+        ):
+            return SolicitudReparacionSerializer
+
+        return OrdenServicioSerializer
+
     # ======================================================
-    # CONSULTA DE ÓRDENES
+    # CONSULTA DE ORDENES
     # ======================================================
 
     def get_queryset(self):

@@ -2,7 +2,10 @@ import { Routes, Route } from 'react-router-dom';
 import RutaProtegida from './components/auth/RutaProtegida';
 import { useSesion } from './hooks/useSesion';
 
-// --- PÁGINAS PÚBLICAS ---
+// ======================================================
+// PÁGINAS PÚBLICAS
+// ======================================================
+
 import LandingPage from './pages/LandingPage';
 import Login from './pages/Login';
 import Catalog from './pages/Catalog';
@@ -10,14 +13,21 @@ import Suscription from './pages/Suscription';
 import FormularioContacto from './pages/FormularioContacto';
 import NotFound from './pages/NotFound';
 
-// --- LAYOUTS ---
+// ======================================================
+// LAYOUTS
+// ======================================================
+
 import { ClienteLayout } from './layouts/ClienteLayout';
 import AdminLayout from './layouts/AdminLayout';
 import { PilotoLayout } from './layouts/PilotoLayout';
-// --- Falta el Layout de técnicos ---
-// --- Falta el Layout de vendedores ---
+import TecnicoLayout from './layouts/TecnicoLayout';
 
-// --- PÁGINAS DEL CLIENTE ---
+// Pendiente: Layout de vendedores.
+
+// ======================================================
+// PÁGINAS DEL CLIENTE
+// ======================================================
+
 import { ClienteDashboard } from './pages/cliente/ClienteDashboard';
 import { ClienteSuscripciones } from './pages/cliente/ClienteSuscripciones';
 import { ClienteDrones } from './pages/cliente/ClienteDrones';
@@ -27,11 +37,15 @@ import ClienteHistorial from './pages/cliente/ClienteHistorial';
 import ClienteSoporte from './pages/cliente/ClienteSoporte';
 import ClienteEquipos from './pages/cliente/ClienteEquipos';
 
-// --- PÁGINAS DEL ADMINISTRADOR ---
+// ======================================================
+// PÁGINAS DEL ADMINISTRADOR
+// ======================================================
+
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminUsuarios from './pages/admin/AdminUsuarios';
 import AdminPrecios from './pages/admin/AdminPrecios';
 import AdminOperaciones from './pages/admin/AdminOperaciones';
+import AdminReparaciones from './pages/admin/AdminReparaciones';
 import AdminHistorial from './pages/admin/AdminHistorial';
 import AdminSoporte from './pages/admin/AdminSoporte';
 import AdminPerfil from './pages/admin/AdminPerfil';
@@ -39,7 +53,10 @@ import AdminConfigCarga from './pages/admin/AdminConfigCarga';
 import AdminCheckout from './pages/admin/AdminCheckout';
 import AdminTracking from './pages/admin/AdminTracking';
 
-// --- PÁGINAS DEL PILOTO ---
+// ======================================================
+// PÁGINAS DEL PILOTO
+// ======================================================
+
 import PilotoDashboard from './pages/piloto/PilotoDashboard';
 import PilotoMisiones from './pages/piloto/PilotoMisiones';
 import PilotoBitacora from './pages/piloto/PilotoBitacora';
@@ -48,86 +65,251 @@ import PilotoHistorial from './pages/piloto/PilotoHistorial';
 import PilotoSoporte from './pages/piloto/PilotoSoporte';
 import PilotoPerfil from './pages/piloto/PilotoPerfil';
 
-// --- PÁGINAS DEL TÉCNICO ---
-import TecnicoLayout from './layouts/TecnicoLayout';
+// ======================================================
+// PÁGINAS DEL TÉCNICO
+// ======================================================
+
 import TecnicoOrdenes from './pages/tecnico/TecnicoOrdenes';
 
-// --- PÁGINAS DEL VENDEDOR ---
+// ======================================================
+// PÁGINAS DEL VENDEDOR
+// ======================================================
 
+// Pendiente de implementación.
+
+// ======================================================
+// COMPONENTE PRINCIPAL
+// ======================================================
 
 function App() {
+
   const { cerrarSesion } = useSesion();
 
   return (
+
     <Routes>
-      {/* 1. RUTAS PÚBLICAS */}
+
+      {/* ================================================= */}
+      {/* 1. RUTAS PÚBLICAS                                 */}
+      {/* ================================================= */}
+
       <Route path="/" element={<LandingPage />} />
+
       <Route path="/login" element={<Login />} />
+
       <Route path="/catalog" element={<Catalog />} />
+
       <Route path="/suscription" element={<Suscription />} />
-      <Route path="/formulario-contacto" element={<FormularioContacto />} />
 
-      {/* 2. RUTAS PRIVADAS DEL CLIENTE */}
+      <Route
+        path="/formulario-contacto"
+        element={<FormularioContacto />}
+      />
+
+      {/* ================================================= */}
+      {/* 2. RUTAS PRIVADAS DEL CLIENTE                     */}
+      {/* ================================================= */}
+
       <Route element={<RutaProtegida rol="cliente" />}>
+
         <Route path="/cliente" element={<ClienteLayout />}>
+
           <Route index element={<ClienteDashboard />} />
-          <Route path="suscripciones" element={<ClienteSuscripciones />} />
-          <Route path="drones" element={<ClienteDrones />} />
-          <Route path="servicios" element={<ClienteServicios />} />
-          <Route path="historial" element={<ClienteHistorial />} />
-          <Route path="soporte" element={<ClienteSoporte />} />
-          <Route path="perfil" element={<ClientePerfil onLogout={cerrarSesion} />} />
-          <Route path="equipos" element={<ClienteEquipos />} />
+
+          <Route
+            path="suscripciones"
+            element={<ClienteSuscripciones />}
+          />
+
+          <Route
+            path="drones"
+            element={<ClienteDrones />}
+          />
+
+          <Route
+            path="servicios"
+            element={<ClienteServicios />}
+          />
+
+          <Route
+            path="historial"
+            element={<ClienteHistorial />}
+          />
+
+          <Route
+            path="soporte"
+            element={<ClienteSoporte />}
+          />
+
+          <Route
+            path="perfil"
+            element={
+              <ClientePerfil onLogout={cerrarSesion} />
+            }
+          />
+
+          {/* HU-010, HU-011 y HU-012 */}
+
+          <Route
+            path="equipos"
+            element={<ClienteEquipos />}
+          />
+
         </Route>
+
       </Route>
 
-      {/* 3. RUTAS PRIVADAS DEL ADMINISTRADOR */}
+      {/* ================================================= */}
+      {/* 3. RUTAS PRIVADAS DEL ADMINISTRADOR               */}
+      {/* ================================================= */}
+
       <Route element={<RutaProtegida rol="admin" />}>
+
         <Route path="/admin" element={<AdminLayout />}>
+
           <Route index element={<AdminDashboard />} />
-          <Route path="usuarios" element={<AdminUsuarios />} />
-          <Route path="precios" element={<AdminPrecios />} />
-          <Route path="historial" element={<AdminHistorial />} />
-          <Route path="soporte" element={<AdminSoporte />} />
-          <Route path="perfil" element={<AdminPerfil onLogout={cerrarSesion} />} />
-          
-          {/* Sub-rutas de Operaciones */}
-          <Route path="operaciones" element={<AdminOperaciones />} />
-          <Route path="operaciones/config-carga" element={<AdminConfigCarga />} />
-          <Route path="operaciones/checkout" element={<AdminCheckout />} />
-          <Route path="operaciones/tracking" element={<AdminTracking />} />
+
+          <Route
+            path="usuarios"
+            element={<AdminUsuarios />}
+          />
+
+          <Route
+            path="precios"
+            element={<AdminPrecios />}
+          />
+
+          <Route
+            path="historial"
+            element={<AdminHistorial />}
+          />
+
+          <Route
+            path="soporte"
+            element={<AdminSoporte />}
+          />
+
+          <Route
+            path="perfil"
+            element={
+              <AdminPerfil onLogout={cerrarSesion} />
+            }
+          />
+
+          {/* OPERACIONES GLOBALES */}
+
+          <Route
+            path="operaciones"
+            element={<AdminOperaciones />}
+          />
+
+          <Route
+            path="operaciones/config-carga"
+            element={<AdminConfigCarga />}
+          />
+
+          <Route
+            path="operaciones/checkout"
+            element={<AdminCheckout />}
+          />
+
+          <Route
+            path="operaciones/tracking"
+            element={<AdminTracking />}
+          />
+
+          {/* HU-013: GESTIÓN DE ÓRDENES DE SERVICIO */}
+
+          <Route
+            path="reparaciones"
+            element={<AdminReparaciones />}
+          />
+
         </Route>
+
       </Route>
 
-      {/* 4. RUTAS PRIVADAS DEL PILOTO */}
+      {/* ================================================= */}
+      {/* 4. RUTAS PRIVADAS DEL PILOTO                      */}
+      {/* ================================================= */}
+
       <Route element={<RutaProtegida rol="piloto" />}>
+
         <Route path="/piloto" element={<PilotoLayout />}>
+
           <Route index element={<PilotoDashboard />} />
-          <Route path="misiones" element={<PilotoMisiones />} />
-          <Route path="bitacora" element={<PilotoBitacora />} />
-          <Route path="facturacion" element={<PilotoFacturacion />} />
-          <Route path="historial" element={<PilotoHistorial />} />
-          <Route path="soporte" element={<PilotoSoporte />} />
-          <Route path="perfil" element={<PilotoPerfil onLogout={cerrarSesion} />} />
+
+          <Route
+            path="misiones"
+            element={<PilotoMisiones />}
+          />
+
+          <Route
+            path="bitacora"
+            element={<PilotoBitacora />}
+          />
+
+          <Route
+            path="facturacion"
+            element={<PilotoFacturacion />}
+          />
+
+          <Route
+            path="historial"
+            element={<PilotoHistorial />}
+          />
+
+          <Route
+            path="soporte"
+            element={<PilotoSoporte />}
+          />
+
+          <Route
+            path="perfil"
+            element={
+              <PilotoPerfil onLogout={cerrarSesion} />
+            }
+          />
+
         </Route>
+
       </Route>
 
-      {/* 5. RUTAS PRIVADAS DEL TÉCNICO */}
-      {/* 5. RUTAS PRIVADAS DEL TÉCNICO */}
-        <Route element={<RutaProtegida rol="tecnico" />}>
-          <Route path="/tecnico" element={<TecnicoLayout />}>
-            <Route index element={<TecnicoOrdenes />} />
-            <Route path="ordenes" element={<TecnicoOrdenes />} />
-          </Route>
+      {/* ================================================= */}
+      {/* 5. RUTAS PRIVADAS DEL TÉCNICO                     */}
+      {/* ================================================= */}
+
+      <Route element={<RutaProtegida rol="tecnico" />}>
+
+        <Route path="/tecnico" element={<TecnicoLayout />}>
+
+          <Route index element={<TecnicoOrdenes />} />
+
+          <Route
+            path="ordenes"
+            element={<TecnicoOrdenes />}
+          />
+
         </Route>
 
-      {/* 6. RUTAS PRIVADAS DEL VENDEDOR */}
+      </Route>
 
+      {/* ================================================= */}
+      {/* 6. RUTAS PRIVADAS DEL VENDEDOR                    */}
+      {/* ================================================= */}
 
-      {/* 7. RUTA PARA ERRORES 404 */}
+      {/* Pendiente de implementación. */}
+
+      {/* ================================================= */}
+      {/* 7. RUTA PARA ERRORES 404                          */}
+      {/* ================================================= */}
+
       <Route path="*" element={<NotFound />} />
+
     </Routes>
+
   );
+
 }
 
 export default App;
