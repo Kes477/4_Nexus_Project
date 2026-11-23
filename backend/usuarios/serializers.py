@@ -89,7 +89,7 @@ class UsuarioSerializer(serializers.ModelSerializer):
             'is_staff', 'date_joined', 'rol', 'perfil_piloto',
         ]
         read_only_fields = [
-            'id', 'email', 'no_identificacion', 'fecha_nacimiento',
+            'id', 'email', 'no_identificacion',
             'foto_perfil_url', 'estado_cuenta', 'is_active', 'is_staff',
             'date_joined', 'rol',
         ]
@@ -143,7 +143,6 @@ class CambiarPasswordSerializer(serializers.Serializer):
         usuario.set_password(self.validated_data['password_nueva'])
         usuario.save(update_fields=['password'])
         return usuario
-
 
 class LoginSerializer(TokenObtainPairSerializer):
 
@@ -209,7 +208,6 @@ class RegistroSerializer(serializers.ModelSerializer):
 
     @transaction.atomic
     def create(self, validated_data):
-
         usuario = Usuario.objects.create_user(
             **validated_data
         )
