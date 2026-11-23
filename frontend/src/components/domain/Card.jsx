@@ -2,7 +2,7 @@ import { Check } from "lucide-react";
 import { useNavigate } from 'react-router-dom';
 import { Button } from "../ui/Button";
 
-/* TARJETA DE SERVICIO / SUSCRIPCIÓN (ServiceCard) */
+/* TARJETA DE SERVICIO / SUSCRIPCIÓN */
 export const ServiceCard = ({ service }) => {
     const Icon = service.icon;
     const navigate = useNavigate();

@@ -1,0 +1,24 @@
+name: Despliegue del backend con Cloud Build
+
+on:
+  workflow_dispatch:
+  workflow_call:
+jobs:
+  trigger-build:
+    name: Activar despliegue en GCP
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      - name: Autenticar en Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Ejecutar trigger de Cloud Build
+        uses: google-github-actions/run-cloud-build@v2
+        with:
+          project_id: 'cursopractica-512803'
+          trigger_id: '3455325c-7598-4d89-8d11-bee687271977'
+          region: 'global'

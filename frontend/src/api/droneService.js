@@ -3,7 +3,7 @@ import axiosClient from './axiosClient';
 
 // Traer todos los drones (Productos)
 export const getProductos = async () => {
-    // Axios unirá la URL base (http://localhost:8000/api) + esta ruta
+    // Axios unirá la URL base (http://localhost:8000/api)
     const response = await axiosClient.get('/catalogo/productos/'); 
     return response.data;
 };

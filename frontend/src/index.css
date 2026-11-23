@@ -41,11 +41,11 @@
 
 /* 2.1 VARIABLES GLOBALES - TEMA OSCURO */
 [data-theme="dark"] {
-    --color-dark: #f8fafc;       /* Textos principales ahora son claros */
-    --white: #1e293b;            /* Fondos de tarjetas/navbar ahora son oscuros */
-    --bg-color: #0f172a;         /* Fondo general oscuro */
-    --light-gray: #334155;       /* Bordes oscuros */
-    --text-light: #94a3b8;       /* Textos secundarios */
+    --color-dark: #f8fafc;
+    --white: #1e293b;
+    --bg-color: #0f172a;
+    --light-gray: #334155;
+    --text-light: #94a3b8;
     --border: #334155;
     --social-bg: #334155;
     
@@ -104,9 +104,9 @@ a {
     gap: 8px;
 }
 
-.btn-primary, .btn-success { background: var(--color-success); color: #ffffff; } /* Forzamos blanco puro para el texto del botón */
+.btn-primary, .btn-success { background: var(--color-success); color: #ffffff; }
 .btn-danger { background: var(--color-danger); color: #ffffff; }
-.btn-dark { background: var(--color-dark); color: var(--bg-color); } /* Invertido para modo oscuro */
+.btn-dark { background: var(--color-dark); color: var(--bg-color); }
 
 .btn-primary:hover { background: var(--color-primary-hover); }
 .btn-danger:hover { background: var(--color-danger-hover); }
