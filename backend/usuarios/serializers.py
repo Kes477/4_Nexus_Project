@@ -11,8 +11,8 @@ class UsuarioSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Usuario
-        fields = ['id','email', 'first_name', 'last_name','no_identificacion', 'telefono', 'is_staff', 'rol']
-        read_only_fields = ['is_staff']
+        fields = ['id','email', 'first_name', 'last_name','no_identificacion', 'telefono', 'fecha_nacimiento','date_joined','is_staff', 'rol']
+        read_only_fields = ['email', 'no_identificacion', 'date_joined','is_staff']
 
 
 class LoginSerializer(TokenObtainPairSerializer):
@@ -46,3 +46,28 @@ class RegistroSerializer(serializers.ModelSerializer):
         usuario = Usuario.objects.create_user(**validated_data)
         PerfilCliente.objects.create(usuario=usuario)
         return usuario
+
+class CambiarPasswordSerializer(serializers.Serializer):
+    password_actual = serializers.CharField(write_only=True, style={'input_type':'password'})
+    password_nueva = serializers.CharField(write_only=True, style={'input_type':'password'})
+
+    def validate_password_actual(self, valor):
+        usuario = self.context['request'].user
+        if not usuario.check_password(valor):
+            raise serializers.ValidationError('La contraseña actual no es correcta.')
+        return valor
+
+    def validate(self, attrs):
+        usuario = self.context['request'].user
+        try:
+            validate_password(attrs['password_nueva'], user=usuario)
+        except DjangoValidationError as error:
+            raise serializers.ValidationError({'password_nueva': list(error.messages)})
+        return attrs
+
+    def save(self):
+        usuario = self.context['request'].user
+        usuario.set_password(self.validated_data['password_nueva'])
+        usuario.save(update_fields=['password'])
+        return usuario
+        

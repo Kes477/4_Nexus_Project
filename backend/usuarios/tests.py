@@ -592,3 +592,155 @@ class RolUsuarioTests(APITestCase):
         )
         self.assertEqual(respuesta.status_code, status.HTTP_200_OK)
         self.assertEqual(respuesta.data['usuario']['rol'], 'piloto')
+
+#################     PRUEBAS DE EDICIÓN DEL PERFIL   ####################
+
+class PerfilAPITest(APITestCase):
+    def setUp(self):
+        self.url = reverse('perfil')
+        self.usuario = Usuario.objects.create_user(
+            email='perfil@nexus.com',
+            password='Drones-2026!',
+            no_identificacion='0801199900500',
+            first_name='Ana',
+            last_name='López',
+        )
+
+        PerfilCliente.objects.create(usuario = self.usuario)
+        self.client.force_authenticate(user = self.usuario)
+
+    def test_ver_perfil(self):
+        respuesta = self.client.get(self.url)
+
+        self.assertEqual(respuesta.status_code, status.HTTP_200_OK)
+        self.assertEqual(respuesta.data['email'], 'perfil@nexus.com')
+        self.assertEqual(respuesta.data['rol'], 'cliente')
+        self.assertIn('fecha_nacimiento', respuesta.data)
+        self.assertIn('date_joined', respuesta.data)
+
+    def test_perfil_requiere_sesion(self):
+        self.client.force_authenticate(user=None)
+
+        self.assertEqual(self.client.get(self.url).status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(
+            self.client.patch(self.url, {'telefono': '1'}, format='json').status_code,
+            status.HTTP_401_UNAUTHORIZED,
+        )
+
+    def test_actualizar_datos_personales(self):
+        respuesta = self.client.patch(self.url, {
+            'first_name': 'Andrea',
+            'telefono': '9999-1111',
+            'fecha_nacimiento': '2000-05-23',
+        }, format='json')
+
+        self.assertEqual(respuesta.status_code, status.HTTP_200_OK)
+        self.usuario.refresh_from_db()
+        self.assertEqual(self.usuario.first_name, 'Andrea')
+        self.assertEqual(self.usuario.telefono, '9999-1111')
+        self.assertEqual(str(self.usuario.fecha_nacimiento), '2000-05-23')
+        self.assertEqual(self.usuario.last_name, 'López')
+
+    def test_no_se_pueden_cambiar_campos_protegidos(self):
+        respuesta = self.client.patch(self.url, {
+            'email': 'hacker@x.com',
+            'no_identificacion': '0000000000000',
+            'is_staff': True,
+            'is_superuser': True,
+            'estado_cuenta': 'B',
+        }, format='json')
+
+        self.assertEqual(respuesta.status_code, status.HTTP_200_OK)
+        self.usuario.refresh_from_db()
+        self.assertEqual(self.usuario.email, 'perfil@nexus.com')
+        self.assertEqual(self.usuario.no_identificacion, '0801199900500')
+        self.assertFalse(self.usuario.is_staff)
+        self.assertFalse(self.usuario.is_superuser)
+        self.assertEqual(self.usuario.estado_cuenta, 'A')
+
+    def test_datos_invalidos(self):
+        casos = {
+            'first_name': '',
+            'telefono': '1' * 21,
+            'fecha_nacimiento': '23-05-2000',
+        }
+        for campo, valor in casos.items():
+            with self.subTest(campo=campo):
+                respuesta = self.client.patch(self.url, {campo: valor}, format='json')
+                self.assertEqual(respuesta.status_code, status.HTTP_400_BAD_REQUEST)
+                self.assertIn(campo, respuesta.data)
+
+    def test_put_no_permitido(self):
+        respuesta = self.client.put(self.url, {'first_name': 'X'}, format='json')
+        self.assertEqual(respuesta.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+        
+
+################  PRUEBAS DE CAMBIO DE CONTRASEÑA  ###################
+
+
+class CambiarPasswordAPITests(APITestCase):
+
+    def setUp(self):
+        self.url = reverse('cambiar_password')
+        self.usuario = Usuario.objects.create_user(
+            email='clave@nexus.com',
+            password='Drones-2026!',
+            no_identificacion='0801199900600',
+            first_name='Luis',
+            last_name='Pérez',
+        )
+        self.client.force_authenticate(user=self.usuario)
+
+    def cambiar(self, actual, nueva):
+        return self.client.post(
+            self.url,
+            {'password_actual': actual, 'password_nueva': nueva},
+            format='json',
+        )
+
+    def test_requiere_sesion(self):
+        self.client.force_authenticate(user=None)
+        respuesta = self.cambiar('Drones-2026!', 'Helices-2027!')
+        self.assertEqual(respuesta.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_contrasena_actual_incorrecta(self):
+        respuesta = self.cambiar('incorrecta', 'Helices-2027!')
+
+        self.assertEqual(respuesta.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('password_actual', respuesta.data)
+        self.usuario.refresh_from_db()
+        self.assertTrue(self.usuario.check_password('Drones-2026!'))
+
+    def test_contrasena_nueva_debil(self):
+        respuesta = self.cambiar('Drones-2026!', '12345678')
+
+        self.assertEqual(respuesta.status_code, status.HTTP_400_BAD_REQUEST)
+        mensajes = respuesta.data['password_nueva']
+        self.assertTrue(all(len(m) > 15 for m in mensajes))
+        self.assertNotIn('required', mensajes)
+        self.usuario.refresh_from_db()
+        self.assertTrue(self.usuario.check_password('Drones-2026!'))
+
+    def test_campos_obligatorios(self):
+        respuesta = self.client.post(self.url, {}, format='json')
+
+        self.assertEqual(respuesta.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('password_actual', respuesta.data)
+        self.assertIn('password_nueva', respuesta.data)
+
+    def test_cambio_exitoso_y_login_con_la_nueva(self):
+        respuesta = self.cambiar('Drones-2026!', 'Helices-2027!')
+        self.assertEqual(respuesta.status_code, status.HTTP_200_OK)
+
+        self.usuario.refresh_from_db()
+        self.assertTrue(self.usuario.check_password('Helices-2027!'))
+        self.assertFalse(self.usuario.check_password('Drones-2026!'))
+
+        self.client.force_authenticate(user=None)
+        login = self.client.post(
+            reverse('login'),
+            {'email': 'clave@nexus.com', 'password': 'Helices-2027!'},
+            format='json',
+        )
+        self.assertEqual(login.status_code, status.HTTP_200_OK)
