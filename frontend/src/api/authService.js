@@ -21,3 +21,12 @@ export const logout = () => {
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('user_role');
 };
+
+//LLama a Registro View en Django: crea el cliente y devuelve tokens
+export const registerUser = async (datos) => {
+    const {data} = await axiosClient.post('/auth/registro/',datos);
+
+    localStorage.setItem('access_token',data.access);
+    localStorage.setItem('refresh_token', data.refresh);
+    return data.usuario;
+}

@@ -55,6 +55,19 @@ class Usuario(AbstractUser):
     def __str__(self):
         return f'{self.first_name} {self.last_name}'
 
+    @property
+    def rol(self):
+        if self.is_staff:
+            return 'admin'
+        if hasattr(self, 'perfil_piloto'):
+            return 'piloto'
+        if hasattr(self, 'perfil_tecnico'):
+            return 'tecnico'
+        if hasattr(self, 'perfil_vendedor'):
+            return 'vendedor'
+        return 'cliente'
+    
+
 class PerfilCliente(models.Model):
     usuario = models.OneToOneField(
         settings.AUTH_USER_MODEL,

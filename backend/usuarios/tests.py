@@ -435,3 +435,160 @@ class PerfilesModelTests(TestCase):
         )
 
         self.assertEqual(cliente.saldo_puntos, 100)
+
+
+################    PRUEBAS DEL REGISTRO PÚBLICO   ####################
+
+class RegistroAPITest(APITestCase):
+
+    def setUp(self):
+        self.url = reverse('registro')
+        self.datos = {
+            'email': 'nuevo@nexus.com',
+            'password': 'Drones-2026!',
+            'first_name': 'Ana',
+            'last_name': 'López',
+            'no_identificacion': '0801199900300',
+            'telefono': '9999-0000',
+        }
+
+    def registrar(self, **cambios):
+        return self.client.post(self.url, {**self.datos, **cambios}, format = 'json')
+
+    def test_registro_exitoso_crea_cliente_con_perfil(self):
+        respuesta = self.registrar()
+
+        self.assertEqual(respuesta.status_code, status.HTTP_201_CREATED)
+        usuario = Usuario.objects.get(email='nuevo@nexus.com')
+        self.assertTrue(PerfilCliente.objects.filter(usuario=usuario).exists())
+        self.assertEqual(respuesta.data['usuario']['rol'], 'cliente')
+
+    def test_respuesta_incluye_tokens_y_no_la_contrasena(self):
+        respuesta = self.registrar()
+
+        self.assertIn('access', respuesta.data)
+        self.assertIn('refresh', respuesta.data)
+        self.assertNotIn('password', respuesta.data['usuario'])
+
+    def test_no_se_puede_registrar_como_admin(self):
+        respuesta = self.registrar(role='admin', is_staff=True, is_superuser=True)
+
+        self.assertEqual(respuesta.status_code, status.HTTP_201_CREATED)
+        usuario = Usuario.objects.get(email='nuevo@nexus.com')
+        self.assertFalse(usuario.is_staff)
+        self.assertFalse(usuario.is_superuser)
+        self.assertEqual(usuario.rol, 'cliente')
+
+    def test_no_se_puede_registrar_como_otro_rol(self):
+        for rol in ['piloto', 'tecnico', 'vendedor']:
+            with self.subTest(rol=rol):
+                respuesta = self.registrar(
+                    email=f'{rol}@nexus.com', no_identificacion=f'0801-{rol}', role=rol
+                )
+                self.assertEqual(respuesta.status_code, status.HTTP_201_CREATED)
+                self.assertEqual(respuesta.data['usuario']['rol'], 'cliente')
+
+        self.assertFalse(Piloto.objects.exists())
+        self.assertFalse(Tecnico.objects.exists())
+        self.assertFalse(Vendedor.objects.exists())
+
+    def test_contrasena_debil_rechazada(self):
+        for clave in ['12345678', 'abc', 'password']:
+            with self.subTest(clave=clave):
+                respuesta = self.registrar(password=clave)
+                self.assertEqual(respuesta.status_code, status.HTTP_400_BAD_REQUEST)
+                self.assertIn('password', respuesta.data)
+
+        self.assertFalse(Usuario.objects.exists())
+
+    def test_correo_repetido(self):
+        self.registrar()
+        respuesta = self.registrar(no_identificacion='0801199900301')
+
+        self.assertEqual(respuesta.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('email', respuesta.data)
+
+    def test_identificacion_repetida(self):
+        self.registrar()
+        respuesta = self.registrar(email='otro@nexus.com')
+
+        self.assertEqual(respuesta.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('no_identificacion', respuesta.data)
+
+    def test_campos_obligatorios(self):
+        respuesta = self.client.post(self.url, {}, format='json')
+
+        self.assertEqual(respuesta.status_code, status.HTTP_400_BAD_REQUEST)
+        for campo in ['email', 'password', 'first_name', 'last_name', 'no_identificacion']:
+            self.assertIn(campo, respuesta.data)
+
+    def test_token_del_registro_sirve_para_entrar(self):
+        respuesta = self.registrar()
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {respuesta.data['access']}")
+
+        perfil = self.client.get(reverse('perfil'))
+        self.assertEqual(perfil.status_code, status.HTTP_200_OK)
+        self.assertEqual(perfil.data['email'], 'nuevo@nexus.com')
+
+    def test_registro_funciona_con_token_viejo(self):
+        self.client.credentials(HTTP_AUTHORIZATION='Bearer token_invalido')
+        respuesta = self.registrar()
+        self.assertEqual(respuesta.status_code, status.HTTP_201_CREATED)
+
+
+
+##################    PRUEBAS DEL ROL CALCULADO   #################
+
+class RolUsuarioTests(APITestCase):
+
+    def crear_usuario(self, numero, **extra):
+        return Usuario.objects.create_user(
+            email=f'rol{numero}@nexus.com',
+            password='Drones-2026!',
+            no_identificacion=f'08011999{numero:05d}',
+            first_name='Prueba',
+            last_name='Rol',
+            **extra,
+        )
+
+    def rol_de(self, usuario):
+        return Usuario.objects.get(pk=usuario.pk).rol
+
+    def test_usuario_sin_perfil_es_cliente(self):
+        self.assertEqual(self.rol_de(self.crear_usuario(1)), 'cliente')
+
+    def test_superusuario_es_admin(self):
+        admin = Usuario.objects.create_superuser(
+            email='admin@nexus.com', password='Drones-2026!',
+            no_identificacion='0801199900900', first_name='Admin', last_name='Nexus',
+        )
+        self.assertEqual(self.rol_de(admin), 'admin')
+
+    def test_piloto(self):
+        usuario = self.crear_usuario(2)
+        Piloto.objects.create(usuario=usuario, numero_licencia_aeronautica='LIC-0001')
+        self.assertEqual(self.rol_de(usuario), 'piloto')
+
+    def test_tecnico(self):
+        usuario = self.crear_usuario(3)
+        Tecnico.objects.create(usuario=usuario, especialidad_tecnica='Motores')
+        self.assertEqual(self.rol_de(usuario), 'tecnico')
+
+    def test_vendedor(self):
+        usuario = self.crear_usuario(4)
+        Vendedor.objects.create(
+            usuario=usuario, rtn_empresa='08011999000001', nombre_comercial='DronShop'
+        )
+        self.assertEqual(self.rol_de(usuario), 'vendedor')
+
+    def test_login_devuelve_el_rol(self):
+        usuario = self.crear_usuario(5)
+        Piloto.objects.create(usuario=usuario, numero_licencia_aeronautica='LIC-0002')
+
+        respuesta = self.client.post(
+            reverse('login'),
+            {'email': 'rol5@nexus.com', 'password': 'Drones-2026!'},
+            format='json',
+        )
+        self.assertEqual(respuesta.status_code, status.HTTP_200_OK)
+        self.assertEqual(respuesta.data['usuario']['rol'], 'piloto')

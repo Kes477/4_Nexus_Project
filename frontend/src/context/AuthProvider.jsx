@@ -1,6 +1,14 @@
 import { useEffect, useState } from "react";
-import { getPerfil, loginUser, logout } from "../api/authService";
+
+import {
+    getPerfil,
+    loginUser,
+    logout,
+    registerUser
+} from "../api/authService";
+
 import { AuthContext } from "./authContext";
+
 
 export function AuthProvider({ children }) {
 
@@ -24,6 +32,7 @@ export function AuthProvider({ children }) {
 
     }, []);
 
+
     // Iniciar sesión.
     async function iniciarSesion(email, password) {
 
@@ -34,6 +43,18 @@ export function AuthProvider({ children }) {
         return datos;
     }
 
+
+    // Registrar un nuevo cliente.
+    async function registrarse(datosRegistro) {
+
+        const datos = await registerUser(datosRegistro);
+
+        setUsuario(datos);
+
+        return datos;
+    }
+
+
     // Cerrar sesión.
     function cerrarSesion() {
 
@@ -42,33 +63,10 @@ export function AuthProvider({ children }) {
         setUsuario(null);
     }
 
-    // Determinar el rol del usuario autenticado.
-    let rol = null;
 
-    if (usuario) {
+    // Obtener el rol proporcionado por el backend.
+    const rol = usuario?.rol ?? null;
 
-        if (usuario.is_staff) {
-
-            rol = "admin";
-
-        } else {
-
-            const rolUsuario = usuario.role || usuario.rol;
-
-            if (
-                typeof rolUsuario === "string" &&
-                rolUsuario.trim() !== ""
-            ) {
-
-                rol = rolUsuario.trim().toLowerCase();
-
-            } else {
-
-                rol = "cliente";
-
-            }
-        }
-    }
 
     return (
 
@@ -78,6 +76,7 @@ export function AuthProvider({ children }) {
                 rol,
                 cargando,
                 iniciarSesion,
+                registrarse,
                 cerrarSesion
             }}
         >
