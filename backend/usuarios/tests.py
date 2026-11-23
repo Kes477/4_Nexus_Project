@@ -674,7 +674,7 @@ class PerfilAPITest(APITestCase):
         respuesta = self.client.put(self.url, {'first_name': 'X'}, format='json')
         self.assertEqual(respuesta.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
 
-        
+
 
 ################  PRUEBAS DE CAMBIO DE CONTRASEÑA  ###################
 
@@ -682,7 +682,7 @@ class PerfilAPITest(APITestCase):
 class CambiarPasswordAPITests(APITestCase):
 
     def setUp(self):
-        self.url = reverse('cambiar_password')
+        self.url = reverse('cambiar-password')
         self.usuario = Usuario.objects.create_user(
             email='clave@nexus.com',
             password='Drones-2026!',

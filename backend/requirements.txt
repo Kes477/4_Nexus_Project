@@ -16,3 +16,6 @@ gunicorn==23.0.0
 
 # Para usar página de administrador de Django
 whitenoise[brotli]==6.7.0
+
+# Para generar PDF:
+reportlab
