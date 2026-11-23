@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getPerfil, loginUser, logout, registerUser } from '../api/authService'; 
+import { changePassword, getPerfil, loginUser, logout, registerUser, updatePerfil } from '../api/authService'; 
 import { AuthContext} from "./authContext";
 
 export function AuthProvider({ children }) {
@@ -27,8 +27,17 @@ export function AuthProvider({ children }) {
         return datos;
     }
 
-    function cerrarSesion() {
+    async function actualizarPerfil(cambios) {
+        const datos = await updatePerfil(cambios);
+        setUsuario(datos);
+        return datos;
+    }
 
+    function cambiarPassword(actual, nueva) {
+        return changePassword(actual, nueva);
+    }
+
+    function cerrarSesion() {
         logout();
         setUsuario(null);
     }
@@ -36,7 +45,7 @@ export function AuthProvider({ children }) {
     const rol = usuario?.rol ?? null;    
 
     return (
-        <AuthContext.Provider value={{ usuario, rol, cargando, iniciarSesion, registrarse, cerrarSesion }}>
+        <AuthContext.Provider value={{ usuario, rol, cargando, iniciarSesion, registrarse, actualizarPerfil, cambiarPassword, cerrarSesion }}>
             {children}
         </AuthContext.Provider>
     );

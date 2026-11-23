@@ -4,7 +4,7 @@ import { render, screen, waitFor, act } from "@testing-library/react";
 import { useContext, useEffect } from "react";
 import { AuthProvider } from "./AuthProvider";
 import { AuthContext } from "./authContext";
-import { getPerfil, loginUser, logout, registerUser } from "../api/authService";
+import { getPerfil, loginUser, logout, registerUser, updatePerfil } from "../api/authService";
 
 // Simular las funciones de la API
 vi.mock("../api/authService", () => ({
@@ -12,6 +12,8 @@ vi.mock("../api/authService", () => ({
   loginUser: vi.fn(),
   logout: vi.fn(),
   registerUser: vi.fn(),
+  updatePerfil: vi.fn(),
+  changePassword: vi.fn(),
 }));
 
 // Componente auxiliar para consultar el contexto
@@ -196,5 +198,22 @@ describe("AuthProvider", () => {
     expect(registerUser).toHaveBeenCalledWith(datos);
     expect(screen.getByTestId('usuario')).toHaveTextContent('nuevo@test.com');
     expect(screen.getByTestId('rol')).toHaveTextContent('cliente');
+  });
+
+  it("9. Actualizar el perfil cambia el usuario del contexto", async () => {
+    loginUser.mockResolvedValue({ email: "cliente@test.com", rol: "cliente", first_name: "Ana" });
+    updatePerfil.mockResolvedValue({ email: "cliente@test.com", rol: "cliente", first_name: "Andrea" });
+
+    renderizar();
+
+    await act(async () => {
+      await contextoActual.iniciarSesion("cliente@test.com", "password123");
+    });
+    await act(async () => {
+      await contextoActual.actualizarPerfil({ first_name: "Andrea" });
+    });
+
+    expect(updatePerfil).toHaveBeenCalledWith({ first_name: "Andrea" });
+    expect(contextoActual.usuario.first_name).toBe("Andrea");
   });
 });
