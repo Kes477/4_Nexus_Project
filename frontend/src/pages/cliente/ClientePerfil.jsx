@@ -3,6 +3,8 @@ import { Edit2, Phone, Mail, Lock, LogOut, Save, MapPin, CheckCircle, Map, Plane
 
 import { Button, Avatar, Badge, Modal, Input, SectionHeading, Alert } from '../../components/ui';
 import { useSesion } from '../../hooks/useSesion';
+import MisDirecciones from '../../components/cliente/MisDirecciones';
+import { primerError } from '../../utils/errores';
 
 const ETIQUETA_ROL = {
   admin: 'Administrador',
@@ -14,13 +16,6 @@ const ETIQUETA_ROL = {
 
 const FORM_PASSWORD_VACIO = { actual: '', nueva: '', confirmar: '' };
 
-// Toma el primer mensaje de error que devuelve Django
-function primerError(error) {
-  const errores = error.response?.data;
-  if (!errores) return 'No se pudo conectar con el servidor. Intenta de nuevo.';
-  const primerCampo = Object.keys(errores)[0];
-  return [].concat(errores[primerCampo])[0];
-}
 
 export default function ClientePerfil({ onLogout }) {
   const { usuario, cargando, actualizarPerfil, cambiarPassword } = useSesion();
@@ -39,6 +34,7 @@ export default function ClientePerfil({ onLogout }) {
     fecha_nacimiento: '',
   });
   const [passForm, setPassForm] = useState(FORM_PASSWORD_VACIO);
+  const [direccionPrincipal, setDireccionPrincipal] =useState(null);
 
   const cerrarModal = () => {
     setModal(null);
@@ -157,7 +153,7 @@ export default function ClientePerfil({ onLogout }) {
     phone: usuario.telefono,
     avatar: usuario.foto_perfil_url || null,
     roleLabel: ETIQUETA_ROL[usuario.rol] ?? 'Cliente',
-    location: 'Tegucigalpa, Honduras',
+    location: direccionPrincipal?.ubicacion_texto?? 'sin direccion principal',
     joinDate: new Date(usuario.date_joined).toLocaleDateString('es-HN', { year: 'numeric', month: 'long', day: 'numeric' }),
     status: usuario.is_active ? 'Activa' : 'Inactiva',
   };
@@ -275,7 +271,7 @@ export default function ClientePerfil({ onLogout }) {
             </div>
 
           </div>
-
+          <MisDirecciones onPrincipalChange={setDireccionPrincipal}/>
           <SectionHeading eyebrow="Actividad" title="Resumen de Servicios" />
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
