@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Plane, Droplets, Eye, Camera, Target } from 'lucide-react';
 import { getMisiones, cambiarEstadoMision } from '../../api/pilotoService';
 import { 
@@ -12,7 +13,6 @@ import {
 } from '../../components/ui';
 import { MisionCard } from '../../components/domain/MisionCard';
 
-// Helper para obtener ícono y color según categoría
 const getCategoryStyle = (categoria) => {
     const cat = categoria?.toLowerCase() || '';
     if (cat.includes('fumig') || cat.includes('agri')) 
@@ -24,14 +24,14 @@ const getCategoryStyle = (categoria) => {
     return { Icon: Target, color: 'var(--color-primary)', bg: 'rgba(4, 201, 166, 0.1)' };
 };
 
-// Helper para color de Badge según estado (para el resumen)
 const getBadgeColor = (estado) => {
     switch (estado) {
         case 'PENDIENTE': return 'warning';
         case 'ACEPTADA': return 'info';
         case 'EN_CURSO': return 'primary';
         case 'COMPLETADA': return 'success';
-        case 'RECHAZADA': return 'danger';
+        case 'RECHAZADA':
+        case 'CANCELADA': return 'danger';
         default: return 'dark';
     }
 };
@@ -42,12 +42,16 @@ export default function PilotoMisiones() {
     const [cargando, setCargando] = useState(true);
     const [errorMsg, setErrorMsg] = useState(null);
     
-    // Filtros
     const [searchTerm, setSearchTerm] = useState("");
     const [filtroCategoria, setFiltroCategoria] = useState("TODAS");
     const [filtroEstado, setFiltroEstado] = useState("TODOS");
 
-    const estadosDisponibles = ['PENDIENTE', 'ACEPTADA', 'EN_CURSO', 'COMPLETADA', 'RECHAZADA'];
+    const [searchParams] = useSearchParams();
+    const misionIdParam = searchParams.get('id');
+    const [highlightedId, setHighlightedId] = useState(null);
+    const scrollTargetRef = useRef(null);
+
+    const estadosDisponibles = ['PENDIENTE', 'ACEPTADA', 'EN_CURSO', 'COMPLETADA', 'RECHAZADA', 'CANCELADA'];
 
     useEffect(() => {
         let isMounted = true;
@@ -67,6 +71,28 @@ export default function PilotoMisiones() {
         return () => { isMounted = false; };
     }, [mainMode]);
 
+    useEffect(() => {
+        if (!cargando && misionIdParam && misiones.length > 0) {
+            const found = misiones.find(m => String(m.id) === String(misionIdParam));
+            
+            if (found) {
+                setHighlightedId(misionIdParam);
+                
+                setTimeout(() => {
+                    if (scrollTargetRef.current) {
+                        scrollTargetRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }, 300);
+
+                const timer = setTimeout(() => {
+                    setHighlightedId(null);
+                }, 5000);
+
+                return () => clearTimeout(timer);
+            }
+        }
+    }, [cargando, misionIdParam, misiones]);
+
     const handleCambiarEstado = async (id, nuevoEstado) => {
         setErrorMsg(null);
         try {
@@ -75,18 +101,43 @@ export default function PilotoMisiones() {
             setMisiones(data);
         } catch (error) {
             setErrorMsg(error.message);
+            throw error;
         }
     };
 
-    // Obtener categorías únicas
+    const handleEditarMision = async (id, datosActualizados) => {
+        setErrorMsg(null);
+        try {
+            const token = localStorage.getItem('access_token');
+            const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+            
+            const response = await fetch(`${API_URL}/pilotos/misiones/${id}/`, {
+                method: 'PATCH',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(datosActualizados)
+            });
+
+            if (!response.ok) {
+                throw new Error('Error al editar la misión. Revisa los datos.');
+            }
+
+            const data = await getMisiones(mainMode);
+            setMisiones(data);
+        } catch (error) {
+            setErrorMsg(error.message);
+            throw error;
+        }
+    };
+
     const categoriasUnicas = [...new Set(misiones.map(m => m.categoria).filter(Boolean))];
     
-    // Generar el resumen por categoría con desglose de estados
     const resumenCategorias = categoriasUnicas.map(cat => {
         const misionesCat = misiones.filter(m => m.categoria === cat);
         const total = misionesCat.length;
         
-        // Contar cuántas hay de cada estado
         const desgloseEstados = estadosDisponibles.reduce((acc, est) => {
             const count = misionesCat.filter(m => m.estado === est).length;
             if (count > 0) acc[est] = count;
@@ -95,9 +146,8 @@ export default function PilotoMisiones() {
 
         const style = getCategoryStyle(cat);
         return { categoria: cat, total, desgloseEstados, ...style };
-    }).filter(cat => cat.total > 0); // Si el total es 0, no se muestra la tarjeta
+    }).filter(cat => cat.total > 0);
 
-    // Opciones para los selects
     const opcionesCategoria = [
         { value: 'TODAS', label: 'Todas las categorías' },
         ...categoriasUnicas.map(cat => ({ value: cat, label: cat }))
@@ -108,8 +158,10 @@ export default function PilotoMisiones() {
         ...estadosDisponibles.map(est => ({ value: est, label: est }))
     ];
 
-    // Filtrar misiones
     const misionesFiltradas = misiones.filter(mision => {
+        const esVisible = ['PENDIENTE', 'ACEPTADA', 'EN_CURSO'].includes(mision.estado);
+        if (!esVisible) return false;
+
         const searchLower = searchTerm.toLowerCase();
         const matchSearch = 
             (mision.cliente_nombre?.toLowerCase().includes(searchLower) || false) ||
@@ -132,7 +184,6 @@ export default function PilotoMisiones() {
                     description="Administra tus vuelos personales y los servicios solicitados por terceros."
                 />
 
-                {/* Pestañas de Modo */}
                 <div style={{ marginBottom: '20px' }}>
                     <Tabs 
                         tabs={['Uso Personal', 'Servicios a Terceros']} 
@@ -146,7 +197,6 @@ export default function PilotoMisiones() {
                     />
                 </div>
 
-                {/* Barra de Filtros */}
                 <div style={{ 
                     display: 'flex', 
                     gap: '15px', 
@@ -178,7 +228,6 @@ export default function PilotoMisiones() {
                     </div>
                 </div>
 
-                {/* Alerta de Error */}
                 {errorMsg && (
                     <div style={{ marginBottom: '20px' }}>
                         <Alert 
@@ -190,7 +239,6 @@ export default function PilotoMisiones() {
                     </div>
                 )}
 
-                {/* Contenido Principal (Misiones) */}
                 {cargando ? (
                     <Loader text="Cargando misiones..." />
                 ) : misionesFiltradas.length === 0 ? (
@@ -219,7 +267,7 @@ export default function PilotoMisiones() {
                             No hay misiones disponibles
                         </h3>
                         <p style={{ fontSize: '15px', maxWidth: '400px' }}>
-                            No se encontraron misiones que coincidan con los filtros aplicados.
+                            No se encontraron misiones activas que coincidan con los filtros aplicados.
                         </p>
                     </div>
                 ) : (
@@ -228,18 +276,31 @@ export default function PilotoMisiones() {
                         gap: '24px', 
                         gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))' 
                     }}>
-                        {misionesFiltradas.map((mision) => (
-                            <MisionCard 
-                                key={mision.id} 
-                                mision={mision} 
-                                onStatusChange={handleCambiarEstado}
-                                isPersonal={mainMode === 'PERSONAL'} 
-                            />
-                        ))}
+                        {misionesFiltradas.map((mision) => {
+                            const isHighlighted = highlightedId === String(mision.id);
+                            return (
+                                <div 
+                                    key={mision.id} 
+                                    ref={isHighlighted ? scrollTargetRef : null}
+                                    style={{
+                                        transition: 'all 0.5s ease',
+                                        borderRadius: '12px',
+                                        boxShadow: isHighlighted ? '0 0 0 4px var(--color-primary), 0 10px 30px rgba(4,201,166,0.3)' : 'none',
+                                        transform: isHighlighted ? 'scale(1.02)' : 'scale(1)'
+                                    }}
+                                >
+                                    <MisionCard 
+                                        mision={mision} 
+                                        onStatusChange={handleCambiarEstado}
+                                        onEdit={handleEditarMision}
+                                        isPersonal={mainMode === 'PERSONAL'} 
+                                    />
+                                </div>
+                            );
+                        })}
                     </div>
                 )}
 
-                {/* Tarjetas de Resumen por Categoría */}
                 {!cargando && resumenCategorias.length > 0 && (
                     <div style={{ marginTop: '50px' }}>
                         <h3 style={{ 
@@ -270,7 +331,6 @@ export default function PilotoMisiones() {
                                     gap: '15px',
                                     boxShadow: '0 4px 15px rgba(0,0,0,0.03)'
                                 }}>
-                                    {/* Cabecera de la tarjeta de resumen */}
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                                         <div style={{ background: bg, color: color, padding: '12px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                             <Icon size={24} strokeWidth={2} />
@@ -281,7 +341,6 @@ export default function PilotoMisiones() {
                                         </div>
                                     </div>
 
-                                    {/* Desglose de estados */}
                                     <div style={{ 
                                         display: 'flex', 
                                         flexDirection: 'column', 
