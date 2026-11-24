@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
@@ -142,33 +143,116 @@ class CambiarPasswordSerializer(serializers.Serializer):
         usuario.save(update_fields=['password'])
         return usuario
 
+    password_actual = serializers.CharField(
+        write_only=True,
+        style={'input_type': 'password'},
+        error_messages={'required': 'Debes indicar tu contraseña actual.'},
+    )
+    password_nueva = serializers.CharField(
+        write_only=True,
+        style={'input_type': 'password'},
+        error_messages={'required': 'Debes indicar la nueva contraseña.'},
+    )
+
+    def validate_password_actual(self, value):
+        usuario = self.context['request'].user
+        if not usuario.check_password(value):
+            raise serializers.ValidationError('La contraseña actual es incorrecta.')
+        return value
+
+    def validate(self, attrs):
+        nueva = attrs.get('password_nueva')
+        actual = attrs.get('password_actual')
+
+        if nueva == actual:
+            raise serializers.ValidationError({
+                'password_nueva': 'La nueva contraseña debe ser diferente a la actual.'
+            })
+
+        usuario = self.context['request'].user
+        try:
+            validate_password(nueva, user=usuario)
+        except DjangoValidationError as error:
+            raise serializers.ValidationError({'password_nueva': list(error.messages)})
+
+        return attrs
+
+    def save(self):
+        usuario = self.context['request'].user
+        usuario.set_password(self.validated_data['password_nueva'])
+        usuario.save(update_fields=['password'])
+        return usuario
 
 class LoginSerializer(TokenObtainPairSerializer):
+
     def validate(self, attrs):
+
         data = super().validate(attrs)
+
         data['usuario'] = UsuarioSerializer(self.user).data
+
         return data
 
 
 class RegistroSerializer(serializers.ModelSerializer):
 
-    password = serializers.CharField(write_only=True, style={'input_type': 'password'})
+    """
+    Registro público: solo crea clientes.
+
+    Administradores, pilotos y técnicos
+    deben ser creados por un administrador.
+    """
+
+    password = serializers.CharField(
+        write_only=True,
+        style={'input_type': 'password'}
+    )
 
     class Meta:
         model = Usuario
-        fields = ['email', 'password', 'first_name', 'last_name',
-                  'no_identificacion', 'telefono']
+
+        fields = [
+            'email',
+            'password',
+            'first_name',
+            'last_name',
+            'no_identificacion',
+            'telefono'
+        ]
 
     def validate(self, attrs):
-        usuario_temporal = Usuario(**{k: v for k, v in attrs.items() if k != 'password'})
+
+        usuario_temporal = Usuario(
+            **{
+                k: v
+                for k, v in attrs.items()
+                if k != 'password'
+            }
+        )
+
         try:
-            validate_password(attrs['password'], user=usuario_temporal)
+
+            validate_password(
+                attrs['password'],
+                usuario_temporal
+            )
+
         except DjangoValidationError as error:
-            raise serializers.ValidationError({'password': list(error.messages)})
+
+            raise serializers.ValidationError({
+                'password': list(error.messages)
+            })
+
         return attrs
 
     @transaction.atomic
     def create(self, validated_data):
-        usuario = Usuario.objects.create_user(**validated_data)
-        PerfilCliente.objects.create(usuario=usuario)
+        usuario = Usuario.objects.create_user(
+            **validated_data
+        )
+
+        PerfilCliente.objects.create(
+            usuario=usuario
+        )
+
         return usuario

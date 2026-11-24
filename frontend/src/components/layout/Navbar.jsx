@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { Button } from '../ui';
 import { useSesion } from '../../hooks/useSesion';
-import { useTheme } from '../../context/useTheme'; 
+import { useTheme } from '../../context/useTheme';
 
 const Navbar = () => {
     const location = useLocation();

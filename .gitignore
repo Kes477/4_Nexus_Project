@@ -13,3 +13,6 @@ media/
 
 # IDE
 .vscode/
+
+# Archivos locales de revision y diagnostico
+/revision/
