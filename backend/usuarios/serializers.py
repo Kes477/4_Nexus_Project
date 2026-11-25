@@ -143,6 +143,55 @@ class CambiarPasswordSerializer(serializers.Serializer):
         usuario.save(update_fields=['password'])
         return usuario
 
+    def get_perfil_piloto(self, obj):
+        try:
+            perfil = obj.perfil_piloto
+        except Piloto.DoesNotExist:
+            return None
+        return PilotoSerializer(perfil).data
+
+
+class CambiarPasswordSerializer(serializers.Serializer):
+
+    password_actual = serializers.CharField(
+        write_only=True,
+        style={'input_type': 'password'},
+        error_messages={'required': 'Debes indicar tu contraseña actual.'},
+    )
+    password_nueva = serializers.CharField(
+        write_only=True,
+        style={'input_type': 'password'},
+        error_messages={'required': 'Debes indicar la nueva contraseña.'},
+    )
+
+    def validate_password_actual(self, value):
+        usuario = self.context['request'].user
+        if not usuario.check_password(value):
+            raise serializers.ValidationError('La contraseña actual es incorrecta.')
+        return value
+
+    def validate(self, attrs):
+        nueva = attrs.get('password_nueva')
+        actual = attrs.get('password_actual')
+
+        if nueva == actual:
+            raise serializers.ValidationError({
+                'password_nueva': 'La nueva contraseña debe ser diferente a la actual.'
+            })
+
+        usuario = self.context['request'].user
+        try:
+            validate_password(nueva, user=usuario)
+        except DjangoValidationError as error:
+            raise serializers.ValidationError({'password_nueva': list(error.messages)})
+
+        return attrs
+
+    def save(self):
+        usuario = self.context['request'].user
+        usuario.set_password(self.validated_data['password_nueva'])
+        usuario.save(update_fields=['password'])
+        return usuario
 
 class LoginSerializer(TokenObtainPairSerializer):
 
