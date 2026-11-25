@@ -74,11 +74,15 @@ class ActualizarPilotoSerializer(serializers.ModelSerializer):
         return (value or '').strip()
 
 
-
 class UsuarioSerializer(serializers.ModelSerializer):
 
     rol = serializers.CharField(read_only=True)
     perfil_piloto = serializers.SerializerMethodField()
+    fecha_nacimiento = serializers.DateField(
+        required=False,
+        allow_null=True,
+        input_formats=['%d-%m-%Y', '%Y-%m-%d'],
+    )
 
     class Meta:
         model = Usuario
@@ -144,6 +148,7 @@ class CambiarPasswordSerializer(serializers.Serializer):
         usuario.save(update_fields=['password'])
         return usuario
 
+
 class LoginSerializer(TokenObtainPairSerializer):
 
     def validate(self, attrs):
@@ -156,13 +161,6 @@ class LoginSerializer(TokenObtainPairSerializer):
 
 
 class RegistroSerializer(serializers.ModelSerializer):
-
-    """
-    Registro público: solo crea clientes.
-
-    Administradores, pilotos y técnicos
-    deben ser creados por un administrador.
-    """
 
     password = serializers.CharField(
         write_only=True,
