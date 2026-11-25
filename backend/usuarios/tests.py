@@ -1,4 +1,3 @@
-
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError, transaction
 from django.test import TestCase
@@ -453,7 +452,7 @@ class RegistroAPITest(APITestCase):
         }
 
     def registrar(self, **cambios):
-        return self.client.post(self.url, {**self.datos, **cambios}, format = 'json')
+        return self.client.post(self.url, {**self.datos, **cambios}, format='json')
 
     def test_registro_exitoso_crea_cliente_con_perfil(self):
         respuesta = self.registrar()
@@ -606,8 +605,8 @@ class PerfilAPITest(APITestCase):
             last_name='López',
         )
 
-        PerfilCliente.objects.create(usuario = self.usuario)
-        self.client.force_authenticate(user = self.usuario)
+        PerfilCliente.objects.create(usuario=self.usuario)
+        self.client.force_authenticate(user=self.usuario)
 
     def test_ver_perfil(self):
         respuesta = self.client.get(self.url)
@@ -631,7 +630,7 @@ class PerfilAPITest(APITestCase):
         respuesta = self.client.patch(self.url, {
             'first_name': 'Andrea',
             'telefono': '9999-1111',
-            'fecha_nacimiento': '2000-05-23',
+            'fecha_nacimiento': '23-05-2000',
         }, format='json')
 
         self.assertEqual(respuesta.status_code, status.HTTP_200_OK)
@@ -662,7 +661,7 @@ class PerfilAPITest(APITestCase):
         casos = {
             'first_name': '',
             'telefono': '1' * 21,
-            'fecha_nacimiento': '23-05-2000',
+            'fecha_nacimiento': '2000-13-45',
         }
         for campo, valor in casos.items():
             with self.subTest(campo=campo):

@@ -81,7 +81,7 @@ class UsuarioSerializer(serializers.ModelSerializer):
     fecha_nacimiento = serializers.DateField(
         required=False,
         allow_null=True,
-        input_formats=['%Y-%m-%d'],
+        input_formats=['%d-%m-%Y', '%Y-%m-%d'],
     )
 
     class Meta:
