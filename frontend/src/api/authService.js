@@ -30,3 +30,18 @@ export const registerUser = async (datos) => {
     localStorage.setItem('refresh_token', data.refresh);
     return data.usuario;
 }
+
+// PATCH al perfil: solo se envían los campos que cambian
+export const updatePerfil = async (cambios) => {
+    const { data } = await axiosClient.patch('/auth/perfil/', cambios);
+    return data;
+};
+
+// Cambia la contraseña pidiendo la actual
+export const changePassword = async (password_actual, password_nueva) => {
+    const { data } = await axiosClient.post('/auth/perfil/cambiar-password/', {
+        password_actual,
+        password_nueva,
+    });
+    return data;
+};

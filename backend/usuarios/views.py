@@ -12,15 +12,14 @@ from .serializers import (
     CambiarPasswordSerializer,
 )
 
-
 class LoginView(TokenObtainPairView):
     serializer_class = LoginSerializer
 
 
 class PerfilView(generics.RetrieveUpdateAPIView):
-
     serializer_class = UsuarioSerializer
     permission_classes = [permissions.IsAuthenticated]
+    http_method_names = ['get','patch','head','options']
 
     def get_object(self):
         return self.request.user
@@ -84,3 +83,4 @@ class RegistroView(generics.CreateAPIView):
             },
             status=status.HTTP_201_CREATED,
         )
+

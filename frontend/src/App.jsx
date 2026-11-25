@@ -25,6 +25,7 @@ import ClientePerfil from './pages/cliente/ClientePerfil';
 import ClienteServicios from './pages/cliente/ClienteServicios';
 import ClienteHistorial from './pages/cliente/ClienteHistorial';
 import ClienteSoporte from './pages/cliente/ClienteSoporte';
+import ClienteEquipos from './pages/cliente/ClienteEquipos';
 
 // --- PÁGINAS DEL ADMINISTRADOR ---
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -48,7 +49,8 @@ import PilotoSoporte from './pages/piloto/PilotoSoporte';
 import PilotoPerfil from './pages/piloto/PilotoPerfil';
 
 // --- PÁGINAS DEL TÉCNICO ---
-
+import TecnicoLayout from './layouts/TecnicoLayout';
+import TecnicoOrdenes from './pages/tecnico/TecnicoOrdenes';
 
 // --- PÁGINAS DEL VENDEDOR ---
 
@@ -75,6 +77,7 @@ function App() {
           <Route path="historial" element={<ClienteHistorial />} />
           <Route path="soporte" element={<ClienteSoporte />} />
           <Route path="perfil" element={<ClientePerfil onLogout={cerrarSesion} />} />
+          <Route path="equipos" element={<ClienteEquipos />} />
         </Route>
       </Route>
 
@@ -110,7 +113,13 @@ function App() {
       </Route>
 
       {/* 5. RUTAS PRIVADAS DEL TÉCNICO */}
-
+      {/* 5. RUTAS PRIVADAS DEL TÉCNICO */}
+        <Route element={<RutaProtegida rol="tecnico" />}>
+          <Route path="/tecnico" element={<TecnicoLayout />}>
+            <Route index element={<TecnicoOrdenes />} />
+            <Route path="ordenes" element={<TecnicoOrdenes />} />
+          </Route>
+        </Route>
 
       {/* 6. RUTAS PRIVADAS DEL VENDEDOR */}
 
