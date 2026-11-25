@@ -1,0 +1,13 @@
+name: Despliegue completo
+
+on:
+  workflow_dispatch:
+
+jobs:
+  frontend:
+    uses: ./.github/workflows/firebase-hosting-merge.yml
+    secrets: inherit
+
+  backend:
+    uses: ./.github/workflows/deploy-backend.yml
+    secrets: inherit

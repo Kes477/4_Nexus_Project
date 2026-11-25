@@ -1,0 +1,27 @@
+name: Despliegue del backend con Cloud Build
+
+on:
+  workflow_dispatch:
+  workflow_call:
+jobs:
+  trigger-build:
+    name: Activar despliegue en GCP
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      - name: Autenticar en Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Configurar Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Ejecutar trigger de Cloud Build
+        run: |
+          gcloud builds triggers run 3455325c-7598-4d89-8d11-bee687271977 \
+            --project=cursopractica-512803 \
+            --region=global \
+            --branch=main
