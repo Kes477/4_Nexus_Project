@@ -2,10 +2,11 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.conf import settings
 
+
 class UsuarioManager(BaseUserManager):
     use_in_migrations = True
 
-    def _create_user(self,email, password, **extra):
+    def _create_user(self, email, password, **extra):
         if not email:
             raise ValueError('El correo es Obligatorio')
         user = self.model(email=self.normalize_email(email), **extra)
@@ -66,7 +67,7 @@ class Usuario(AbstractUser):
         if hasattr(self, 'perfil_vendedor'):
             return 'vendedor'
         return 'cliente'
-    
+
 
 class PerfilCliente(models.Model):
     usuario = models.OneToOneField(
@@ -85,6 +86,7 @@ class PerfilCliente(models.Model):
 
     def __str__(self):
         return f"Cliente: {self.usuario.email}"
+
 
 class PerfilEmpleado(models.Model):
     usuario = models.OneToOneField(
@@ -125,15 +127,17 @@ class Tecnico(models.Model):
 
     disponible = models.BooleanField(default=True)
 
-    class Meta:constraints = [
-        models.CheckConstraint(
-            condition=~models.Q(especialidad_tecnica=""),
-            name="tecnico_especialidad_no_vacia"
-        )
-    ]
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=~models.Q(especialidad_tecnica=""),
+                name="tecnico_especialidad_no_vacia"
+            )
+        ]
 
     def __str__(self):
         return f"Técnico: {self.usuario.email}"
+
 
 class Piloto(models.Model):
     usuario = models.OneToOneField(
@@ -149,9 +153,9 @@ class Piloto(models.Model):
     )
 
     horas_vuelo_acumuladas = models.DecimalField(
-    max_digits=8,
-    decimal_places=2,
-    default=0
+        max_digits=8,
+        decimal_places=2,
+        default=0
     )
 
     tipo_certificacion = models.CharField(
@@ -161,15 +165,17 @@ class Piloto(models.Model):
 
     disponible = models.BooleanField(default=True)
 
-    class Meta:constraints = [
-        models.CheckConstraint(
-            condition=models.Q(horas_vuelo_acumuladas__gte=0),
-            name='piloto_horas_vuelo_no_negativas'
-        )
-    ]
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(horas_vuelo_acumuladas__gte=0),
+                name='piloto_horas_vuelo_no_negativas'
+            )
+        ]
 
     def __str__(self):
         return f"Piloto: {self.usuario.email}"
+
 
 class Vendedor(models.Model):
     usuario = models.OneToOneField(
@@ -185,12 +191,12 @@ class Vendedor(models.Model):
     )
 
     nombre_comercial = models.CharField(
-    max_length=100
+        max_length=100
     )
 
     sitio_web = models.URLField(
-    max_length=255,
-    blank=True
+        max_length=255,
+        blank=True
     )
 
     comision_pactada = models.DecimalField(
@@ -199,15 +205,16 @@ class Vendedor(models.Model):
         default=0
     )
 
-    class Meta:constraints = [
-        models.CheckConstraint(
-            condition=models.Q(
-                comision_pactada__gte=0,
-                comision_pactada__lte=100
-            ),
-            name='vendedor_comision_entre_0_y_100'
-        )
-    ]
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(
+                    comision_pactada__gte=0,
+                    comision_pactada__lte=100
+                ),
+                name='vendedor_comision_entre_0_y_100'
+            )
+        ]
 
     def __str__(self):
         return f"Vendedor: {self.usuario.email}"
