@@ -18,6 +18,16 @@ class Mision(models.Model):
     piloto = models.ForeignKey(
         'usuarios.Piloto', 
         on_delete=models.PROTECT, 
+        related_name='misiones',
+        null=True,
+        blank=True
+    )
+    
+    producto = models.ForeignKey(
+        'catalogo.Producto', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
         related_name='misiones'
     )
     
@@ -70,4 +80,4 @@ class Mision(models.Model):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"Misión #{self.pk} - {self.categoria} - {self.piloto}"
+        return f"Misión #{self.pk} - {self.categoria} - {self.piloto or 'Sin asignar'}"

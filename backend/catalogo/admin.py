@@ -1,6 +1,5 @@
 from django.contrib import admin
-from .models import (Articulo,AtributoVariante, Categoria, ImagenArticulo, Producto, Variante,)
-
+from .models import (Articulo, AtributoVariante, Categoria, ImagenArticulo, Producto, Variante, Resenia)
 
 @admin.register(Categoria)
 class CategoriaAdmin(admin.ModelAdmin):
@@ -15,6 +14,10 @@ class VarianteInline(admin.TabularInline):
     model = Variante
     extra = 1
 
+class ReseniaInline(admin.TabularInline):
+    model = Resenia
+    extra = 0
+    readonly_fields = ('fecha_resenia',)
 
 @admin.register(Producto)
 class ProductoAdmin(admin.ModelAdmin):
@@ -22,7 +25,7 @@ class ProductoAdmin(admin.ModelAdmin):
     list_filter = ('tipo_producto','activo','categoria')
     list_editable = ('activo',)
     search_fields = ('nombre', 'descripcion')
-    inlines = [ArticuloInline, VarianteInline]
+    inlines = [ArticuloInline, VarianteInline, ReseniaInline]
 
 class ImagenArticuloInline(admin.TabularInline):
     model = ImagenArticulo
@@ -42,4 +45,10 @@ class AtributoVarianteInline(admin.TabularInline):
 class VarianteAdmin(admin.ModelAdmin):
     list_display = ('sku', 'producto', 'precio')
     search_fields = ('sku', 'producto__nombre')
-    inlines = [AtributoVarianteInline]    
+    inlines = [AtributoVarianteInline]
+
+@admin.register(Resenia)
+class ReseniaAdmin(admin.ModelAdmin):
+    list_display = ('producto', 'cliente', 'calificacion', 'fecha_resenia')
+    list_filter = ('calificacion', 'fecha_resenia')
+    search_fields = ('producto__nombre', 'cliente__email', 'comentario')

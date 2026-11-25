@@ -1,22 +1,23 @@
 from rest_framework import serializers
-from .models import (Articulo, AtributoVariante,Categoria, ImagenArticulo, Producto, Variante,)
-
+from .models import (
+    Articulo, AtributoVariante, Categoria, ImagenArticulo, 
+    Producto, Variante, Resenia
+)
 
 class CategoriaSerializer(serializers.ModelSerializer):
     class Meta:
         model = Categoria
         fields = ['id', 'nombre', 'descripcion', 'categoria_padre']
 
-
 class ImagenArticuloSerializer(serializers.ModelSerializer):
     class Meta:
         model = ImagenArticulo
-        fields = ['id','url_imagen','imagen_principal', 'orden']
+        fields = ['id', 'url_imagen', 'imagen_principal', 'orden']
 
 class AtributoVarianteSerializer(serializers.ModelSerializer):
     class Meta:
         model = AtributoVariante
-        fields = ['nombre_atributo','valor_atributo']
+        fields = ['nombre_atributo', 'valor_atributo']
 
 class VarianteSerializer(serializers.ModelSerializer):
     atributos = AtributoVarianteSerializer(many=True, read_only=True)
@@ -24,16 +25,17 @@ class VarianteSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Variante
-        fields = ['id', 'sku', 'precio', 'disponible','atributos']
+        fields = ['id', 'sku', 'precio', 'disponible', 'atributos']
 
     def get_disponible(self, obj):
-        return any(inv.cantidad_disponible>0 for inv in obj.inventarios.all())
+        return any(inv.cantidad_disponible > 0 for inv in obj.inventarios.all())
 
 class ArticulosSerializer(serializers.ModelSerializer):
     imagenes = ImagenArticuloSerializer(many=True, read_only=True)
+    
     class Meta:
         model = Articulo
-        fields = ['marca','modelo','peso_kg','dimensiones','tiempo_vuelo_max_min','alcance_max_km','imagenes']
+        fields = ['marca', 'modelo', 'peso_kg', 'dimensiones', 'tiempo_vuelo_max_min', 'alcance_max_km', 'imagenes']
 
 class ProductoListaSerializer(serializers.ModelSerializer):
     categoria = serializers.StringRelatedField()
@@ -42,13 +44,12 @@ class ProductoListaSerializer(serializers.ModelSerializer):
     disponible = serializers.BooleanField(read_only=True)
     imagen_principal = serializers.SerializerMethodField() 
 
-
     class Meta:
         model = Producto
-        fields = ['id', 'nombre', 'descripcion','categoria', 'tipo_producto','marca', 'precio_desde', 'disponible','imagen_principal']
+        fields = ['id', 'nombre', 'descripcion', 'categoria', 'tipo_producto', 'marca', 'precio_desde', 'disponible', 'imagen_principal']
     
     def get_imagen_principal(self, obj):
-        articulo = getattr(obj,'articulo', None)
+        articulo = getattr(obj, 'articulo', None)
         if articulo is None:
             return None
         for imagen in articulo.imagenes.all():
@@ -63,6 +64,16 @@ class ProductoDetalleSerializer(ProductoListaSerializer):
     class Meta(ProductoListaSerializer.Meta):
         fields = ProductoListaSerializer.Meta.fields + ['fecha_publicacion', 'articulo', 'variantes']
 
-    
+class ReseniaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Resenia
+        fields = ['id', 'producto', 'cliente', 'calificacion', 'titulo', 'comentario', 'fecha_resenia', 'compra_verificada']
+        read_only_fields = ['id', 'cliente', 'fecha_resenia', 'compra_verificada']
 
-
+    def validate(self, attrs):
+        request = self.context.get('request')
+        if request and request.user:
+            producto = attrs.get('producto')
+            if Resenia.objects.filter(cliente=request.user, producto=producto).exists():
+                raise serializers.ValidationError({'producto': 'Ya has calificado este servicio anteriormente.'})
+        return attrs

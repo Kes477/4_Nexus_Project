@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Plane, Droplets, Eye, Camera, Target } from 'lucide-react';
+import { Plane, Droplets, Eye, Camera, Target, Plus } from 'lucide-react';
 import { getMisiones, cambiarEstadoMision } from '../../api/pilotoService';
 import { 
     SectionHeading, 
@@ -9,7 +9,10 @@ import {
     Loader, 
     Alert,
     Select,
-    Badge
+    Badge,
+    Button,
+    Modal,
+    Input
 } from '../../components/ui';
 import { MisionCard } from '../../components/domain/MisionCard';
 
@@ -50,6 +53,18 @@ export default function PilotoMisiones() {
     const misionIdParam = searchParams.get('id');
     const [highlightedId, setHighlightedId] = useState(null);
     const scrollTargetRef = useRef(null);
+
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [isCreating, setIsCreating] = useState(false);
+    const [createError, setCreateError] = useState(null);
+    const [createForm, setCreateForm] = useState({
+        categoria: 'fotografia',
+        ubicacion: '',
+        fecha_programada: '',
+        dron_asignado: '',
+        descripcion: '',
+        area_size: ''
+    });
 
     const estadosDisponibles = ['PENDIENTE', 'ACEPTADA', 'EN_CURSO', 'COMPLETADA', 'RECHAZADA', 'CANCELADA'];
 
@@ -132,6 +147,49 @@ export default function PilotoMisiones() {
         }
     };
 
+    const handleCreateMission = async (e) => {
+        e.preventDefault();
+        setIsCreating(true);
+        setCreateError(null);
+
+        try {
+            const token = localStorage.getItem('access_token');
+            const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+
+            const response = await fetch(`${API_URL}/pilotos/misiones/`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    ...createForm,
+                    tipo_mision: 'PERSONAL'
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Error al crear la misión. Verifica los datos.');
+            }
+
+            const data = await getMisiones(mainMode);
+            setMisiones(data);
+            setIsCreateModalOpen(false);
+            setCreateForm({
+                categoria: 'fotografia',
+                ubicacion: '',
+                fecha_programada: '',
+                dron_asignado: '',
+                descripcion: '',
+                area_size: ''
+            });
+        } catch (error) {
+            setCreateError(error.message);
+        } finally {
+            setIsCreating(false);
+        }
+    };
+
     const categoriasUnicas = [...new Set(misiones.map(m => m.categoria).filter(Boolean))];
     
     const resumenCategorias = categoriasUnicas.map(cat => {
@@ -178,11 +236,18 @@ export default function PilotoMisiones() {
         <div style={{ padding: '40px 20px', backgroundColor: 'var(--bg-color)', minHeight: '100vh' }}>
             <div className="section-container" style={{ maxWidth: '1200px', margin: '0 auto' }}>
                 
-                <SectionHeading 
-                    eyebrow="Gestión de Vuelos"
-                    title="Misiones Asignadas" 
-                    description="Administra tus vuelos personales y los servicios solicitados por terceros."
-                />
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '20px', marginBottom: '20px' }}>
+                    <SectionHeading 
+                        eyebrow="Gestión de Vuelos"
+                        title="Misiones Asignadas" 
+                        description="Administra tus vuelos personales y los servicios solicitados por terceros."
+                    />
+                    {mainMode === 'PERSONAL' && (
+                        <Button variant="primary" onClick={() => setIsCreateModalOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <Plus size={18} /> Nueva Misión
+                        </Button>
+                    )}
+                </div>
 
                 <div style={{ marginBottom: '20px' }}>
                     <Tabs 
@@ -364,6 +429,80 @@ export default function PilotoMisiones() {
                 )}
 
             </div>
+
+            <Modal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} title="Crear Misión Personal">
+                <form onSubmit={handleCreateMission} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    {createError && (
+                        <Alert type="danger" title="Error" message={createError} onClose={() => setCreateError(null)} />
+                    )}
+                    
+                    <div>
+                        <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: 'var(--text-light)', marginBottom: '6px' }}>Categoría</label>
+                        <Select 
+                            options={[
+                                { value: 'fotografia', label: 'Fotografía' },
+                                { value: 'fumigacion', label: 'Fumigación' },
+                                { value: 'mapeo', label: 'Mapeo' },
+                                { value: 'carreras_fpv', label: 'Carreras FPV' },
+                                { value: 'monitoreo', label: 'Monitoreo' }
+                            ]} 
+                            value={createForm.categoria} 
+                            onChange={e => setCreateForm({ ...createForm, categoria: e.target.value })} 
+                        />
+                    </div>
+                    
+                    <div>
+                        <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: 'var(--text-light)', marginBottom: '6px' }}>Ubicación</label>
+                        <Input required value={createForm.ubicacion} onChange={e => setCreateForm({ ...createForm, ubicacion: e.target.value })} placeholder="Ej. Lago de Yojoa" />
+                    </div>
+
+                    <div>
+                        <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: 'var(--text-light)', marginBottom: '6px' }}>Fecha Programada</label>
+                        <Input required type="date" value={createForm.fecha_programada} onChange={e => setCreateForm({ ...createForm, fecha_programada: e.target.value })} />
+                    </div>
+
+                    <div>
+                        <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: 'var(--text-light)', marginBottom: '6px' }}>Dron Asignado</label>
+                        <Input required value={createForm.dron_asignado} onChange={e => setCreateForm({ ...createForm, dron_asignado: e.target.value })} placeholder="Ej. DJI Mavic 3" />
+                    </div>
+
+                    <div>
+                        <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: 'var(--text-light)', marginBottom: '6px' }}>Área / Tamaño (Opcional)</label>
+                        <Input value={createForm.area_size} onChange={e => setCreateForm({ ...createForm, area_size: e.target.value })} placeholder="Ej. 4.2 km dist." />
+                    </div>
+
+                    <div>
+                        <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: 'var(--text-light)', marginBottom: '6px' }}>Descripción</label>
+                        <textarea
+                            required
+                            value={createForm.descripcion}
+                            onChange={(e) => setCreateForm({ ...createForm, descripcion: e.target.value })}
+                            placeholder="Detalles de la misión..."
+                            rows={3}
+                            style={{
+                                width: '100%',
+                                padding: '12px',
+                                borderRadius: '8px',
+                                border: '1px solid var(--light-gray)',
+                                fontSize: '14px',
+                                fontFamily: 'inherit',
+                                color: 'var(--color-dark)',
+                                outline: 'none',
+                                resize: 'vertical'
+                            }}
+                        />
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '8px' }}>
+                        <Button variant="outline-dark" type="button" onClick={() => setIsCreateModalOpen(false)}>
+                            Cancelar
+                        </Button>
+                        <Button variant="primary" type="submit" disabled={isCreating}>
+                            {isCreating ? 'Creando...' : 'Crear Misión'}
+                        </Button>
+                    </div>
+                </form>
+            </Modal>
         </div>
     );
 }
