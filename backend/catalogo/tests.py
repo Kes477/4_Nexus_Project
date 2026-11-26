@@ -10,7 +10,6 @@ from .models import (Articulo, AtributoVariante, Categoria, ImagenArticulo, Prod
 from inventario.models import Almacen, Inventario
 
 def crear_dron(categoria, nombre, precios, activo=True):
-    #crea un tipo de articulo con su ficha técnica y variantes
     producto = Producto.objects.create(categoria=categoria, nombre=nombre, activo = activo)
     articulo = Articulo.objects.create(producto=producto, marca='DJI', modelo=nombre)
 
@@ -23,8 +22,6 @@ def crear_dron(categoria, nombre, precios, activo=True):
     return producto, articulo
 
 
-
-# 1 PRUEBAS DE LOS MODELOS Y RESTRICCIONES
 
 class CatalogoModelTests(TestCase):
     def setUp(self):
@@ -40,7 +37,7 @@ class CatalogoModelTests(TestCase):
                             producto = self.producto,
                             sku = f'SKU - {precio}',
                             precio = Decimal(precio),
-                        ) 
+                        )
 
     def test_sku_duplicado(self):
         with self.assertRaises(IntegrityError):
@@ -99,8 +96,6 @@ class CatalogoModelTests(TestCase):
         with self.assertRaises(ProtectedError):
             self.categoria.delete()
 
-
-# PRUEBAS DE LA API DE CATÁLOGO
 
 class CatalogoAPITest(APITestCase):
     def setUp(self):
@@ -162,15 +157,15 @@ class CatalogoAPITest(APITestCase):
         self.assertEqual(respuesta.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_busqueda(self):
-        respuesta = self.client.get(self.url_lista, {'search':'mini'}) 
-        self.assertEqual(self.nombres(respuesta),['Mini 5 Pro']) 
+        respuesta = self.client.get(self.url_lista, {'search':'mini'})
+        self.assertEqual(self.nombres(respuesta),['Mini 5 Pro'])
 
     def test_filtro_por_categoria(self):
         respuesta = self.client.get(self.url_lista, {'categoria': self.agricultura.id})
         self.assertEqual(self.nombres(respuesta), ['Agras T50'])
 
     def test_ordenar_por_precio(self):
-        respuesta = self.client.get(self.url_lista, {'ordering': 'precio_desde'}) 
+        respuesta = self.client.get(self.url_lista, {'ordering': 'precio_desde'})
         self.assertEqual(self.nombres(respuesta), ['Mini 5 Pro','Agras T50'])
 
     def test_api_lectura(self):
@@ -182,8 +177,6 @@ class CatalogoAPITest(APITestCase):
         self.assertEqual(respuesta.status_code, status.HTTP_200_OK)
         self.assertEqual(len(respuesta.data),2)
 
-
-########### PRUEBAS DE DISPONIBILIDAD CATÁLOGO, INVENTARIO ##############
 
 class CatalogoDisponibilidadTests(APITestCase):
 

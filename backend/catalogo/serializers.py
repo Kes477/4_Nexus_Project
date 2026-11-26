@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from .models import (
-    Articulo, AtributoVariante, Categoria, ImagenArticulo, 
+    Articulo, AtributoVariante, Categoria, ImagenArticulo,
     Producto, Variante, Resenia, Suscripcion, EspecificacionProducto
 )
 
@@ -22,7 +22,7 @@ class AtributoVarianteSerializer(serializers.ModelSerializer):
 class VarianteSerializer(serializers.ModelSerializer):
     atributos = AtributoVarianteSerializer(many=True, read_only=True)
     disponible = serializers.SerializerMethodField()
-    
+
     class Meta:
         model = Variante
         fields = ['id', 'sku', 'precio', 'disponible', 'atributos']
@@ -32,7 +32,7 @@ class VarianteSerializer(serializers.ModelSerializer):
 
 class ArticulosSerializer(serializers.ModelSerializer):
     imagenes = ImagenArticuloSerializer(many=True, read_only=True)
-    
+
     class Meta:
         model = Articulo
         fields = ['marca', 'modelo', 'peso_kg', 'dimensiones', 'tiempo_vuelo_max_min', 'alcance_max_km', 'imagenes']
@@ -52,18 +52,18 @@ class ProductoListaSerializer(serializers.ModelSerializer):
     marca = serializers.CharField(source='articulo.marca', read_only=True, default=None)
     precio_desde = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
     disponible = serializers.BooleanField(read_only=True)
-    imagen_principal = serializers.SerializerMethodField() 
+    imagen_principal = serializers.SerializerMethodField()
     suscripcion = SuscripcionSerializer(read_only=True, allow_null=True)
     especificaciones = EspecificacionProductoSerializer(many=True, read_only=True)
 
     class Meta:
         model = Producto
         fields = [
-            'id', 'nombre', 'descripcion', 'categoria', 'tipo_producto', 
+            'id', 'nombre', 'descripcion', 'categoria', 'tipo_producto',
             'marca', 'precio_desde', 'disponible', 'imagen_principal',
             'suscripcion', 'especificaciones', 'es_destacado'
         ]
-    
+
     def get_imagen_principal(self, obj):
         articulo = getattr(obj, 'articulo', None)
         if articulo is None:

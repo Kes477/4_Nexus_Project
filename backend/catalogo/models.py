@@ -34,6 +34,8 @@ class Producto(models.Model):
     activo = models.BooleanField(default=True)
     es_destacado = models.BooleanField(default=False)
     fecha_publicacion = models.DateTimeField(auto_now_add=True)
+    mostrar_en_landing = models.BooleanField(default=False)
+    orden_landing = models.PositiveIntegerField(default=0)
 
     class Meta:
         ordering = ['-fecha_publicacion']
