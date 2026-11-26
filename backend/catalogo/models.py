@@ -10,12 +10,12 @@ class Categoria(models.Model):
         on_delete=models.PROTECT,
         null=True,
         blank=True,
-        related_name = 'subcategorias',
+        related_name='subcategorias',
     )
 
     class Meta:
         verbose_name = 'categoría'
-        verbose_name_plural ='categorías'
+        verbose_name_plural = 'categorías'
         ordering = ['nombre']
 
     def __str__(self):
@@ -25,12 +25,12 @@ class Producto(models.Model):
     class Tipo(models.TextChoices):
         ARTICULO = 'ARTICULO', 'Artículo'
         SERVICIO = 'SERVICIO', 'Servicio'
-        SUSCRIPCION = 'SUSCRIPCION','Suscripción'
+        SUSCRIPCION = 'SUSCRIPCION', 'Suscripción'
 
     categoria = models.ForeignKey(Categoria, on_delete=models.PROTECT, related_name='productos')
     nombre = models.CharField(max_length=200)
     descripcion = models.TextField(blank=True)
-    tipo_producto = models.CharField(max_length=20, choices=Tipo.choices, default= Tipo.ARTICULO)
+    tipo_producto = models.CharField(max_length=20, choices=Tipo.choices, default=Tipo.ARTICULO)
     activo = models.BooleanField(default=True)
     fecha_publicacion = models.DateTimeField(auto_now_add=True)
 
@@ -40,11 +40,10 @@ class Producto(models.Model):
     def __str__(self):
         return self.nombre
 
-
 class Articulo(models.Model):
     producto = models.OneToOneField(
         Producto,
-        on_delete =models.CASCADE,
+        on_delete=models.CASCADE,
         primary_key=True,
         related_name='articulo'
     )
@@ -58,12 +57,10 @@ class Articulo(models.Model):
 
     def clean(self):
         if self.producto_id and self.producto.tipo_producto != Producto.Tipo.ARTICULO:
-            raise ValidationError('Solo un produto de tipo Artículo puede tener datos de artículo')
+            raise ValidationError('Solo un producto de tipo Artículo puede tener datos de artículo')
 
     def __str__(self):
         return f'{self.marca} {self.modelo}'.strip() or str(self.producto)
-
-
 
 class Variante(models.Model):
     producto = models.ForeignKey(Producto, on_delete=models.CASCADE, related_name='variantes')
@@ -74,14 +71,13 @@ class Variante(models.Model):
         ordering = ['precio']
         constraints = [
             models.CheckConstraint(
-                condition=Q(precio__gt = 0),
-                name= 'variante_precio_positivo',    
+                condition=Q(precio__gt=0),
+                name='variante_precio_positivo',
             )
         ]
-    
+
     def __str__(self):
         return f'{self.producto} ({self.sku})'
-
 
 class AtributoVariante(models.Model):
     variante = models.ForeignKey(Variante, on_delete=models.CASCADE, related_name='atributos')
@@ -94,13 +90,12 @@ class AtributoVariante(models.Model):
         constraints = [
             models.UniqueConstraint(
                 fields=['variante', 'nombre_atributo'],
-                name = 'atributo_unico_por_variante',
+                name='atributo_unico_por_variante',
             )
-        ] 
+        ]
 
     def __str__(self):
         return f'{self.nombre_atributo}: {self.valor_atributo}'
-
 
 class ImagenArticulo(models.Model):
     articulo = models.ForeignKey(Articulo, on_delete=models.CASCADE, related_name='imagenes')
@@ -116,9 +111,35 @@ class ImagenArticulo(models.Model):
             models.UniqueConstraint(
                 fields=['articulo'],
                 condition=Q(imagen_principal=True),
-                name = 'una_imagen_principal_por_articulo',
+                name='una_imagen_principal_por_articulo',
             ),
         ]
 
     def __str__(self):
         return f'Imagen {self.orden} de {self.articulo}'
+
+class Resenia(models.Model):
+    producto = models.ForeignKey(Producto, on_delete=models.CASCADE, related_name='resenias')
+    cliente = models.ForeignKey('usuarios.Usuario', on_delete=models.CASCADE, related_name='resenias_escritas')
+    calificacion = models.DecimalField(max_digits=2, decimal_places=1)
+    titulo = models.CharField(max_length=100, blank=True, null=True)
+    comentario = models.TextField(blank=True, null=True)
+    fecha_resenia = models.DateTimeField(auto_now_add=True)
+    compra_verificada = models.BooleanField(default=False)
+
+    class Meta:
+        verbose_name = 'reseña'
+        verbose_name_plural = 'reseñas'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['cliente', 'producto'],
+                name='resenia_unica_por_cliente_producto'
+            ),
+            models.CheckConstraint(
+                condition=Q(calificacion__gte=1, calificacion__lte=5),
+                name='resenia_calificacion_entre_1_y_5'
+            )
+        ]
+
+    def __str__(self):
+        return f'{self.producto.nombre} - {self.calificacion}'

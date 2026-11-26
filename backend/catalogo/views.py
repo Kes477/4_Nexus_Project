@@ -1,8 +1,11 @@
 from django.db.models import Min, Exists, OuterRef
-from rest_framework import permissions, viewsets
+from rest_framework import permissions, viewsets, mixins
 from inventario.models import Inventario
-from .models import Categoria, Producto
-from .serializers import (CategoriaSerializer,ProductoDetalleSerializer, ProductoListaSerializer)
+from .models import Categoria, Producto, Resenia
+from .serializers import (
+    CategoriaSerializer, ProductoDetalleSerializer, 
+    ProductoListaSerializer, ReseniaSerializer
+)
 
 class CategoriaViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Categoria.objects.all()
@@ -10,29 +13,34 @@ class CategoriaViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [permissions.AllowAny]
     authentication_classes = []
 
-
-
-
 class ProductoViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [permissions.AllowAny]
     authentication_classes = []
     filterset_fields = ['categoria', 'tipo_producto']
-    search_fields = ['nombre', 'descripcion','articulo__marca','articulo__modelo']
-    ordering_fields = ['precio_desde','fecha_publicacion','nombre']
+    search_fields = ['nombre', 'descripcion', 'articulo__marca', 'articulo__modelo']
+    ordering_fields = ['precio_desde', 'fecha_publicacion', 'nombre']
 
     def get_queryset(self):
         hay_stock = Inventario.objects.filter(
-            variante__producto = OuterRef('pk'),
-            cantidad_disponible__gt = 0,
+            variante__producto=OuterRef('pk'),
+            cantidad_disponible__gt=0,
         ) 
         return (
             Producto.objects.filter(activo=True)
-            .select_related('categoria','articulo')
-            .prefetch_related('articulo__imagenes', 'variantes__atributos','variantes__inventarios',)
-            .annotate(precio_desde=Min('variantes__precio'), disponible = Exists(hay_stock))
+            .select_related('categoria', 'articulo')
+            .prefetch_related('articulo__imagenes', 'variantes__atributos', 'variantes__inventarios')
+            .annotate(precio_desde=Min('variantes__precio'), disponible=Exists(hay_stock))
         )
     
     def get_serializer_class(self):
         if self.action == 'retrieve':
             return ProductoDetalleSerializer
         return ProductoListaSerializer
+
+class ReseniaViewSet(mixins.CreateModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet):
+    queryset = Resenia.objects.all()
+    serializer_class = ReseniaSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def perform_create(self, serializer):
+        serializer.save(cliente=self.request.user)
