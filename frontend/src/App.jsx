@@ -37,6 +37,8 @@ import ClienteHistorial from './pages/cliente/ClienteHistorial';
 import ClienteSoporte from './pages/cliente/ClienteSoporte';
 import ClienteEquipos from './pages/cliente/ClienteEquipos';
 import ClienteCarrito from './pages/cliente/ClienteCarrito';
+import ClienteCheckout from './pages/cliente/ClienteCheckout';
+import ClientePedidos from './pages/cliente/ClientePedidos';
 import ClienteReparaciones from './pages/cliente/ClienteReparaciones';
 import HistorialReparaciones from './pages/cliente/HistorialReparaciones';
 
@@ -137,6 +139,10 @@ function App() {
 
           {/* COMPRAS */}
           <Route path="carrito" element={<ClienteCarrito />} />
+
+          <Route path="checkout" element={<ClienteCheckout />} />
+          
+          <Route path="pedidos" element={<ClientePedidos />} />
         </Route>
 
       </Route>

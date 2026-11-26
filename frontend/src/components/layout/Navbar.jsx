@@ -76,6 +76,11 @@ const menusPorRol = {
         icono: Plane,
       },
 
+      {
+        ruta:'pedidos',
+        nombre:'Mis Pedidos',
+        icono: ShoppingCart,
+      },
       // HU-010, HU-011 Y HU-012
 
       {

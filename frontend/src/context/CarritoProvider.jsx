@@ -47,6 +47,7 @@ export function CarritoProvider({ children }) {
         cambiarCantidad: (detalleId, cantidad) => guardar(cambiarCantidad(detalleId, cantidad)),
         quitar: (detalleId) => guardar(quitarDelCarrito(detalleId)),
         vaciar: () => guardar(vaciarCarrito()),
+        recargar: () => guardar(obtenerCarrito()),
     };
 
     return (
