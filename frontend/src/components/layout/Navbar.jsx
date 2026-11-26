@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-
 import {
   Drone,
   ChevronDown,
@@ -24,10 +23,12 @@ import {
   AlertTriangle,
   ShieldCheck,
   ThumbsUp,
+  ShoppingCart,
 } from 'lucide-react';
 
 import { Button } from '../ui';
 import { useSesion } from '../../hooks/useSesion';
+import { useCarrito } from '../../hooks/useCarrito';
 import { useTheme } from '../../context/useTheme';
 
 // ======================================================
@@ -193,6 +194,7 @@ const menusPorRol = {
 // COMPONENTE PRINCIPAL NAVBAR
 // ======================================================
 
+
 const Navbar = () => {
 
   const location = useLocation();
@@ -217,19 +219,19 @@ const Navbar = () => {
     const hasLoadedMocks = useRef(false);
     const mocksRef = useRef([]);
 
-
-
   // ====================================================
   // CONTEXTOS
   // ====================================================
 
-  const { theme, toggleTheme } = useTheme();
+   const { theme, toggleTheme } = useTheme();
 
   const {
     usuario,
     rol,
     cerrarSesion,
   } = useSesion();
+
+  const { cantidadArticulos } = useCarrito();
 
   // ====================================================
   // DETERMINAR ROL Y RUTA BASE
@@ -989,6 +991,30 @@ const Navbar = () => {
                                 </div>
                             )}
                         </div>
+                    )}
+                                        {usuario && rol === 'cliente' && (
+                        <Link
+                            to="/cliente/carrito"
+                            title="Mi carrito"
+                            style={{
+                                width: '40px', height: '40px', borderRadius: '50%', display: 'flex',
+                                alignItems: 'center', justifyContent: 'center', position: 'relative',
+                                background: 'var(--bg-color)', border: '1px solid var(--light-gray)',
+                                color: 'var(--color-dark)', textDecoration: 'none',
+                            }}
+                        >
+                            <ShoppingCart size={18} />
+                            {cantidadArticulos > 0 && (
+                                <span style={{
+                                    position: 'absolute', top: '-4px', right: '-4px', background: 'var(--color-primary)',
+                                    color: 'white', fontSize: '10px', fontWeight: 'bold', minWidth: '18px', height: '18px',
+                                    padding: '0 4px', borderRadius: '9px', display: 'flex', alignItems: 'center',
+                                    justifyContent: 'center',
+                                }}>
+                                    {cantidadArticulos}
+                                </span>
+                            )}
+                        </Link>
                     )}
 
         {/* ============================================ */}

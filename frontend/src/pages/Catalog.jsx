@@ -8,8 +8,10 @@ import { SearchBar, Select, Modal, Button, Loader } from '../components/ui';
 
 import { ItemProductCard } from '../components/domain/ItemCard'; 
 
-import {getProductos} from '../api/droneService';
-
+import {getProducto, getProductos} from '../api/droneService';
+import { useSesion } from '../hooks/useSesion';
+import { useCarrito } from '../hooks/useCarrito';
+import { primerError } from '../utils/errores';
 
 const formatPrice = (precioDesde) =>
     precioDesde
@@ -18,6 +20,9 @@ const formatPrice = (precioDesde) =>
               maximumFractionDigits: 2,
           })
         : 'Consultar';
+
+const formatoLempiras = (valor) =>
+    `L ${Number(valor).toLocaleString('es-HN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 const adaptDron = (item) => ({
     id: item.id,
@@ -54,6 +59,16 @@ export const Catalog = () => {
     const [selectedCategory, setSelectedCategory] = useState('Todas');
     const [sortBy, setSortBy] = useState('relevancia');
     const [selectedDrone, setSelectedDrone] = useState(null);
+    const {usuario, rol} = useSesion();
+    const {agregar} = useCarrito();
+
+    const [variantes, setVariantes] = useState([]);
+    const [varianteId, setVarianteId] = useState('');
+    const [cantidad, setCantidad] = useState(1);
+    const [cargandoVariantes, setCargandoVariantes] = useState(false);
+    const [agregando, setAgregando] = useState(false);
+    const [mensaje, setMensaje] = useState(null);
+
 
     useEffect(() => {
         const fetchDrones = async () => {
@@ -115,19 +130,59 @@ export const Catalog = () => {
         return ordenados;
     }, [drones, searchTerm, selectedCategory, sortBy]);
 
-    const handlePurchase = () => {
-        const dronParaComprar = selectedDrone;
+        const abrirDron = async (dron) => {
+        setSelectedDrone(dron);
+        setVariantes([]);
+        setVarianteId('');
+        setCantidad(1);
+        setMensaje(null);
+
+        if (!usuario || rol !== 'cliente') return;
+
+        setCargandoVariantes(true);
+        try {
+            const detalle = await getProducto(dron.id);
+            const lista = detalle.variantes ?? [];
+            setVariantes(lista);
+            const primera = lista.find((v) => v.disponible) ?? lista[0];
+            setVarianteId(primera ? String(primera.id) : '');
+        } catch {
+            setMensaje({ tipo: 'danger', texto: 'No se pudieron cargar las opciones de este producto.' });
+        } finally {
+            setCargandoVariantes(false);
+        }
+    };
+
+    const cerrarModal = () => {
         setSelectedDrone(null);
+        setMensaje(null);
+    };
+
+    const irALogin = () => {
+        const dron = selectedDrone;
+        cerrarModal();
         navigate('/login', {
             state: {
-                from: '/cliente/drones',
-                selectedDrone: dronParaComprar,
-                message: dronParaComprar
-                    ? `Inicia sesión para comprar el ${dronParaComprar.nombre}.`
-                    : 'Inicia sesión para continuar con tu compra.',
+                from: '/catalog',
+                message: `Inicia sesión para comprar el ${dron.nombre}.`,
             },
         });
     };
+
+    const agregarAlCarrito = async () => {
+        setMensaje(null);
+        setAgregando(true);
+        try {
+            await agregar(Number(varianteId), cantidad);
+            setMensaje({ tipo: 'success', texto: 'Producto agregado al carrito.' });
+        } catch (error) {
+            setMensaje({ tipo: 'danger', texto: primerError(error) });
+        } finally {
+            setAgregando(false);
+        }
+    };
+
+    const varianteElegida = variantes.find((v) => String(v.id) === varianteId);
 
     const hayFiltrosActivos = searchTerm || selectedCategory !== 'Todas' || sortBy !== 'relevancia';
 
@@ -234,7 +289,7 @@ export const Catalog = () => {
                                     <ItemProductCard 
                                         item={dron} 
                                         mode="catalog" 
-                                        onAction={setSelectedDrone} 
+                                        onAction={abrirDron} 
                                     />
                                 </div>
                             ))}
@@ -243,9 +298,9 @@ export const Catalog = () => {
                 </div>
             </main>
 
-            <Modal
+                        <Modal
                 isOpen={!!selectedDrone}
-                onClose={() => setSelectedDrone(null)}
+                onClose={cerrarModal}
                 title={selectedDrone?.nombre}
             >
                 {selectedDrone && (
@@ -265,20 +320,93 @@ export const Catalog = () => {
                                 <i className="fa-solid fa-image" style={{ fontSize: '56px', color: 'var(--light-gray)' }} />
                             </div>
                         )}
+
                         <p style={{ color: 'var(--text-light)', lineHeight: '1.5', fontSize: '14px' }}>
                             {selectedDrone.desc}
                         </p>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--light-gray)', paddingTop: '15px' }}>
-                            <div>
-                                <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-light)', fontWeight: 'bold' }}>PRECIO</span>
-                                <strong style={{ fontSize: '22px', color: 'var(--color-primary)' }}>
-                                    {selectedDrone.precio === 'Consultar' ? 'Consultar' : `L ${selectedDrone.precio}`}
-                                </strong>
-                            </div>
 
-                            <Button variant="primary" onClick={handlePurchase} style={{ padding: '10px 20px', display: 'flex', gap: '8px' }}>
-                                <ShoppingBag size={18} /> Comprar Ahora
-                            </Button>
+                        <div style={{ borderTop: '1px solid var(--light-gray)', paddingTop: '15px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+
+                            {mensaje && (
+                                <div style={{
+                                    padding: '10px 12px', borderRadius: '6px', fontSize: '13px',
+                                    background: mensaje.tipo === 'success' ? 'rgba(4, 201, 166, 0.1)' : 'rgba(220, 53, 69, 0.1)',
+                                    color: mensaje.tipo === 'success' ? 'var(--color-primary)' : 'var(--color-danger)',
+                                }}>
+                                    {mensaje.texto}
+                                    {mensaje.tipo === 'success' && (
+                                        <button
+                                            type="button"
+                                            onClick={() => navigate('/cliente/carrito')}
+                                            style={{ marginLeft: '8px', background: 'none', border: 'none', color: 'inherit', fontWeight: 'bold', textDecoration: 'underline', cursor: 'pointer', padding: 0 }}
+                                        >
+                                            Ver carrito
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+
+                            {usuario && rol === 'cliente' && (
+                                cargandoVariantes ? (
+                                    <span style={{ fontSize: '13px', color: 'var(--text-light)' }}>Cargando opciones...</span>
+                                ) : variantes.length > 0 && (
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 90px', gap: '10px' }}>
+                                        <select
+                                            value={varianteId}
+                                            onChange={(e) => setVarianteId(e.target.value)}
+                                            style={{ padding: '10px', borderRadius: '6px', border: '1px solid var(--light-gray)', background: 'var(--white)', color: 'var(--color-dark)' }}
+                                        >
+                                            {variantes.map((v) => (
+                                                <option key={v.id} value={v.id}>
+                                                    {[v.sku, ...v.atributos.map((a) => a.valor_atributo)].join(' · ')}
+                                                    {v.disponible ? '' : ' (agotado)'}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            value={cantidad}
+                                            onChange={(e) => setCantidad(Math.max(1, Number(e.target.value) || 1))}
+                                            style={{ padding: '10px', borderRadius: '6px', border: '1px solid var(--light-gray)', background: 'var(--white)', color: 'var(--color-dark)' }}
+                                        />
+                                    </div>
+                                )
+                            )}
+
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div>
+                                    <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-light)', fontWeight: 'bold' }}>PRECIO</span>
+                                    <strong style={{ fontSize: '22px', color: 'var(--color-primary)' }}>
+                                        {varianteElegida
+                                            ? formatoLempiras(varianteElegida.precio)
+                                            : selectedDrone.precio === 'Consultar' ? 'Consultar' : `L ${selectedDrone.precio}`}
+                                    </strong>
+                                </div>
+
+                                {!usuario && (
+                                    <Button variant="primary" onClick={irALogin} style={{ padding: '10px 20px', display: 'flex', gap: '8px' }}>
+                                        <ShoppingBag size={18} /> Inicia sesión para comprar
+                                    </Button>
+                                )}
+
+                                {usuario && rol === 'cliente' && (
+                                    <Button
+                                        variant="primary"
+                                        onClick={agregarAlCarrito}
+                                        disabled={!varianteId || agregando}
+                                        style={{ padding: '10px 20px', display: 'flex', gap: '8px' }}
+                                    >
+                                        <ShoppingBag size={18} /> {agregando ? 'Agregando...' : 'Agregar al carrito'}
+                                    </Button>
+                                )}
+
+                                {usuario && rol !== 'cliente' && (
+                                    <span style={{ fontSize: '12px', color: 'var(--text-light)', maxWidth: '180px', textAlign: 'right' }}>
+                                        Solo las cuentas de cliente pueden comprar.
+                                    </span>
+                                )}
+                            </div>
                         </div>
                     </div>
                 )}

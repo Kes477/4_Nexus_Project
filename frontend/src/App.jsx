@@ -36,12 +36,14 @@ import ClienteServicios from './pages/cliente/ClienteServicios';
 import ClienteHistorial from './pages/cliente/ClienteHistorial';
 import ClienteSoporte from './pages/cliente/ClienteSoporte';
 import ClienteEquipos from './pages/cliente/ClienteEquipos';
+import ClienteCarrito from './pages/cliente/ClienteCarrito';
 import ClienteReparaciones from './pages/cliente/ClienteReparaciones';
 import HistorialReparaciones from './pages/cliente/HistorialReparaciones';
 
 // ======================================================
 // PÁGINAS DEL ADMINISTRADOR
 // ======================================================
+
 
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminUsuarios from './pages/admin/AdminUsuarios';
@@ -117,60 +119,24 @@ function App() {
         <Route path="/cliente" element={<ClienteLayout />}>
 
           <Route index element={<ClienteDashboard />} />
-
-          <Route
-            path="suscripciones"
-            element={<ClienteSuscripciones />}
-          />
-
-          <Route
-            path="drones"
-            element={<ClienteDrones />}
-          />
-
-          <Route
-            path="servicios"
-            element={<ClienteServicios />}
-          />
-
-          <Route
-            path="historial"
-            element={<ClienteHistorial />}
-          />
-
-          <Route
-            path="soporte"
-            element={<ClienteSoporte />}
-          />
-
-          <Route
-            path="perfil"
-            element={
-              <ClientePerfil onLogout={cerrarSesion} />
-            }
-          />
+          <Route path="suscripciones" element={<ClienteSuscripciones />} />
+          <Route path="drones" element={<ClienteDrones />} />
+          <Route path="servicios" element={<ClienteServicios />} />
+          <Route path="historial" element={<ClienteHistorial />} />
+          <Route path="soporte" element={<ClienteSoporte />} />
+          <Route path="perfil" element={<ClientePerfil onLogout={cerrarSesion} />} />
 
           {/* HU-010, HU-011 y HU-012 */}
-
-          <Route
-            path="equipos"
-            element={<ClienteEquipos />}
-          />
+          <Route path="equipos" element={<ClienteEquipos />} />
 
           {/* HU-016: SEGUIMIENTO DE REPARACIONES */}
-
-          <Route
-            path="reparaciones"
-            element={<ClienteReparaciones />}
-          />
+          <Route path="reparaciones" element={<ClienteReparaciones />} />
 
           {/* HU-017: HISTORIAL DE REPARACIONES */}
+          <Route path="historial-reparaciones" element={<HistorialReparaciones />} />
 
-          <Route
-            path="historial-reparaciones"
-            element={<HistorialReparaciones />}
-          />
-
+          {/* COMPRAS */}
+          <Route path="carrito" element={<ClienteCarrito />} />
         </Route>
 
       </Route>
