@@ -211,3 +211,76 @@ class ReservaPedido(models.Model):
 
     def __str__(self):
         return f'{self.cantidad} de {self.inventario}'
+
+class MetodoPago(models.Model):
+    "Tarjeta guardada del cliente (TBL_METODOS_PAGOS). Nunca se guarda el número completo."
+
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='metodos_pago'
+    )
+    tipo_tarjeta = models.CharField(max_length=50)
+    ultimos_cuatro = models.CharField(max_length=4)
+    token_pasarela = models.CharField(max_length=255)
+    fecha_expiracion = models.CharField(max_length=7, help_text='MM/AAAA')
+
+    class Meta:
+        verbose_name = 'Método de pago'
+        verbose_name_plural = 'Métodos de pago'
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(fecha_expiracion__regex=r'^(0[1-9]|1[0-2])/[0-9]{4}$'),
+                name='metodo_pago_expiracion_valida',
+            ),
+            models.CheckConstraint(
+                condition=Q(ultimos_cuatro__regex=r'^[0-9]{4}$'),
+                name='metodo_pago_ultimos_cuatro_validos',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.tipo_tarjeta} •••• {self.ultimos_cuatro}'
+
+    def esta_vencida(self):
+        mes, anio = (int(parte) for parte in self.fecha_expiracion.split('/'))
+        hoy = timezone.localdate()
+        return (anio, mes) < (hoy.year, hoy.month)
+
+
+class TransaccionPago(models.Model):
+    "Cada intento de pago de un pedido (TBL_TRANSACCIONES_PAGOS)."
+
+    class Forma(models.TextChoices):
+        TARJETA = 'TARJETA', 'Tarjeta de crédito o débito'
+        TRANSFERENCIA = 'TRANSFERENCIA', 'Transferencia bancaria'
+        CONTRA_ENTREGA = 'CONTRA_ENTREGA', 'Pago contra entrega'
+
+    class Estado(models.TextChoices):
+        PENDIENTE = 'PENDIENTE', 'Pendiente'
+        APROBADO = 'APROBADO', 'Aprobado'
+        RECHAZADO = 'RECHAZADO', 'Rechazado'
+        REEMBOLSADO = 'REEMBOLSADO', 'Reembolsado'
+
+    pedido = models.ForeignKey(Pedido, on_delete=models.PROTECT, related_name='transacciones')
+    metodo_pago = models.ForeignKey(
+        MetodoPago, on_delete=models.PROTECT, null=True, blank=True, related_name='transacciones'
+    )
+    forma_pago = models.CharField(max_length=20, choices=Forma.choices)
+    monto = models.DecimalField(max_digits=12, decimal_places=2)
+    fecha_pago = models.DateTimeField(auto_now_add=True)
+    estado_pago = models.CharField(max_length=50, choices=Estado.choices)
+    id_transaccion_externa = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        verbose_name = 'Transacción de pago'
+        verbose_name_plural = 'Transacciones de pago'
+        ordering = ['-fecha_pago']
+        constraints = [
+            models.CheckConstraint(condition=Q(monto__gt=0), name='pago_monto_positivo'),
+            models.CheckConstraint(
+                condition=~Q(forma_pago='TARJETA') | Q(metodo_pago__isnull=False),
+                name='pago_tarjeta_requiere_metodo',
+            ),
+        ]
+
+    def __str__(self):
+        return f'Pago #{self.pk} del pedido #{self.pedido_id} ({self.estado_pago})'
