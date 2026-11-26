@@ -36,6 +36,8 @@ import ClienteServicios from './pages/cliente/ClienteServicios';
 import ClienteHistorial from './pages/cliente/ClienteHistorial';
 import ClienteSoporte from './pages/cliente/ClienteSoporte';
 import ClienteEquipos from './pages/cliente/ClienteEquipos';
+import ClienteReparaciones from './pages/cliente/ClienteReparaciones';
+import HistorialReparaciones from './pages/cliente/HistorialReparaciones';
 
 // ======================================================
 // PÁGINAS DEL ADMINISTRADOR
@@ -153,6 +155,20 @@ function App() {
           <Route
             path="equipos"
             element={<ClienteEquipos />}
+          />
+
+          {/* HU-016: SEGUIMIENTO DE REPARACIONES */}
+
+          <Route
+            path="reparaciones"
+            element={<ClienteReparaciones />}
+          />
+
+          {/* HU-017: HISTORIAL DE REPARACIONES */}
+
+          <Route
+            path="historial-reparaciones"
+            element={<HistorialReparaciones />}
           />
 
         </Route>

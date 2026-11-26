@@ -76,6 +76,16 @@ const menusPorRol = {
         icono: Package,
       },
       {
+        ruta: 'reparaciones',
+        nombre: 'Mis reparaciones',
+        icono: Wrench,
+      },
+      {
+        ruta: 'historial-reparaciones',
+        nombre: 'Historial de reparaciones',
+        icono: FileText,
+      },
+      {
         ruta: 'servicios',
         nombre: 'Mis Servicios',
         icono: FileText,

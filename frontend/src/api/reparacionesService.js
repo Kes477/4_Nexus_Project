@@ -1,7 +1,11 @@
 ﻿import axiosClient from './axiosClient';
 
-// Consultar las órdenes visibles para el usuario.
+// ======================================================
+// CONSULTA DE ORDENES
+// ======================================================
+
 export const obtenerOrdenes = async () => {
+
     const { data } = await axiosClient.get(
         '/reparaciones/ordenes/'
     );
@@ -9,8 +13,9 @@ export const obtenerOrdenes = async () => {
     return data;
 };
 
-// Consultar el detalle de una orden.
+
 export const obtenerOrdenPorId = async (id) => {
+
     const { data } = await axiosClient.get(
         `/reparaciones/ordenes/${id}/`
     );
@@ -18,8 +23,13 @@ export const obtenerOrdenPorId = async (id) => {
     return data;
 };
 
-// Consultar los equipos registrados.
+
+// ======================================================
+// GESTION DE EQUIPOS
+// ======================================================
+
 export const obtenerEquipos = async () => {
+
     const { data } = await axiosClient.get(
         '/reparaciones/equipos/'
     );
@@ -27,8 +37,9 @@ export const obtenerEquipos = async () => {
     return data;
 };
 
-// Registrar un equipo.
+
 export const registrarEquipo = async (equipo) => {
+
     const { data } = await axiosClient.post(
         '/reparaciones/equipos/',
         equipo
@@ -37,14 +48,75 @@ export const registrarEquipo = async (equipo) => {
     return data;
 };
 
-// HU-012: Solicitar una reparación.
+
+// ======================================================
+// HU-012: SOLICITAR REPARACION
+// ======================================================
+
 export const solicitarReparacion = async (solicitud) => {
+
     const { data } = await axiosClient.post(
         '/reparaciones/ordenes/',
         {
             equipo: solicitud.equipo,
             descripcion_problema:
                 solicitud.descripcion_problema.trim()
+        }
+    );
+
+    return data;
+};
+
+
+// ======================================================
+// HU-014: CONSULTAR TECNICOS DISPONIBLES
+// ======================================================
+
+export const obtenerTecnicosDisponibles = async () => {
+
+    const { data } = await axiosClient.get(
+        '/reparaciones/tecnicos/disponibles/'
+    );
+
+    return data;
+};
+
+
+// ======================================================
+// HU-014: ASIGNAR TECNICO
+// ======================================================
+
+export const asignarTecnico = async (
+    ordenId,
+    tecnicoId
+) => {
+
+    const { data } = await axiosClient.patch(
+        `/reparaciones/ordenes/${ordenId}/asignar-tecnico/`,
+        {
+            tecnico: Number(tecnicoId)
+        }
+    );
+
+    return data;
+};
+
+
+// ======================================================
+// HU-015: ACTUALIZAR ESTADO
+// ======================================================
+
+export const cambiarEstadoOrden = async (
+    ordenId,
+    nuevoEstado,
+    observaciones = ''
+) => {
+
+    const { data } = await axiosClient.patch(
+        `/reparaciones/ordenes/${ordenId}/cambiar-estado/`,
+        {
+            estado: nuevoEstado,
+            observaciones: observaciones.trim()
         }
     );
 

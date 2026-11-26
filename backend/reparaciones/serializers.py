@@ -43,7 +43,6 @@ class EquipoClienteSerializer(serializers.ModelSerializer):
 
 # ======================================================
 # SERIALIZER DE ORDENES DE SERVICIO
-# HU-012 Y HU-013
 # ======================================================
 
 class OrdenServicioSerializer(serializers.ModelSerializer):
@@ -104,15 +103,10 @@ class OrdenServicioSerializer(serializers.ModelSerializer):
 
         usuario = request.user
 
-        # Mantener los permisos administrativos.
-
         if usuario.has_perm(
             'reparaciones.add_ordenservicio'
         ):
             return equipo
-
-        # El cliente solamente puede seleccionar
-        # equipos asociados a su perfil.
 
         if hasattr(usuario, 'perfil_cliente'):
 
@@ -144,7 +138,7 @@ class SolicitudReparacionSerializer(OrdenServicioSerializer):
 
 
 # ======================================================
-# ASIGNACION DE TECNICOS
+# HU-014: ASIGNACION DE TECNICOS
 # ======================================================
 
 class AsignarTecnicoSerializer(serializers.Serializer):
@@ -157,11 +151,18 @@ class AsignarTecnicoSerializer(serializers.Serializer):
 
 
 # ======================================================
-# CAMBIO DE ESTADO
+# HU-015: CAMBIO DE ESTADO
 # ======================================================
 
 class CambiarEstadoSerializer(serializers.Serializer):
 
     estado = serializers.ChoiceField(
         choices=OrdenServicio.Estado.choices
+    )
+
+    observaciones = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        trim_whitespace=True,
+        max_length=5000
     )

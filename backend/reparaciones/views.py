@@ -77,6 +77,7 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 
 from .models import EquipoCliente, OrdenServicio
+from usuarios.models import Tecnico
 
 from .serializers import (
     EquipoClienteSerializer,
@@ -117,52 +118,14 @@ class EquipoClienteViewSet(
     permission_classes = [
         permissions.IsAuthenticated
     ]
-    
+
     def get_queryset(self):
         """
-        Devuelve las ordenes accesibles para el usuario.
-
-        HU-013:
-        Optimiza la consulta de equipos, clientes
-        y tecnicos mediante select_related.
+        Devuelve solamente los equipos del cliente autenticado.
         """
-
-        usuario = self.request.user
-
-        queryset = OrdenServicio.objects.select_related(
-            "equipo",
-            "equipo__cliente",
-            "equipo__cliente__usuario",
-            "tecnico",
-            "tecnico__usuario"
+        return EquipoCliente.objects.filter(
+            cliente__usuario=self.request.user
         )
-
-        # Personal con permiso administrativo de consulta.
-
-        if usuario.has_perm(
-            "reparaciones.view_ordenservicio"
-        ):
-            return queryset.all()
-
-        filtros = Q(pk__in=[])
-
-        # El cliente consulta sus propias ordenes.
-
-        if hasattr(usuario, "perfil_cliente"):
-
-            filtros |= Q(
-                equipo__cliente__usuario=usuario
-            )
-
-        # El tecnico consulta las ordenes asignadas.
-
-        if hasattr(usuario, "perfil_tecnico"):
-
-            filtros |= Q(
-                tecnico__usuario=usuario
-            )
-
-        return queryset.filter(filtros).distinct()
 
     def create(self, request, *args, **kwargs):
         """
@@ -310,8 +273,8 @@ class OrdenServicioViewSet(
                 OrdenServicio.objects
                 .select_related(
                     "equipo",
-                    "equipo__cliente",
-                    "tecnico"
+                    "equipo__cliente__usuario",
+                    "tecnico__usuario"
                 )
                 .all()
             )
@@ -339,8 +302,8 @@ class OrdenServicioViewSet(
             .filter(filtros)
             .select_related(
                 "equipo",
-                "equipo__cliente",
-                "tecnico"
+                "equipo__cliente__usuario",
+                "tecnico__usuario"
             )
             .distinct()
         )
@@ -348,6 +311,47 @@ class OrdenServicioViewSet(
     # ======================================================
     # ASIGNACIÓN DE TÉCNICOS
     # ======================================================
+
+    def tecnicos_disponibles(self, request):
+        """
+        HU-014: Consulta los tecnicos disponibles.
+
+        Requiere permiso de modificacion de ordenes.
+        Solo devuelve tecnicos con cuentas activas.
+        """
+
+        if not request.user.has_perm(
+            "reparaciones.change_ordenservicio"
+        ):
+            raise PermissionDenied(
+                "No tiene permiso para consultar tecnicos."
+            )
+
+        tecnicos = Tecnico.objects.filter(
+            disponible=True,
+            usuario__is_active=True
+        ).select_related(
+            "usuario"
+        ).order_by(
+            "usuario__first_name",
+            "usuario__last_name"
+        )
+
+        datos = [
+            {
+                "id": tecnico.pk,
+                "nombre": tecnico.usuario.get_full_name(),
+                "especialidad_tecnica": tecnico.especialidad_tecnica,
+                "certificacion_fabricante": tecnico.certificacion_fabricante,
+                "disponible": tecnico.disponible
+            }
+            for tecnico in tecnicos
+        ]
+
+        return Response(
+            datos,
+            status=status.HTTP_200_OK
+        )
 
     def asignar_tecnico(self, request, pk=None):
         """
@@ -423,7 +427,7 @@ class OrdenServicioViewSet(
                 )
 
             # Comprobar disponibilidad del técnico.
-            if not tecnico.disponible:
+            if not tecnico.disponible or not tecnico.usuario.is_active:
                 return Response(
                     {
                         "detail": (
@@ -524,6 +528,10 @@ class OrdenServicioViewSet(
             "estado"
         ]
 
+        observaciones = serializer.validated_data.get(
+            "observaciones"
+        )
+
         # --------------------------------------------------
         # 2. STRATEGY + FACTORY METHOD
         # --------------------------------------------------
@@ -614,10 +622,33 @@ class OrdenServicioViewSet(
             #
             # El servicio centraliza esta operación.
 
-            ServicioOrdenReparacion.cambiar_estado(
-                orden,
-                nuevo_estado
-            )
+            try:
+
+                ServicioOrdenReparacion.cambiar_estado(
+                    orden,
+                    nuevo_estado,
+                    observaciones=observaciones
+                )
+
+            except ValidationError as error:
+
+                return Response(
+                    {
+                        "detail": (
+                            error.message_dict
+                            if hasattr(error, "message_dict")
+                            else error.messages
+                        )
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            except ValueError as error:
+
+                return Response(
+                    {"detail": str(error)},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
         # --------------------------------------------------
         # 8. RESPUESTA HTTP

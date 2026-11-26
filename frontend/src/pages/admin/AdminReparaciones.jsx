@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
+import AsignacionTecnico from './AsignacionTecnico';
+import CerrarOrdenServicio from './CerrarOrdenServicio';
 
 import {
   ClipboardList,
@@ -204,6 +206,11 @@ export default function AdminReparaciones() {
   const [cargandoDetalle, setCargandoDetalle] = useState(false);
   const [errorDetalle, setErrorDetalle] = useState('');
   const [mostrarDetalle, setMostrarDetalle] = useState(false);
+  const [ocupadoAsignacion, setAsignandoTecnico] = useState(false);
+  const [cerrandoOrden, setCerrandoOrden] = useState(false);
+
+  const asignandoTecnico =
+    ocupadoAsignacion || cerrandoOrden;
 
   // ====================================================
   // CONSULTAR ORDENES
@@ -276,9 +283,23 @@ export default function AdminReparaciones() {
     }
   };
 
+  const actualizarOrdenAsignada = (ordenActualizada) => {
+
+    setOrdenSeleccionada(ordenActualizada);
+
+    setOrdenes(ordenesActuales =>
+      ordenesActuales.map(orden =>
+        orden.id === ordenActualizada.id
+          ? ordenActualizada
+          : orden
+      )
+    );
+
+  };
+
   const cerrarDetalle = () => {
 
-    if (cargandoDetalle) return;
+    if (cargandoDetalle || asignandoTecnico) return;
 
     setMostrarDetalle(false);
     setOrdenSeleccionada(null);
@@ -384,7 +405,7 @@ export default function AdminReparaciones() {
         <button
           type="button"
           onClick={cargarOrdenes}
-          disabled={cargando || cargandoDetalle}
+          disabled={cargando || cargandoDetalle || asignandoTecnico}
           style={{
             ...estiloBoton,
             opacity: cargando ? 0.5 : 1,
@@ -473,7 +494,7 @@ export default function AdminReparaciones() {
             <button
               type="button"
               onClick={cerrarDetalle}
-              disabled={cargandoDetalle}
+              disabled={cargandoDetalle || asignandoTecnico}
               style={{
                 ...estiloBoton,
                 background: '#64748b',
@@ -615,6 +636,35 @@ export default function AdminReparaciones() {
                 </p>
 
               </div>
+
+              {/* HU-014: ASIGNACION DE TECNICOS */}
+
+              <fieldset
+                disabled={cerrandoOrden}
+                style={{
+                  border: 'none',
+                  padding: 0,
+                  margin: 0,
+                  minWidth: 0,
+                }}
+              >
+                <AsignacionTecnico
+                  key={ordenSeleccionada.id}
+                  orden={ordenSeleccionada}
+                  onAsignado={actualizarOrdenAsignada}
+                  onOcupado={setAsignandoTecnico}
+                />
+              </fieldset>
+
+              {/* CIERRE ADMINISTRATIVO */}
+
+              <CerrarOrdenServicio
+                key={`${ordenSeleccionada.id}-${ordenSeleccionada.estado}`}
+                orden={ordenSeleccionada}
+                onActualizada={actualizarOrdenAsignada}
+                onOcupado={setCerrandoOrden}
+                bloqueado={ocupadoAsignacion}
+              />
 
             </>
 
@@ -826,7 +876,7 @@ export default function AdminReparaciones() {
 
                         <button
                           type="button"
-                          disabled={cargandoDetalle}
+                          disabled={cargandoDetalle || asignandoTecnico}
                           onClick={() => consultarDetalle(orden.id)}
                           style={estiloBoton}
                         >
