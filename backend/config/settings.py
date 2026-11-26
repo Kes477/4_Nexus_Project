@@ -204,3 +204,4 @@ SIMPLE_JWT = {
 
 VENTAS_TASA_ISV = Decimal(os.environ.get('VENTAS_TASA_ISV', '0.15'))
 VENTAS_COSTO_ENVIO = Decimal(os.environ.get('VENTAS_COSTO_ENVIO', '150.00'))
+
