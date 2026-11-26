@@ -737,40 +737,112 @@ class OrdenServicioAPITests(APITestCase):
             []
         )
 
-    def test_usuario_sin_permiso_no_puede_crear_orden(self):
-        Usuario = get_user_model()
 
-        usuario = Usuario.objects.create_user(
-            email='cliente.sinpermiso@example.com',
+    def crear_usuario_hu012(self, numero):
+        return get_user_model().objects.create_user(
+            email=f'hu012.{numero}@example.com',
             password='ClavePrueba123!',
-            no_identificacion='0801199900801',
-            first_name='Carlos',
-            last_name='Lopez'
+            no_identificacion=f'08011999008{numero:02d}',
+            first_name='Usuario',
+            last_name='Prueba'
         )
 
+    def crear_equipo_hu012(self, usuario):
         cliente = PerfilCliente.objects.create(
             usuario=usuario
         )
 
-        equipo = EquipoCliente.objects.create(
+        return EquipoCliente.objects.create(
             cliente=cliente,
             marca='DJI',
             modelo='Mini 4 Pro'
         )
 
-        self.client.force_authenticate(
-            user=usuario
-        )
+    def test_cliente_puede_solicitar_reparacion(self):
+        usuario = self.crear_usuario_hu012(1)
+        equipo = self.crear_equipo_hu012(usuario)
 
-        datos = {
-            'equipo': equipo.id,
-            'descripcion_problema': 'Falla en la cámara',
-            'observaciones': 'El equipo no enfoca correctamente'
-        }
+        self.client.force_authenticate(user=usuario)
 
         respuesta = self.client.post(
             self.url_ordenes,
-            datos,
+            {
+                'equipo': equipo.pk,
+                'descripcion_problema': 'Falla en la camara',
+                'estado': 'ENTREGADA',
+                'tecnico': 999999,
+                'observaciones': 'No autorizada',
+                'fecha_cierre': '2026-11-14T10:00:00Z'
+            },
+            format='json'
+        )
+
+        self.assertEqual(
+            respuesta.status_code,
+            status.HTTP_201_CREATED
+        )
+
+        self.assertEqual(OrdenServicio.objects.count(), 1)
+
+        orden = OrdenServicio.objects.get()
+
+        self.assertEqual(orden.equipo, equipo)
+
+        self.assertEqual(
+            orden.descripcion_problema,
+            'Falla en la camara'
+        )
+
+        self.assertEqual(
+            orden.estado,
+            OrdenServicio.Estado.RECIBIDA
+        )
+
+        self.assertIsNone(orden.tecnico)
+        self.assertIsNone(orden.fecha_cierre)
+        self.assertIsNotNone(orden.fecha_recepcion)
+        self.assertFalse(orden.observaciones)
+
+    def test_cliente_no_puede_solicitar_reparacion_ajena(self):
+        usuario = self.crear_usuario_hu012(2)
+        propietario = self.crear_usuario_hu012(3)
+
+        PerfilCliente.objects.create(usuario=usuario)
+
+        equipo = self.crear_equipo_hu012(propietario)
+
+        self.client.force_authenticate(user=usuario)
+
+        respuesta = self.client.post(
+            self.url_ordenes,
+            {
+                'equipo': equipo.pk,
+                'descripcion_problema': 'Falla del motor'
+            },
+            format='json'
+        )
+
+        self.assertEqual(
+            respuesta.status_code,
+            status.HTTP_400_BAD_REQUEST
+        )
+
+        self.assertIn('equipo', respuesta.data)
+        self.assertEqual(OrdenServicio.objects.count(), 0)
+
+    def test_usuario_sin_perfil_ni_permiso_no_puede_crear_orden(self):
+        usuario = self.crear_usuario_hu012(4)
+        propietario = self.crear_usuario_hu012(5)
+        equipo = self.crear_equipo_hu012(propietario)
+
+        self.client.force_authenticate(user=usuario)
+
+        respuesta = self.client.post(
+            self.url_ordenes,
+            {
+                'equipo': equipo.pk,
+                'descripcion_problema': 'Problema de bateria'
+            },
             format='json'
         )
 
@@ -779,10 +851,63 @@ class OrdenServicioAPITests(APITestCase):
             status.HTTP_403_FORBIDDEN
         )
 
-        self.assertEqual(
-            OrdenServicio.objects.count(),
-            0
+        self.assertEqual(OrdenServicio.objects.count(), 0)
+
+    def test_cliente_no_puede_crear_orden_sin_descripcion(self):
+        usuario = self.crear_usuario_hu012(6)
+        equipo = self.crear_equipo_hu012(usuario)
+
+        self.client.force_authenticate(user=usuario)
+
+        casos = [
+            {'equipo': equipo.pk},
+            {
+                'equipo': equipo.pk,
+                'descripcion_problema': ''
+            },
+            {
+                'equipo': equipo.pk,
+                'descripcion_problema': '   '
+            }
+        ]
+
+        for datos in casos:
+            with self.subTest(datos=datos):
+                respuesta = self.client.post(
+                    self.url_ordenes,
+                    datos,
+                    format='json'
+                )
+
+                self.assertEqual(
+                    respuesta.status_code,
+                    status.HTTP_400_BAD_REQUEST
+                )
+
+                self.assertIn(
+                    'descripcion_problema',
+                    respuesta.data
+                )
+
+        self.assertEqual(OrdenServicio.objects.count(), 0)
+
+    def test_usuario_no_autenticado_no_puede_crear_orden(self):
+        respuesta = self.client.post(
+            self.url_ordenes,
+            {
+                'equipo': 1,
+                'descripcion_problema': 'Falla en la camara'
+            },
+            format='json'
         )
+
+        self.assertEqual(
+            respuesta.status_code,
+            status.HTTP_401_UNAUTHORIZED
+        )
+
+        self.assertEqual(OrdenServicio.objects.count(), 0)
+
 
     def test_usuario_con_permiso_puede_crear_orden(self):
         Usuario = get_user_model()
@@ -2441,4 +2566,222 @@ class ValidacionTransicionesModeloTests(TestCase):
                 )
 
 
+# ======================================================
+# PRUEBAS COMPLEMENTARIAS DE REVISION FINAL
+# ======================================================
 
+from unittest.mock import patch, Mock
+
+from rest_framework.exceptions import PermissionDenied
+from reparaciones.politicas import SelectorPoliticas
+from reparaciones.servicios import ServicioOrdenReparacion
+from reparaciones.estados import FabricaEstados
+
+
+class RevisionFinalReparacionesTests(SimpleTestCase):
+
+    def test_politica_desconocida_deniega_acceso(self):
+        politica = SelectorPoliticas.obtener(
+            "ESTADO_DESCONOCIDO"
+        )
+
+        with self.assertRaises(PermissionDenied):
+            politica.autorizar(Mock(), Mock())
+
+    def test_estado_recibida_no_autoriza_reapertura(self):
+        politica = SelectorPoliticas.obtener(
+            OrdenServicio.Estado.RECIBIDA
+        )
+
+        with self.assertRaises(PermissionDenied):
+            politica.autorizar(Mock(), Mock())
+
+    def test_observaciones_se_acumulan(self):
+        orden = OrdenServicio(
+            estado=OrdenServicio.Estado.RECIBIDA,
+            observaciones="Observacion inicial"
+        )
+
+        with patch.object(orden, "save"):
+            ServicioOrdenReparacion.cambiar_estado(
+                orden,
+                OrdenServicio.Estado.EN_DIAGNOSTICO,
+                observaciones="Diagnostico realizado"
+            )
+
+            ServicioOrdenReparacion.cambiar_estado(
+                orden,
+                OrdenServicio.Estado.EN_REPARACION,
+                observaciones="Reparacion iniciada"
+            )
+
+        self.assertIn(
+            "Observacion inicial",
+            orden.observaciones
+        )
+
+        self.assertIn(
+            "Diagnostico realizado",
+            orden.observaciones
+        )
+
+        self.assertIn(
+            "Reparacion iniciada",
+            orden.observaciones
+        )
+
+    def test_observacion_vacia_conserva_anterior(self):
+        orden = OrdenServicio(
+            estado=OrdenServicio.Estado.EN_DIAGNOSTICO,
+            observaciones="Diagnostico registrado"
+        )
+
+        with patch.object(orden, "save"):
+            ServicioOrdenReparacion.cambiar_estado(
+                orden,
+                OrdenServicio.Estado.EN_REPARACION,
+                observaciones="   "
+            )
+
+        self.assertEqual(
+            orden.observaciones,
+            "Diagnostico registrado"
+        )
+
+    def test_entrega_conserva_observaciones(self):
+        orden = OrdenServicio(
+            estado=OrdenServicio.Estado.FINALIZADA,
+            observaciones="Reparacion completada"
+        )
+
+        with patch.object(orden, "save") as guardar:
+            ServicioOrdenReparacion.cambiar_estado(
+                orden,
+                OrdenServicio.Estado.ENTREGADA,
+                observaciones="Equipo entregado"
+            )
+
+        self.assertEqual(
+            orden.estado,
+            OrdenServicio.Estado.ENTREGADA
+        )
+
+        self.assertIsNotNone(orden.fecha_cierre)
+
+        self.assertIn(
+            "Reparacion completada",
+            orden.observaciones
+        )
+
+        self.assertIn(
+            "Equipo entregado",
+            orden.observaciones
+        )
+
+        guardar.assert_called_once_with(
+            update_fields=[
+                "estado",
+                "fecha_cierre",
+                "observaciones"
+            ]
+        )
+
+    def test_estados_terminales_no_admiten_transiciones(self):
+        for estado in ["ENTREGADA", "CANCELADA"]:
+
+            with self.subTest(estado=estado):
+
+                objeto = FabricaEstados.obtener(estado)
+
+                self.assertEqual(
+                    objeto.transiciones_permitidas(),
+                    []
+                )
+
+                for destino in OrdenServicio.Estado.values:
+                    self.assertFalse(
+                        objeto.puede_cambiar_a(destino)
+                    )
+
+
+class RevisionFinalTecnicosAPITests(APITestCase):
+
+    @classmethod
+    def setUpTestData(cls):
+
+        Usuario = get_user_model()
+
+        cls.admin = Usuario.objects.create_superuser(
+            email="revision.admin@example.com",
+            password="ClavePrueba123!",
+            no_identificacion="0801199900991",
+            first_name="Admin",
+            last_name="Revision",
+            is_staff=True,
+            is_superuser=True
+        )
+
+        cls.cliente = Usuario.objects.create_user(
+            email="revision.cliente@example.com",
+            no_identificacion="0801199900992",
+            first_name="Cliente",
+            last_name="Revision"
+        )
+
+        cls.tecnicos = []
+
+        casos = [
+            ("disponible", "0801199900993", True),
+            ("ocupado", "0801199900994", False),
+        ]
+
+        for nombre, identificacion, disponible in casos:
+
+            usuario = Usuario.objects.create_user(
+                email=f"revision.{nombre}@example.com",
+                no_identificacion=identificacion,
+                first_name=nombre,
+                last_name="Revision"
+            )
+
+            tecnico = Tecnico.objects.create(
+                usuario=usuario,
+                especialidad_tecnica="Reparaciones",
+                disponible=disponible
+            )
+
+            cls.tecnicos.append(tecnico)
+
+    def test_admin_consulta_tecnicos_disponibles(self):
+
+        self.client.force_authenticate(user=self.admin)
+
+        respuesta = self.client.get(
+            reverse("tecnicos-disponibles")
+        )
+
+        self.assertEqual(respuesta.status_code, 200)
+
+        identificadores = [
+            item["id"] for item in respuesta.data
+        ]
+
+        self.assertIn(
+            self.tecnicos[0].pk,
+            identificadores
+        )
+
+        self.assertNotIn(
+            self.tecnicos[1].pk,
+            identificadores
+        )
+
+    def test_cliente_no_consulta_tecnicos_disponibles(self):
+
+        self.client.force_authenticate(user=self.cliente)
+
+        respuesta = self.client.get(
+            reverse("tecnicos-disponibles")
+        )
+
+        self.assertEqual(respuesta.status_code, 403)

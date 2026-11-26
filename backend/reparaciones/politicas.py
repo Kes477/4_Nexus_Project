@@ -49,10 +49,13 @@ class PoliticaPermisoAdministrativo(AutorizarCambioEstado):
             )
 
 # STRATEGY: otros estados
-class PoliticaSinRestriccionAdicional(AutorizarCambioEstado):
+class PoliticaDenegacionPorDefecto(AutorizarCambioEstado):
 
     def autorizar(self, usuario, orden):
-        return None
+        raise PermissionDenied(
+            "No existe una politica de autorizacion "
+            "para el estado solicitado."
+        )
 
 # FACTORY METHOD: creador abstracto
 class CreadorPolitica(ABC):
@@ -72,10 +75,10 @@ class CreadorPoliticaAdministrativa(CreadorPolitica):
     def crear_politica(self) -> AutorizarCambioEstado:
         return PoliticaPermisoAdministrativo()
 
-class CreadorPoliticaGeneral(CreadorPolitica):
+class CreadorPoliticaDenegacion(CreadorPolitica):
 
     def crear_politica(self) -> AutorizarCambioEstado:
-        return PoliticaSinRestriccionAdicional()
+        return PoliticaDenegacionPorDefecto()
 
 # Selecciona la política según el estado solicitado
 class SelectorPoliticas:
@@ -102,6 +105,6 @@ class SelectorPoliticas:
         elif nuevo_estado in cls._administrativos:
             creador = CreadorPoliticaAdministrativa()
         else:
-            creador = CreadorPoliticaGeneral()
+            creador = CreadorPoliticaDenegacion()
 
         return creador.crear_politica()

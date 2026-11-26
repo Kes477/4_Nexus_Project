@@ -1,7 +1,11 @@
-
 from rest_framework import serializers
+
 from .models import EquipoCliente, OrdenServicio
 
+
+# ======================================================
+# SERIALIZER DE EQUIPOS
+# ======================================================
 
 class EquipoClienteSerializer(serializers.ModelSerializer):
 
@@ -25,6 +29,7 @@ class EquipoClienteSerializer(serializers.ModelSerializer):
         ]
 
     def validate_numero_serie(self, value):
+
         if value is None:
             return None
 
@@ -35,7 +40,33 @@ class EquipoClienteSerializer(serializers.ModelSerializer):
 
         return value
 
+
+# ======================================================
+# SERIALIZER DE ORDENES DE SERVICIO
+# ======================================================
+
 class OrdenServicioSerializer(serializers.ModelSerializer):
+
+    equipo_detalle = EquipoClienteSerializer(
+        source='equipo',
+        read_only=True
+    )
+
+    cliente_nombre = serializers.CharField(
+        source='equipo.cliente.usuario.get_full_name',
+        read_only=True
+    )
+
+    tecnico_nombre = serializers.CharField(
+        source='tecnico.usuario.get_full_name',
+        read_only=True,
+        allow_null=True
+    )
+
+    estado_nombre = serializers.CharField(
+        source='get_estado_display',
+        read_only=True
+    )
 
     class Meta:
         model = OrdenServicio
@@ -43,9 +74,13 @@ class OrdenServicioSerializer(serializers.ModelSerializer):
         fields = [
             'id',
             'equipo',
+            'equipo_detalle',
+            'cliente_nombre',
             'tecnico',
+            'tecnico_nombre',
             'descripcion_problema',
             'estado',
+            'estado_nombre',
             'fecha_recepcion',
             'fecha_cierre',
             'observaciones'
@@ -59,6 +94,53 @@ class OrdenServicioSerializer(serializers.ModelSerializer):
             'fecha_cierre'
         ]
 
+    def validate_equipo(self, equipo):
+
+        request = self.context.get('request')
+
+        if request is None:
+            return equipo
+
+        usuario = request.user
+
+        if usuario.has_perm(
+            'reparaciones.add_ordenservicio'
+        ):
+            return equipo
+
+        if hasattr(usuario, 'perfil_cliente'):
+
+            if equipo.cliente_id == usuario.perfil_cliente.pk:
+                return equipo
+
+        raise serializers.ValidationError(
+            'No tiene permiso para solicitar una reparación '
+            'sobre este equipo.'
+        )
+
+
+# ======================================================
+# HU-012: SOLICITUD DE REPARACION
+# ======================================================
+
+class SolicitudReparacionSerializer(OrdenServicioSerializer):
+
+    class Meta(OrdenServicioSerializer.Meta):
+
+        read_only_fields = [
+            'id',
+            'tecnico',
+            'estado',
+            'fecha_recepcion',
+            'fecha_cierre',
+            'observaciones'
+        ]
+
+
+# ======================================================
+# HU-014: ASIGNACION DE TECNICOS
+# ======================================================
+
 class AsignarTecnicoSerializer(serializers.Serializer):
 
     tecnico = serializers.PrimaryKeyRelatedField(
@@ -67,8 +149,20 @@ class AsignarTecnicoSerializer(serializers.Serializer):
         ).remote_field.model.objects.all()
     )
 
+
+# ======================================================
+# HU-015: CAMBIO DE ESTADO
+# ======================================================
+
 class CambiarEstadoSerializer(serializers.Serializer):
 
     estado = serializers.ChoiceField(
         choices=OrdenServicio.Estado.choices
+    )
+
+    observaciones = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        trim_whitespace=True,
+        max_length=5000
     )
