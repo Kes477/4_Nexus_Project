@@ -1,122 +1,99 @@
-import React, { useState, useEffect } from 'react';
-import { Edit2, Phone, Mail, Lock, LogOut, Save, MapPin, CheckCircle, Map, Plane, TrendingUp, Loader } from 'lucide-react';
+import { useState } from 'react';
+import { Edit2, Phone, Mail, Lock, LogOut, Save, MapPin, CheckCircle, Map, Plane, TrendingUp, Loader, KeyRound } from 'lucide-react';
 
 import { Button, Avatar, Badge, Modal, Input, SectionHeading, Alert } from '../../components/ui';
+import { useSesion } from '../../hooks/useSesion';
+import MisDirecciones from '../../components/cliente/MisDirecciones';
+import { primerError } from '../../utils/errores';
+
+const ETIQUETA_ROL = {
+  admin: 'Administrador',
+  piloto: 'Piloto',
+  tecnico: 'Técnico',
+  vendedor: 'Vendedor',
+  cliente: 'Cliente',
+};
+
+const FORM_PASSWORD_VACIO = { actual: '', nueva: '', confirmar: '' };
+
 
 export default function ClientePerfil({ onLogout }) {
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
-  
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const { usuario, cargando, actualizarPerfil, cambiarPassword } = useSesion();
+
+  // null = cerrado, 'datos' = editar datos, 'password' = cambiar contraseña
+  const [modal, setModal] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null);
+  const [exitoMsg, setExitoMsg] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
-  
-  // Estado para mostrar/ocultar la contraseña en el modal
   const [showPassword, setShowPassword] = useState(false);
 
-  // Estado para los datos del perfil
-  const [profileData, setProfileData] = useState({
-    name: "", 
-    email: "",
-    phone: "", 
-    avatar: "", 
-    roleLabel: "Cliente",
-    location: "No especificada",
-    joinDate: "Reciente",
-    status: "Activo"
-  });
-
-  // Estado para el formulario de edición
   const [editForm, setEditForm] = useState({
-    phone: "",
-    email: "",
-    password: ""
+    first_name: '',
+    last_name: '',
+    telefono: '',
+    fecha_nacimiento: '',
   });
+  const [passForm, setPassForm] = useState(FORM_PASSWORD_VACIO);
+  const [direccionPrincipal, setDireccionPrincipal] =useState(null);
 
-  useEffect(() => {
-    const fetchPerfil = async () => {
-      try {
-        const token = localStorage.getItem('access_token');
-        if (!token) throw new Error('No hay sesión activa');
+  const cerrarModal = () => {
+    setModal(null);
+    setErrorMsg(null);
+    setShowPassword(false);
+    setPassForm(FORM_PASSWORD_VACIO);
+  };
 
-        const response = await fetch(`${API_URL}/auth/perfil/`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
+  const abrirEditarDatos = () => {
+    setEditForm({
+      first_name: usuario.first_name,
+      last_name: usuario.last_name,
+      telefono: usuario.telefono || '',
+      fecha_nacimiento: usuario.fecha_nacimiento || '',
+    });
+    setExitoMsg(null);
+    setModal('datos');
+  };
 
-        if (!response.ok) throw new Error('Error al cargar el perfil');
-        
-        const data = await response.json();
-        
-        setProfileData({
-          name: `${data.first_name || ''} ${data.last_name || ''}`.trim() || 'Usuario',
-          email: data.email || '',
-          phone: data.telefono || '',
-          avatar: data.avatar || null, 
-          roleLabel: data.role === 'admin' ? 'Administrador' : 'Cliente',
-          location: data.ubicacion || "Tegucigalpa, Honduras",
-          joinDate: data.date_joined ? new Date(data.date_joined).toLocaleDateString('es-HN', { year: 'numeric', month: 'long', day: 'numeric' }) : "Reciente",
-          status: data.is_active ? "Activa" : "Inactiva"
-        });
+  const abrirCambiarPassword = () => {
+    setExitoMsg(null);
+    setModal('password');
+  };
 
-        setEditForm({
-          phone: data.telefono || '',
-          email: data.email || '',
-          password: ''
-        });
-
-      } catch (error) {
-        console.error(error);
-        setErrorMsg('No se pudieron cargar los datos del perfil.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchPerfil();
-  }, [API_URL]);
-
-  const handleUpdateProfile = async (e) => {
+  const guardarDatos = async (e) => {
     e.preventDefault();
     setIsSaving(true);
     setErrorMsg(null);
 
     try {
-      const token = localStorage.getItem('access_token');
-      
-      const bodyData = {
-        telefono: editForm.phone,
-        email: editForm.email
-      };
-      if (editForm.password.trim() !== "") {
-        bodyData.password = editForm.password;
-      }
-
-      const response = await fetch(`${API_URL}/auth/perfil/`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(bodyData)
+      await actualizarPerfil({
+        ...editForm,
+        fecha_nacimiento: editForm.fecha_nacimiento || null,
       });
-
-      if (!response.ok) throw new Error('Error al actualizar');
-
-      setProfileData(prev => ({
-        ...prev,
-        email: editForm.email,
-        phone: editForm.phone
-      }));
-
-      setIsModalOpen(false);
-      setShowPassword(false); // Reseteamos el ojo al cerrar
-      
+      cerrarModal();
+      setExitoMsg('Tus datos se actualizaron correctamente.');
     } catch (error) {
-      console.error(error);
-      setErrorMsg('Hubo un problema al guardar los cambios.');
+      setErrorMsg(primerError(error));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const guardarPassword = async (e) => {
+    e.preventDefault();
+    setErrorMsg(null);
+
+    if (passForm.nueva !== passForm.confirmar) {
+      setErrorMsg('La nueva contraseña y su confirmación no coinciden.');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      await cambiarPassword(passForm.actual, passForm.nueva);
+      cerrarModal();
+      setExitoMsg('Tu contraseña se cambió correctamente.');
+    } catch (error) {
+      setErrorMsg(primerError(error));
     } finally {
       setIsSaving(false);
     }
@@ -161,13 +138,25 @@ export default function ClientePerfil({ onLogout }) {
     zIndex: 10 
   };
 
-  if (loading) {
+  if (cargando || !usuario) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', background: 'var(--bg-color)' }}>
-        <Loader text="Cargando perfil..." />
+        <Loader className="animate-spin" size={32} color="var(--color-primary)" />
       </div>
     );
   }
+
+  // Datos que se muestran, calculados desde el usuario del contexto
+  const profileData = {
+    name: `${usuario.first_name} ${usuario.last_name}`.trim() || 'Usuario',
+    email: usuario.email,
+    phone: usuario.telefono,
+    avatar: usuario.foto_perfil_url || null,
+    roleLabel: ETIQUETA_ROL[usuario.rol] ?? 'Cliente',
+    location: direccionPrincipal?.ubicacion_texto?? 'sin direccion principal',
+    joinDate: new Date(usuario.date_joined).toLocaleDateString('es-HN', { year: 'numeric', month: 'long', day: 'numeric' }),
+    status: usuario.is_active ? 'Activa' : 'Inactiva',
+  };
 
   return (
     <div style={{ 
@@ -183,9 +172,9 @@ export default function ClientePerfil({ onLogout }) {
       alignItems: 'center'
     }}>
       
-      {errorMsg && (
+      {exitoMsg && (
         <div style={{ width: '100%', maxWidth: '1200px', marginBottom: '20px' }}>
-          <Alert type="danger" title="Atención" message={errorMsg} onClose={() => setErrorMsg(null)} />
+          <Alert type="success" title="Listo" message={exitoMsg} onClose={() => setExitoMsg(null)} />
         </div>
       )}
 
@@ -240,14 +229,18 @@ export default function ClientePerfil({ onLogout }) {
 
           </div>
 
-          <div style={{ paddingBottom: '20px', display: 'flex', gap: '10px' }}>
-            <Button variant="outline-dark" size="sm" onClick={() => setIsModalOpen(true)}>
+          <div style={{ paddingBottom: '20px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            <Button variant="outline-dark" size="sm" onClick={abrirEditarDatos}>
               <Edit2 size={14} style={{ marginRight: '6px' }} /> Editar Perfil
+            </Button>
+            <Button variant="outline-dark" size="sm" onClick={abrirCambiarPassword}>
+              <KeyRound size={14} style={{ marginRight: '6px' }} /> Cambiar Contraseña
             </Button>
             <Button variant="danger" size="sm" onClick={onLogout}>
               <LogOut size={14} style={{ marginRight: '6px' }} /> Cerrar Sesión
             </Button>
           </div>
+
         </div>
 
         <div style={{ padding: '0 40px 32px 40px' }}>
@@ -278,7 +271,7 @@ export default function ClientePerfil({ onLogout }) {
             </div>
 
           </div>
-
+          <MisDirecciones onPrincipalChange={setDireccionPrincipal}/>
           <SectionHeading eyebrow="Actividad" title="Resumen de Servicios" />
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
@@ -314,70 +307,79 @@ export default function ClientePerfil({ onLogout }) {
 
       </div>
 
-      <Modal isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); setShowPassword(false); }} title="Editar Credenciales">
-        <form 
-          onSubmit={handleUpdateProfile} 
-          style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}
-        >
+      <Modal isOpen={modal === 'datos'} onClose={cerrarModal} title="Editar Datos Personales">
+        <form onSubmit={guardarDatos} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {errorMsg && <Alert type="danger" title="Atención" message={errorMsg} onClose={() => setErrorMsg(null)} />}
+
+          <div>
+            <label style={labelStyle}>Nombre</label>
+            <Input value={editForm.first_name} onChange={(e) => setEditForm({ ...editForm, first_name: e.target.value })} icon="fa-user" />
+          </div>
+
+          <div>
+            <label style={labelStyle}>Apellido</label>
+            <Input value={editForm.last_name} onChange={(e) => setEditForm({ ...editForm, last_name: e.target.value })} icon="fa-user" />
+          </div>
+
           <div>
             <label style={labelStyle}>Teléfono</label>
-            <Input 
-              value={editForm.phone} 
-              onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
-              icon="fa-phone" 
-            />
+            <Input type="tel" value={editForm.telefono} onChange={(e) => setEditForm({ ...editForm, telefono: e.target.value })} icon="fa-phone" maxLength={20} />
+          </div>
+
+          <div>
+            <label style={labelStyle}>Fecha de Nacimiento</label>
+            <Input type="date" value={editForm.fecha_nacimiento} onChange={(e) => setEditForm({ ...editForm, fecha_nacimiento: e.target.value })} icon="fa-calendar" />
           </div>
 
           <div>
             <label style={labelStyle}>Correo Electrónico</label>
-            <Input 
-              value={editForm.email} 
-              onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-              type="email" 
-              icon="fa-envelope" 
-            />
-          </div>
-
-          <div>
-            <label style={labelStyle}>Nueva Contraseña (Opcional)</label>
-            <div style={{ position: 'relative' }}>
-              <Input 
-                type={showPassword ? "text" : "password"} 
-                value={editForm.password}
-                onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
-                placeholder="Dejar en blanco para no cambiar" 
-                icon="fa-lock" 
-              />
-              {/* BOTÓN DEL OJO PARA MOSTRAR/OCULTAR CONTRASEÑA */}
-              <button 
-                type="button" 
-                onClick={() => setShowPassword(!showPassword)} 
-                style={toggleEyeStyle}
-              >
-                <i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
-              </button>
-            </div>
+            <Input value={usuario.email} icon="fa-envelope" disabled />
+            <span style={{ fontSize: '11px', color: 'var(--text-light)' }}>El correo no se puede cambiar desde aquí.</span>
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', paddingTop: '16px', borderTop: '1px solid var(--light-gray)', marginTop: '8px' }}>
-            <Button variant="outline-dark" size="sm" type="button" onClick={() => { setIsModalOpen(false); setShowPassword(false); }}>
-              Cancelar
-            </Button>
+            <Button variant="outline-dark" size="sm" type="button" onClick={cerrarModal}>Cancelar</Button>
             <Button variant="primary" size="sm" type="submit" disabled={isSaving}>
-              {isSaving ? (
-                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <i className="fas fa-circle-notch fa-spin"></i> Guardando...
-                </span>
-              ) : (
-                <>
-                  <Save size={14} style={{ marginRight: '6px' }} /> Guardar Cambios
-                </>
-              )}
+              <Save size={14} style={{ marginRight: '6px' }} /> {isSaving ? 'Guardando...' : 'Guardar Cambios'}
             </Button>
           </div>
         </form>
       </Modal>
 
+      <Modal isOpen={modal === 'password'} onClose={cerrarModal} title="Cambiar Contraseña">
+        <form onSubmit={guardarPassword} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {errorMsg && <Alert type="danger" title="Atención" message={errorMsg} onClose={() => setErrorMsg(null)} />}
+
+          {[
+            { campo: 'actual', etiqueta: 'Contraseña Actual' },
+            { campo: 'nueva', etiqueta: 'Nueva Contraseña' },
+            { campo: 'confirmar', etiqueta: 'Confirmar Nueva Contraseña' },
+          ].map(({ campo, etiqueta }) => (
+            <div key={campo}>
+              <label style={labelStyle}>{etiqueta}</label>
+              <div style={{ position: 'relative' }}>
+                <Input
+                  type={showPassword ? 'text' : 'password'}
+                  value={passForm[campo]}
+                  onChange={(e) => setPassForm({ ...passForm, [campo]: e.target.value })}
+                  icon="fa-lock"
+                  required
+                />
+                <button type="button" onClick={() => setShowPassword(!showPassword)} style={toggleEyeStyle}>
+                  <i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                </button>
+              </div>
+            </div>
+          ))}
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', paddingTop: '16px', borderTop: '1px solid var(--light-gray)', marginTop: '8px' }}>
+            <Button variant="outline-dark" size="sm" type="button" onClick={cerrarModal}>Cancelar</Button>
+            <Button variant="primary" size="sm" type="submit" disabled={isSaving}>
+              <Lock size={14} style={{ marginRight: '6px' }} /> {isSaving ? 'Guardando...' : 'Cambiar Contraseña'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

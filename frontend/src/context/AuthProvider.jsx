@@ -1,19 +1,19 @@
 import { useEffect, useState } from "react";
 
 import {
+    changePassword,
     getPerfil,
     loginUser,
     logout,
-    registerUser
+    registerUser,
+    updatePerfil,
 } from "../api/authService";
 
 import { AuthContext } from "./authContext";
 
-
 export function AuthProvider({ children }) {
 
     const [usuario, setUsuario] = useState(null);
-
     const [cargando, setCargando] = useState(
         () => Boolean(localStorage.getItem("access_token"))
     );
@@ -37,7 +37,6 @@ export function AuthProvider({ children }) {
     async function iniciarSesion(email, password) {
 
         const datos = await loginUser(email, password);
-
         setUsuario(datos);
 
         return datos;
@@ -48,18 +47,31 @@ export function AuthProvider({ children }) {
     async function registrarse(datosRegistro) {
 
         const datos = await registerUser(datosRegistro);
-
         setUsuario(datos);
 
         return datos;
     }
 
 
+    // Editar los datos del perfil y actualizar el contexto.
+    async function actualizarPerfil(cambios) {
+
+        const datos = await updatePerfil(cambios);
+        setUsuario(datos);
+
+        return datos;
+    }
+
+
+    // Cambiar la contraseña pidiendo la actual.
+    function cambiarPassword(actual, nueva) {
+        return changePassword(actual, nueva);
+    }
+
+
     // Cerrar sesión.
     function cerrarSesion() {
-
         logout();
-
         setUsuario(null);
     }
 
@@ -77,7 +89,9 @@ export function AuthProvider({ children }) {
                 cargando,
                 iniciarSesion,
                 registrarse,
-                cerrarSesion
+                actualizarPerfil,
+                cambiarPassword,
+                cerrarSesion,
             }}
         >
             {children}
