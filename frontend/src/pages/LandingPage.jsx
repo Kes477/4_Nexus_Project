@@ -9,12 +9,6 @@ import { Button } from '../components/ui';
 import { ServiceCard, ProductCard } from '../components/domain/Card';
 import { getProductos } from '../api/droneService'; 
 
-// ============================================================================
-// ==== PATRÓN ADAPTER ====
-// Traduce los DTOs del backend (ARTICULO / SUSCRIPCION) al view-model
-// que consumen ProductCard y ServiceCard. Desacopla la vista del contrato API.
-// ============================================================================
-
 const DEFAULT_DRONE_IMG =
     'https://images.unsplash.com/photo-1508614589041-895b88991e3e?q=80&w=600&auto=format&fit=crop';
 
@@ -35,18 +29,29 @@ const adaptEquipoToProduct = (dron) => ({
     image: dron.imagen_principal || DEFAULT_DRONE_IMG,
     price: formatPrice(dron.precio_desde),
     description: dron.descripcion || 'Sin descripción disponible.',
+    destacado: dron.es_destacado,
 });
 
-const adaptSuscripcionToService = (sub, idx) => ({
-    number: String(idx + 1).padStart(2, '0'),
-    icon: idx % 2 === 0 ? Shield : Zap,
-    title: sub.nombre,
-    description: sub.descripcion || 'Plan de servicios aéreos.',
-    price: formatPrice(sub.precio_desde),
-    period: '/mes',
-    destacado: idx === 1,
-    features: ['Soporte técnico', 'Acceso a plataforma', 'Reportes mensuales'],
-});
+const adaptSuscripcionToService = (sub, idx) => {
+    const features = sub.especificaciones && sub.especificaciones.length > 0
+        ? sub.especificaciones.map(e => e.clave_espec)
+        : ['Soporte técnico', 'Acceso a plataforma', 'Reportes mensuales'];
+
+    let period = '/mes';
+    if (sub.suscripcion?.periodo_facturacion_dias === 90) period = '/trimestre';
+    if (sub.suscripcion?.periodo_facturacion_dias === 365) period = '/año';
+
+    return {
+        number: String(idx + 1).padStart(2, '0'),
+        icon: idx % 2 === 0 ? Shield : Zap,
+        title: sub.nombre,
+        description: sub.descripcion || 'Plan de servicios aéreos.',
+        price: formatPrice(sub.precio_desde),
+        period: period,
+        destacado: sub.es_destacado,
+        features: features,
+    };
+};
 
 const HERO_IMAGES = [
     "https://storage.googleapis.com/cursopractica-imagenes-2026/img_drones/Autel_EVO_II_Pro_V3_4_3.png",
@@ -488,8 +493,11 @@ const LandingPage = () => {
         const fetchProductos = async () => {
             try {
                 const data = await getProductos();
-                setDrones(data.filter((item) => item.tipo_producto === 'ARTICULO'));
-                setSuscripciones(data.filter((item) => item.tipo_producto === 'SUSCRIPCION'));
+                
+                const listaProductos = Array.isArray(data) ? data : data.results || [];
+
+                setDrones(listaProductos.filter((item) => item.tipo_producto === 'ARTICULO'));
+                setSuscripciones(listaProductos.filter((item) => item.tipo_producto === 'SUSCRIPCION'));
             } catch (error) {
                 console.error('Error al traer los productos:', error);
             } finally {

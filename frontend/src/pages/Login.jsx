@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { Shield, ChevronLeft, ArrowRight, Check } from 'lucide-react';
+import { Shield, ChevronLeft, ArrowRight, Check, Eye, EyeOff } from 'lucide-react';
 
 import { Input, Button, Alert, IconButton, Checkbox, Modal } from '../components/ui';
 import { useSesion } from '../hooks/useSesion';
@@ -10,8 +10,21 @@ const PANEL_POR_ROL = {
     piloto: '/piloto',
     tecnico: '/tecnico',
     vendedor: '/vendedor',
-
 };
+
+const REGEX = {
+    email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+    name: /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/,
+    phone: /^[0-9+\-\s]{8,15}$/,
+    identificacion: /^[0-9-]{13,15}$/,
+};
+
+const CheckItem = ({ label, isValid }) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: isValid ? 'var(--color-success)' : 'var(--text-light)' }}>
+        {isValid ? <Check size={12} color="var(--color-success)" /> : <span style={{ fontSize: '10px', lineHeight: '12px', color: 'var(--text-light)', paddingBottom: '2px' }}>•</span>}
+        <span style={{ fontSize: '10px' }}>{label}</span>
+    </div>
+);
 
 const Login = () => {
     const navigate = useNavigate();
@@ -29,37 +42,112 @@ const Login = () => {
     const [termsAccepted, setTermsAccepted] = useState(false);
     const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
 
-
     const [mostrarPassword, setMostrarPassword] = useState(false);
     const [mostrarConfirmarPassword, setMostrarConfirmarPassword] = useState(false);
 
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');
-    const [nombres, setNombres] = useState('');
-    const [apellidos, setApellidos] = useState('');
-    const [telefono, setTelefono] = useState('');
-    const [identificacion, setIdentificacion] = useState('');
+    const [formData, setFormData] = useState({
+        email: '',
+        password: '',
+        confirmPassword: '',
+        nombres: '',
+        apellidos: '',
+        telefono: '',
+        identificacion: ''
+    });
 
+    const [errors, setErrors] = useState({});
+    const [touched, setTouched] = useState({});
+
+    const passChecks = {
+        length: formData.password.length >= 8,
+        upper: /[A-Z]/.test(formData.password),
+        lower: /[a-z]/.test(formData.password),
+        number: /[0-9]/.test(formData.password),
+        special: /[!@#$%^&*(),.?":{}|<>]/.test(formData.password)
+    };
+
+    const validateField = (field, value) => {
+        if (!value && field !== 'telefono') return 'Este campo es obligatorio.';
+        
+        switch (field) {
+            case 'email':
+                if (!REGEX.email.test(value)) return 'Ingresa un correo electrónico válido.';
+                break;
+            case 'nombres':
+            case 'apellidos':
+                if (!REGEX.name.test(value)) return 'Solo se permiten letras y espacios.';
+                break;
+            case 'telefono':
+                if (value && !REGEX.phone.test(value)) return 'Ingresa un teléfono válido (8-15 dígitos).';
+                break;
+            case 'identificacion':
+                if (!REGEX.identificacion.test(value)) return 'Ingresa un DNI válido (13 dígitos).';
+                break;
+            case 'password':
+                const isPassValid = Object.values(passChecks).every(Boolean);
+                if (!isPassValid) return 'La contraseña no cumple con los requisitos.';
+                break;
+            case 'confirmPassword':
+                if (value !== formData.password) return 'Las contraseñas no coinciden.';
+                break;
+            default:
+                break;
+        }
+        return '';
+    };
+
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setFormData({ ...formData, [name]: value });
+        
+        if (errors[name]) {
+            setErrors({ ...errors, [name]: '' });
+        }
+    };
+
+    const handleBlur = (e) => {
+        const { name, value } = e.target;
+        setTouched({ ...touched, [name]: true });
+        const error = validateField(name, value);
+        setErrors({ ...errors, [name]: error });
+    };
+
+    const validateStep = (currentStep) => {
+        const newErrors = {};
+        const fieldsToValidate = currentStep === 1 
+            ? ['email', 'password', 'confirmPassword']
+            : ['nombres', 'apellidos', 'telefono', 'identificacion'];
+
+        fieldsToValidate.forEach(field => {
+            const error = validateField(field, formData[field]);
+            if (error) newErrors[field] = error;
+            setTouched(prev => ({ ...prev, [field]: true }));
+        });
+
+        setErrors(prev => ({ ...prev, ...newErrors }));
+        return Object.keys(newErrors).length === 0;
+    };
 
     const irAlPanel = (usuario) => {
         const destino = PANEL_POR_ROL[usuario.rol] ?? redirectTo;
-
         navigate(destino, {
             replace: true,
-            state: location.state?.selectedDrone
-                ? { selectedDrone: location.state.selectedDrone }
-                : undefined,
+            state: location.state?.selectedDrone ? { selectedDrone: location.state.selectedDrone } : undefined,
         });
     };
 
     const submitLogin = async (e) => {
         if (e) e.preventDefault();
         setErrorMsg(null);
-        setIsLoading(true);
+        
+        if (!formData.email || !formData.password) {
+            setErrorMsg("Por favor, ingresa tu correo y contraseña.");
+            return;
+        }
 
+        setIsLoading(true);
         try {
-            const usuario = await iniciarSesion(email, password);
+            const usuario = await iniciarSesion(formData.email, formData.password);
             irAlPanel(usuario);
         } catch (error) {
             if (error.response?.status === 401) {
@@ -77,12 +165,9 @@ const Login = () => {
         
         if (step === 'register') {
             if (regSubStep === 1) {
-                if (!email || !password || !confirmPassword) return setErrorMsg("Por favor, llena todos los campos.");
-                if (password !== confirmPassword) return setErrorMsg("Las contraseñas no coinciden.");
-                setRegSubStep(2);
+                if (validateStep(1)) setRegSubStep(2);
             } else if (regSubStep === 2) {
-                if (!nombres || !apellidos || !identificacion) return setErrorMsg("Por favor, llena todos los campos obligatorios.");
-                setRegSubStep(3);
+                if (validateStep(2)) setRegSubStep(3);
             } else {
                 if (!termsAccepted) {
                     return setErrorMsg("Debes aceptar los Términos y Condiciones para registrarte.");
@@ -91,12 +176,12 @@ const Login = () => {
                 setIsLoading(true);
                 try {
                     const usuario = await registrarse({
-                        email,
-                        password,
-                        first_name: nombres,
-                        last_name: apellidos,
-                        no_identificacion: identificacion,
-                        telefono,
+                        email: formData.email,
+                        password: formData.password,
+                        first_name: formData.nombres,
+                        last_name: formData.apellidos,
+                        no_identificacion: formData.identificacion,
+                        telefono: formData.telefono,
                     });
                     irAlPanel(usuario);
                 } catch (error) {
@@ -116,9 +201,19 @@ const Login = () => {
         }
     };
 
-
     const labelStyle = { fontSize: '11px', fontWeight: '700', color: 'var(--text-light)', marginBottom: '6px', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' };
-    const toggleEyeStyle = { position: 'absolute', right: '15px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-light)', zIndex: 10 };
+    
+    const toggleEyeStyle = { 
+        position: 'absolute', 
+        right: '15px', 
+        top: '24px', 
+        transform: 'translateY(-50%)', 
+        background: 'none', 
+        border: 'none', 
+        cursor: 'pointer', 
+        color: 'var(--text-light)', 
+        zIndex: 10 
+    };
 
     return (
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', background: 'var(--bg-color)', padding: '20px' }}>
@@ -160,7 +255,7 @@ const Login = () => {
                             </div>
                             {(step === 'login' || step === 'register') && (
                                 <div style={{ display: 'flex', background: 'var(--white)', border: '1px solid var(--light-gray)', borderRadius: '8px', padding: '4px' }}>
-                                    <button onClick={() => { setStep('login'); setRegSubStep(1); setErrorMsg(null); }} style={{ padding: '6px 20px', fontSize: '12px', fontWeight: 'bold', borderRadius: '6px', border: 'none', cursor: 'pointer', background: step === 'login' ? 'var(--color-primary)' : 'transparent', color: step === 'login' ? 'var(--white)' : 'var(--text-light)' }}>Ingresar</button>
+                                    <button onClick={() => { setStep('login'); setErrorMsg(null); }} style={{ padding: '6px 20px', fontSize: '12px', fontWeight: 'bold', borderRadius: '6px', border: 'none', cursor: 'pointer', background: step === 'login' ? 'var(--color-primary)' : 'transparent', color: step === 'login' ? 'var(--white)' : 'var(--text-light)' }}>Ingresar</button>
                                     <button onClick={() => { setStep('register'); setRegSubStep(1); setErrorMsg(null); }} style={{ padding: '6px 20px', fontSize: '12px', fontWeight: 'bold', borderRadius: '6px', border: 'none', cursor: 'pointer', background: step === 'register' ? 'var(--color-primary)' : 'transparent', color: step === 'register' ? 'var(--white)' : 'var(--text-light)' }}>Registrar</button>
                                 </div>
                             )}
@@ -183,13 +278,15 @@ const Login = () => {
                             <form onSubmit={submitLogin} style={{ width: '100%', maxWidth: '360px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
                                 <div>
                                     <label style={labelStyle}>Correo Electrónico</label>
-                                    <Input type="email" icon="fa-envelope" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                                    <Input type="email" name="email" icon="fa-envelope" value={formData.email} onChange={handleChange} />
                                 </div>
                                 <div>
                                     <label style={labelStyle}>Contraseña</label>
                                     <div style={{ position: 'relative' }}>
-                                        <Input type={mostrarPassword ? "text" : "password"} icon="fa-lock" value={password} onChange={(e) => setPassword(e.target.value)} required />
-                                        <button type="button" onClick={() => setMostrarPassword(!mostrarPassword)} style={toggleEyeStyle}><i className={`fas ${mostrarPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i></button>
+                                        <Input type={mostrarPassword ? "text" : "password"} name="password" icon="fa-lock" value={formData.password} onChange={handleChange} />
+                                        <button type="button" onClick={() => setMostrarPassword(!mostrarPassword)} style={toggleEyeStyle}>
+                                            {mostrarPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                        </button>
                                     </div>
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2px' }}>
@@ -212,20 +309,32 @@ const Login = () => {
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                                         <div>
                                             <label style={labelStyle}>Correo Electrónico</label>
-                                            <Input type="email" icon="fa-envelope" value={email} onChange={(e) => setEmail(e.target.value)} />
+                                            <Input type="email" name="email" icon="fa-envelope" value={formData.email} onChange={handleChange} onBlur={handleBlur} error={touched.email && errors.email} />
                                         </div>
                                         <div>
                                             <label style={labelStyle}>Contraseña</label>
                                             <div style={{ position: 'relative' }}>
-                                                <Input type={mostrarPassword ? "text" : "password"} icon="fa-lock" value={password} onChange={(e) => setPassword(e.target.value)} />
-                                                <button type="button" onClick={() => setMostrarPassword(!mostrarPassword)} style={toggleEyeStyle}><i className={`fas ${mostrarPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i></button>
+                                                <Input type={mostrarPassword ? "text" : "password"} name="password" icon="fa-lock" value={formData.password} onChange={handleChange} onBlur={handleBlur} error={touched.password && errors.password} />
+                                                <button type="button" onClick={() => setMostrarPassword(!mostrarPassword)} style={toggleEyeStyle}>
+                                                    {mostrarPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                                </button>
+                                            </div>
+                                            
+                                            <div style={{ marginTop: '8px', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                                                <CheckItem label="8+ caracteres" isValid={passChecks.length} />
+                                                <CheckItem label="Mayúscula" isValid={passChecks.upper} />
+                                                <CheckItem label="Minúscula" isValid={passChecks.lower} />
+                                                <CheckItem label="Número" isValid={passChecks.number} />
+                                                <CheckItem label="Símbolo" isValid={passChecks.special} />
                                             </div>
                                         </div>
                                         <div>
                                             <label style={labelStyle}>Confirmar Contraseña</label>
                                             <div style={{ position: 'relative' }}>
-                                                <Input type={mostrarConfirmarPassword ? "text" : "password"} icon="fa-lock" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
-                                                <button type="button" onClick={() => setMostrarConfirmarPassword(!mostrarConfirmarPassword)} style={toggleEyeStyle}><i className={`fas ${mostrarConfirmarPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i></button>
+                                                <Input type={mostrarConfirmarPassword ? "text" : "password"} name="confirmPassword" icon="fa-lock" value={formData.confirmPassword} onChange={handleChange} onBlur={handleBlur} error={touched.confirmPassword && errors.confirmPassword} />
+                                                <button type="button" onClick={() => setMostrarConfirmarPassword(!mostrarConfirmarPassword)} style={toggleEyeStyle}>
+                                                    {mostrarConfirmarPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                                </button>
                                             </div>
                                         </div>
                                     </div>
@@ -235,20 +344,19 @@ const Login = () => {
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                         <div>
                                             <label style={labelStyle}>Nombre</label>
-                                            <Input type="text" icon="fa-user" value={nombres} onChange={(e) => setNombres(e.target.value)} />
+                                            <Input type="text" name="nombres" icon="fa-user" value={formData.nombres} onChange={handleChange} onBlur={handleBlur} error={touched.nombres && errors.nombres} />
                                         </div>
                                         <div>
                                             <label style={labelStyle}>Apellido</label>
-                                            <Input type="text" icon="fa-user" value={apellidos} onChange={(e) => setApellidos(e.target.value)} />
+                                            <Input type="text" name="apellidos" icon="fa-user" value={formData.apellidos} onChange={handleChange} onBlur={handleBlur} error={touched.apellidos && errors.apellidos} />
                                         </div>
-
                                         <div>
                                             <label style={labelStyle}>Teléfono</label>
-                                            <Input type="tel" icon="fa-phone" value={telefono} onChange={(e) => setTelefono(e.target.value)} />
+                                            <Input type="tel" name="telefono" icon="fa-phone" value={formData.telefono} onChange={handleChange} onBlur={handleBlur} error={touched.telefono && errors.telefono} />
                                         </div>
                                         <div>
                                             <label style={labelStyle}>Identificación (DNI / RTN)</label>
-                                            <Input type="text" icon="fa-id-card" value={identificacion} onChange={(e) => setIdentificacion(e.target.value)} />
+                                            <Input type="text" name="identificacion" icon="fa-id-card" value={formData.identificacion} onChange={handleChange} onBlur={handleBlur} error={touched.identificacion && errors.identificacion} />
                                         </div>
                                     </div>
                                 )}
