@@ -13,3 +13,9 @@ export const getCategorias = async () => {
     const response = await axiosClient.get('/catalogo/categorias/');
     return response.data;
 };
+
+// Detalle de un producto, con sus variantes (SKU, precio, disponibilidad)
+export const getProducto = async (id) => {
+    const response = await axiosClient.get(`/catalogo/productos/${id}/`);
+    return response.data;
+};
