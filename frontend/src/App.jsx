@@ -26,6 +26,7 @@ import ClienteServicios from './pages/cliente/ClienteServicios';
 import ClienteHistorial from './pages/cliente/ClienteHistorial';
 import ClienteSoporte from './pages/cliente/ClienteSoporte';
 import ClienteEquipos from './pages/cliente/ClienteEquipos';
+import ClienteCarrito from './pages/cliente/ClienteCarrito';
 
 // --- PÁGINAS DEL ADMINISTRADOR ---
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -78,6 +79,7 @@ function App() {
           <Route path="soporte" element={<ClienteSoporte />} />
           <Route path="perfil" element={<ClientePerfil onLogout={cerrarSesion} />} />
           <Route path="equipos" element={<ClienteEquipos />} />
+          <Route path="carrito" element= {<ClienteCarrito/>}/>
         </Route>
       </Route>
 
