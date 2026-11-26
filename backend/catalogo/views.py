@@ -27,8 +27,8 @@ class ProductoViewSet(viewsets.ReadOnlyModelViewSet):
         ) 
         return (
             Producto.objects.filter(activo=True)
-            .select_related('categoria', 'articulo')
-            .prefetch_related('articulo__imagenes', 'variantes__atributos', 'variantes__inventarios')
+            .select_related('categoria', 'articulo', 'suscripcion')
+            .prefetch_related('articulo__imagenes', 'variantes__atributos', 'variantes__inventarios', 'especificaciones')
             .annotate(precio_desde=Min('variantes__precio'), disponible=Exists(hay_stock))
         )
     

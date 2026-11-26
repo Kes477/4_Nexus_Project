@@ -2,7 +2,6 @@ import { Check } from "lucide-react";
 import { useNavigate } from 'react-router-dom';
 import { Button } from "../ui/Button";
 
-/* TARJETA DE SERVICIO / SUSCRIPCIÓN */
 export const ServiceCard = ({ service }) => {
     const Icon = service.icon;
     const navigate = useNavigate();
@@ -35,7 +34,7 @@ export const ServiceCard = ({ service }) => {
                     position: "absolute", top: "-10px", left: "50%", transform: "translateX(-50%)",
                     background: "var(--color-primary)", color: "var(--white)",
                     padding: "2px 12px", borderRadius: "20px", fontSize: "10px", fontWeight: "bold",
-                    textTransform: "uppercase", letterSpacing: "1px"
+                    textTransform: "uppercase", letterSpacing: "1px", zIndex: 10
                 }}>
                     Recomendado
                 </span>
@@ -80,7 +79,6 @@ export const ServiceCard = ({ service }) => {
                 ))}
             </ul>
 
-            {/* BOTÓN SELECCIONAR -> REDIRIGE A LOGIN */}
             <Button 
                 variant={service.destacado ? "primary" : "outline-dark"} 
                 style={{ width: "100%", padding: "10px" }}
@@ -92,9 +90,7 @@ export const ServiceCard = ({ service }) => {
     );
 };
 
-/* TARJETA DE PRODUCTO / DRON (ProductCard) */
 export const ProductCard = ({ product }) => {
-    const Icon = product.icon;
     const navigate = useNavigate();
 
     return (
@@ -102,12 +98,13 @@ export const ProductCard = ({ product }) => {
             style={{
                 background: "var(--white)",
                 borderRadius: "10px",
-                border: "1px solid var(--light-gray)",
-                overflow: "hidden",
+                border: product.destacado ? "2px solid var(--color-primary)" : "1px solid var(--light-gray)",
+                overflow: "visible",
                 display: "flex",
                 flexDirection: "column",
                 height: "95%",
-                boxShadow: "0 4px 15px rgba(0,0,0,0.03)",
+                position: "relative",
+                boxShadow: product.destacado ? "0 10px 30px rgba(4, 201, 166, 0.15)" : "0 4px 15px rgba(0,0,0,0.03)",
                 transition: "transform 0.3s ease, box-shadow 0.3s ease",
             }}
             onMouseEnter={(e) => {
@@ -116,10 +113,28 @@ export const ProductCard = ({ product }) => {
             }}
             onMouseLeave={(e) => {
                 e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = "0 4px 15px rgba(0,0,0,0.03)";
+                e.currentTarget.style.boxShadow = product.destacado ? "0 10px 30px rgba(4, 201, 166, 0.15)" : "0 4px 15px rgba(0,0,0,0.03)";
             }}
         >
-            <div style={{ position: "relative", height: "170px", background: "var(--bg-color)", overflow: "hidden" }}>
+            {product.destacado && (
+                <span style={{
+                    position: "absolute", top: "-10px", left: "50%", transform: "translateX(-50%)",
+                    background: "var(--color-primary)", color: "var(--white)",
+                    padding: "2px 12px", borderRadius: "20px", fontSize: "10px", fontWeight: "bold",
+                    textTransform: "uppercase", letterSpacing: "1px", zIndex: 10
+                }}>
+                    Recomendado
+                </span>
+            )}
+
+            <div style={{ 
+                position: "relative", 
+                height: "170px", 
+                background: "var(--bg-color)", 
+                overflow: "hidden",
+                borderTopLeftRadius: product.destacado ? "8px" : "9px",
+                borderTopRightRadius: product.destacado ? "8px" : "9px"
+            }}>
                 <img
                     src={product.image}
                     alt={product.name}
@@ -129,23 +144,6 @@ export const ProductCard = ({ product }) => {
                     onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
                 />
                 <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.3) 0%, transparent 40%)" }} />
-
-                <span style={{
-                    position: "absolute", top: "10px", left: "10px",
-                    background: "var(--color-primary)", color: "var(--white)",
-                    padding: "4px 10px", borderRadius: "20px", fontSize: "10px", fontWeight: "bold",
-                }}>
-                    {product.label}
-                </span>
-
-                <div style={{
-                    position: "absolute", bottom: "10px", left: "10px",
-                    background: "rgba(255, 255, 255, 0.9)", color: "var(--color-primary)",
-                    width: "30px", height: "30px", borderRadius: "6px",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                }}>
-                    <Icon size={16} />
-                </div>
             </div>
 
             <div style={{ padding: "20px", display: "flex", flexDirection: "column", flexGrow: 1 }}>
@@ -178,13 +176,12 @@ export const ProductCard = ({ product }) => {
                     </span>
 
                     <span style={{ fontSize: "18px", fontWeight: "800", color: "var(--color-dark)" }}>
-                        L {product.price}
+                        {product.price}
                     </span>
                 </div>
 
-                {/* BOTÓN COTIZAR -> REDIRIGE A FORMULARIO-CONTACTO */}
                 <Button 
-                    variant="primary" 
+                    variant={product.destacado ? "primary" : "outline-dark"} 
                     style={{ width: "100%", padding: "10px" }}
                     onClick={() => navigate('/formulario-contacto')}
                 >

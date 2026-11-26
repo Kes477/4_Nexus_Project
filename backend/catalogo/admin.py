@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import (Articulo, AtributoVariante, Categoria, ImagenArticulo, Producto, Variante, Resenia)
+from .models import (Articulo, AtributoVariante, Categoria, ImagenArticulo, Producto, Variante, Resenia, Suscripcion, EspecificacionProducto)
 
 @admin.register(Categoria)
 class CategoriaAdmin(admin.ModelAdmin):
@@ -8,6 +8,10 @@ class CategoriaAdmin(admin.ModelAdmin):
 
 class ArticuloInline(admin.StackedInline):
     model = Articulo
+    can_delete = False
+
+class SuscripcionInline(admin.StackedInline):
+    model = Suscripcion
     can_delete = False
 
 class VarianteInline(admin.TabularInline):
@@ -19,13 +23,17 @@ class ReseniaInline(admin.TabularInline):
     extra = 0
     readonly_fields = ('fecha_resenia',)
 
+class EspecificacionProductoInline(admin.TabularInline):
+    model = EspecificacionProducto
+    extra = 1
+
 @admin.register(Producto)
 class ProductoAdmin(admin.ModelAdmin):
-    list_display = ('nombre','categoria','tipo_producto','activo','fecha_publicacion')
-    list_filter = ('tipo_producto','activo','categoria')
-    list_editable = ('activo',)
+    list_display = ('nombre','categoria','tipo_producto','activo','es_destacado','fecha_publicacion')
+    list_filter = ('tipo_producto','activo','es_destacado','categoria')
+    list_editable = ('activo', 'es_destacado')
     search_fields = ('nombre', 'descripcion')
-    inlines = [ArticuloInline, VarianteInline, ReseniaInline]
+    inlines = [ArticuloInline, SuscripcionInline, EspecificacionProductoInline, VarianteInline, ReseniaInline]
 
 class ImagenArticuloInline(admin.TabularInline):
     model = ImagenArticulo
@@ -36,6 +44,11 @@ class ArticuloAdmin(admin.ModelAdmin):
     list_display = ('__str__','producto','tiempo_vuelo_max_min','alcance_max_km')
     search_fields = ('marca', 'modelo', 'producto__nombre')
     inlines = [ImagenArticuloInline]
+
+@admin.register(Suscripcion)
+class SuscripcionAdmin(admin.ModelAdmin):
+    list_display = ('__str__', 'producto', 'periodo_facturacion_dias', 'nivel_cobertura')
+    search_fields = ('producto__nombre', 'nivel_cobertura')
 
 class AtributoVarianteInline(admin.TabularInline):
     model = AtributoVariante

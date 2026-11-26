@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from .models import (
     Articulo, AtributoVariante, Categoria, ImagenArticulo, 
-    Producto, Variante, Resenia
+    Producto, Variante, Resenia, Suscripcion, EspecificacionProducto
 )
 
 class CategoriaSerializer(serializers.ModelSerializer):
@@ -37,16 +37,32 @@ class ArticulosSerializer(serializers.ModelSerializer):
         model = Articulo
         fields = ['marca', 'modelo', 'peso_kg', 'dimensiones', 'tiempo_vuelo_max_min', 'alcance_max_km', 'imagenes']
 
+class SuscripcionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Suscripcion
+        fields = ['periodo_facturacion_dias', 'cantidad_mantenimientos_incluidos', 'nivel_cobertura', 'renovacion_automatica']
+
+class EspecificacionProductoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EspecificacionProducto
+        fields = ['clave_espec', 'valor_espec']
+
 class ProductoListaSerializer(serializers.ModelSerializer):
     categoria = serializers.StringRelatedField()
     marca = serializers.CharField(source='articulo.marca', read_only=True, default=None)
     precio_desde = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
     disponible = serializers.BooleanField(read_only=True)
     imagen_principal = serializers.SerializerMethodField() 
+    suscripcion = SuscripcionSerializer(read_only=True, allow_null=True)
+    especificaciones = EspecificacionProductoSerializer(many=True, read_only=True)
 
     class Meta:
         model = Producto
-        fields = ['id', 'nombre', 'descripcion', 'categoria', 'tipo_producto', 'marca', 'precio_desde', 'disponible', 'imagen_principal']
+        fields = [
+            'id', 'nombre', 'descripcion', 'categoria', 'tipo_producto', 
+            'marca', 'precio_desde', 'disponible', 'imagen_principal',
+            'suscripcion', 'especificaciones', 'es_destacado'
+        ]
     
     def get_imagen_principal(self, obj):
         articulo = getattr(obj, 'articulo', None)

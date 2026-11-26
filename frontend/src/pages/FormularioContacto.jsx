@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Check, Send, Phone, Mail, MapPin, Clock, MessageSquare } from 'lucide-react';
 import { Input, Button, Alert, Checkbox, IconButton } from '../components/ui';
+import emailjs from '@emailjs/browser';
 
 const TIPOS_CONSULTA = [
     { value: '', label: 'Selecciona un tipo de consulta' },
@@ -12,6 +13,12 @@ const TIPOS_CONSULTA = [
     { value: 'otro', label: 'Otro' },
 ];
 
+const REGEX = {
+    email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+    name: /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/,
+    phone: /^[0-9+\-\s]{8,15}$/,
+};
+
 const FormularioContacto = () => {
     const navigate = useNavigate();
 
@@ -19,70 +26,120 @@ const FormularioContacto = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState(null);
     const [success, setSuccess] = useState(false);
-    const [fieldErrors, setFieldErrors] = useState({});
 
-    const [nombre, setNombre] = useState('');
-    const [email, setEmail] = useState('');
-    const [telefono, setTelefono] = useState('');
-    const [tipoConsulta, setTipoConsulta] = useState('');
-    const [asunto, setAsunto] = useState('');
-    const [mensaje, setMensaje] = useState('');
-    const [aceptaContacto, setAceptaContacto] = useState(false);
+    const [formData, setFormData] = useState({
+        nombre: '',
+        email: '',
+        telefono: '',
+        tipoConsulta: '',
+        asunto: '',
+        mensaje: '',
+        aceptaContacto: false
+    });
 
-    const validateStep1 = () => {
-        const errs = {};
-        if (!nombre.trim()) errs.nombre = 'El nombre es requerido.';
-        if (!email.trim()) errs.email = 'El correo es requerido.';
-        else if (!/^\S+@\S+\.\S+$/.test(email)) errs.email = 'Correo inválido.';
-        if (!tipoConsulta) errs.tipoConsulta = 'Selecciona un tipo de consulta.';
-        setFieldErrors(errs);
-        return Object.keys(errs).length === 0;
+    const [errors, setErrors] = useState({});
+    const [touched, setTouched] = useState({});
+
+    const validateField = (field, value) => {
+        if (field === 'telefono') {
+            if (value && !REGEX.phone.test(value)) return 'Ingresa un teléfono válido (8-15 dígitos).';
+            return '';
+        }
+
+        if (field === 'aceptaContacto') {
+            if (!value) return 'Debes aceptar ser contactado.';
+            return '';
+        }
+
+        if (!value || !value.trim()) return 'Este campo es obligatorio.';
+
+        switch (field) {
+            case 'nombre':
+                if (!REGEX.name.test(value)) return 'Solo se permiten letras y espacios.';
+                break;
+            case 'email':
+                if (!REGEX.email.test(value)) return 'Ingresa un correo electrónico válido.';
+                break;
+            case 'mensaje':
+                if (value.trim().length < 10) return 'Mínimo 10 caracteres.';
+                break;
+            default:
+                break;
+        }
+        return '';
     };
 
-    const validateStep2 = () => {
-        const errs = {};
-        if (!mensaje.trim()) errs.mensaje = 'El mensaje es requerido.';
-        else if (mensaje.trim().length < 10) errs.mensaje = 'Mínimo 10 caracteres.';
-        if (!aceptaContacto) errs.aceptaContacto = 'Debes aceptar ser contactado.';
-        setFieldErrors(errs);
-        return Object.keys(errs).length === 0;
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setFormData({ ...formData, [name]: value });
+
+        if (errors[name]) {
+            setErrors({ ...errors, [name]: '' });
+        }
     };
 
-    const goToStep = (nextStep) => {
-        setErrorMsg(null);
-        setFieldErrors({});
-        setStep(nextStep);
+    const handleBlur = (e) => {
+        const { name, value } = e.target;
+        setTouched({ ...touched, [name]: true });
+        const error = validateField(name, value);
+        setErrors({ ...errors, [name]: error });
+    };
+
+    const validateStep = (currentStep) => {
+        const newErrors = {};
+        const fieldsToValidate = currentStep === 1
+            ? ['nombre', 'email', 'telefono', 'tipoConsulta']
+            : ['asunto', 'mensaje', 'aceptaContacto'];
+
+        fieldsToValidate.forEach(field => {
+            const error = validateField(field, formData[field]);
+            if (error) newErrors[field] = error;
+            setTouched(prev => ({ ...prev, [field]: true }));
+        });
+
+        setErrors(prev => ({ ...prev, ...newErrors }));
+        return Object.keys(newErrors).length === 0;
     };
 
     const handleNext = () => {
-        if (validateStep1()) goToStep(2);
+        setErrorMsg(null);
+        if (validateStep(1)) {
+            setStep(2);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
     };
 
     const handleBack = () => {
-        if (step === 2) goToStep(1);
-        else navigate(-1);
+        setErrorMsg(null);
+        if (step === 2) {
+            setStep(1);
+        } else {
+            navigate(-1);
+        }
     };
 
-    const handleSubmit = async () => {
+    const handleSubmit = async (e) => {
+        if (e) e.preventDefault();
         setErrorMsg(null);
-        if (!validateStep2()) return;
+        if (!validateStep(2)) return;
 
         setIsLoading(true);
         try {
-            const respuesta = await fetch('http://localhost:8000/api/contacto/', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    nombre,
-                    email,
-                    telefono,
-                    tipo_consulta: tipoConsulta,
-                    asunto,
-                    mensaje,
-                }),
-            });
+            const templateParams = {
+                nombre: formData.nombre,
+                email: formData.email,
+                telefono: formData.telefono || 'No proporcionado',
+                tipoConsulta: formData.tipoConsulta,
+                asunto: formData.asunto || 'Sin asunto',
+                mensaje: formData.mensaje
+            };
 
-            if (!respuesta.ok) throw new Error('Error al enviar el mensaje');
+            await emailjs.send(
+                import.meta.env.VITE_EMAILJS_SERVICE_ID,
+                import.meta.env.VITE_EMAILJS_TEMPLATE_ID,
+                templateParams,
+                import.meta.env.VITE_EMAILJS_PUBLIC_KEY
+            );
             setSuccess(true);
         } catch (error) {
             console.error('Error al enviar:', error);
@@ -95,14 +152,17 @@ const FormularioContacto = () => {
     const resetForm = () => {
         setSuccess(false);
         setStep(1);
-        setNombre('');
-        setEmail('');
-        setTelefono('');
-        setTipoConsulta('');
-        setAsunto('');
-        setMensaje('');
-        setAceptaContacto(false);
-        setFieldErrors({});
+        setFormData({
+            nombre: '',
+            email: '',
+            telefono: '',
+            tipoConsulta: '',
+            asunto: '',
+            mensaje: '',
+            aceptaContacto: false
+        });
+        setErrors({});
+        setTouched({});
         setErrorMsg(null);
     };
 
@@ -117,23 +177,16 @@ const FormularioContacto = () => {
     };
 
     const fieldWrapperStyle = { display: 'flex', flexDirection: 'column' };
-
-    const errorTextStyle = {
-        color: 'var(--color-danger)',
-        fontSize: '12px',
-        marginTop: '4px',
-        display: 'block',
-    };
-
+    const errorTextStyle = { color: 'var(--color-danger)', fontSize: '12px', marginTop: '4px', display: 'block' };
     const selectWrapperStyle = { position: 'relative' };
 
     const selectStyle = {
         width: '100%',
         padding: '12px 15px 12px 40px',
-        border: `1px solid ${fieldErrors.tipoConsulta ? 'var(--color-danger)' : 'var(--light-gray)'}`,
+        border: `1px solid ${touched.tipoConsulta && errors.tipoConsulta ? 'var(--color-danger)' : 'var(--light-gray)'}`,
         borderRadius: '6px',
         fontSize: '16px',
-        color: tipoConsulta ? 'var(--color-dark)' : 'var(--text-light)',
+        color: formData.tipoConsulta ? 'var(--color-dark)' : 'var(--text-light)',
         background: 'var(--white)',
         outline: 'none',
         fontFamily: 'inherit',
@@ -144,7 +197,7 @@ const FormularioContacto = () => {
     const textareaStyle = {
         width: '100%',
         padding: '12px 15px',
-        border: `1px solid ${fieldErrors.mensaje ? 'var(--color-danger)' : 'var(--light-gray)'}`,
+        border: `1px solid ${touched.mensaje && errors.mensaje ? 'var(--color-danger)' : 'var(--light-gray)'}`,
         borderRadius: '6px',
         fontSize: '16px',
         color: 'var(--color-dark)',
@@ -158,7 +211,6 @@ const FormularioContacto = () => {
 
     return (
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', background: 'var(--bg-color)', padding: '20px' }}>
-
             <style>{`.hide-scrollbar::-webkit-scrollbar { display: none; }`}</style>
 
             <div style={{
@@ -169,14 +221,14 @@ const FormularioContacto = () => {
             }}>
 
                 <Link to="/" style={{ position: 'absolute', top: '16px', left: '16px', zIndex: 50, textDecoration: 'none' }} title="Volver al inicio">
-                    <IconButton 
-                        icon="fa-home" 
-                        customColor="rgba(255, 255, 255, 0.15)" 
+                    <IconButton
+                        icon="fa-home"
+                        customColor="rgba(255, 255, 255, 0.15)"
                     />
                 </Link>
 
-                <div style={{ 
-                    flex: 1, position: 'relative', display: 'flex', flexDirection: 'column', 
+                <div style={{
+                    flex: 1, position: 'relative', display: 'flex', flexDirection: 'column',
                     overflow: 'hidden', background: 'var(--color-dark)',
                     padding: '32px 40px'
                 }}>
@@ -184,19 +236,19 @@ const FormularioContacto = () => {
                     <div style={{ position: 'absolute', bottom: '-10%', right: '-10%', width: '400px', height: '400px', background: 'radial-gradient(circle, rgba(4, 201, 166, 0.15) 0%, transparent 70%)' }} />
 
                     <div style={{ zIndex: 10, marginTop: 'auto', marginBottom: 'auto' }}>
-                        <div style={{ 
-                            background: 'var(--color-primary)', color: 'var(--white)', 
-                            padding: '6px 14px', borderRadius: '8px', fontSize: '13px', 
+                        <div style={{
+                            background: 'var(--color-primary)', color: 'var(--white)',
+                            padding: '6px 14px', borderRadius: '8px', fontSize: '13px',
                             fontWeight: '900', width: 'fit-content', marginBottom: '24px',
                             letterSpacing: '1px', boxShadow: '0 4px 15px rgba(4, 201, 166, 0.3)'
                         }}>
                             4 NEXUS
                         </div>
-                        
+
                         <h1 style={{ color: 'var(--white)', fontSize: '28px', fontWeight: '800', lineHeight: '1.2', marginBottom: '12px' }}>
                             Hablemos de tu próximo proyecto.
                         </h1>
-                        
+
                         <p style={{ color: 'var(--light-gray)', fontSize: '14px', lineHeight: '1.6', marginBottom: '32px', maxWidth: '90%' }}>
                             Completa el formulario y nuestro equipo de soporte técnico y ventas se pondrá en contacto contigo a la brevedad.
                         </p>
@@ -286,7 +338,7 @@ const FormularioContacto = () => {
                                 <div>
                                     <h3 style={{ margin: '0 0 6px 0', fontSize: '20px', color: 'var(--color-primary)' }}>¡Mensaje enviado!</h3>
                                     <p style={{ fontSize: '13px', color: 'var(--text-light)', margin: 0 }}>
-                                        Gracias por escribirnos, {nombre.split(' ')[0] || 'usuario'}. Te contactaremos pronto.
+                                        Gracias por escribirnos, {formData.nombre.split(' ')[0] || 'usuario'}. Te contactaremos pronto.
                                     </p>
                                 </div>
                                 <div style={{ display: 'flex', gap: '12px', width: '100%', marginTop: '16px' }}>
@@ -299,7 +351,7 @@ const FormularioContacto = () => {
                                 </div>
                             </div>
                         ) : (
-                            <div style={{ width: '100%', maxWidth: '420px' }}>
+                            <form onSubmit={handleSubmit} style={{ width: '100%', maxWidth: '420px' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--light-gray)', paddingBottom: '12px', marginBottom: '16px' }}>
                                     <span style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--color-dark)' }}>
                                         {step === 1 && 'Paso 1: Información de contacto'}
@@ -316,11 +368,13 @@ const FormularioContacto = () => {
                                             <label style={labelStyle}>Nombre completo *</label>
                                             <Input
                                                 type="text"
+                                                name="nombre"
                                                 icon="fa-user"
-                                                value={nombre}
-                                                onChange={(e) => setNombre(e.target.value)}
+                                                value={formData.nombre}
+                                                onChange={handleChange}
+                                                onBlur={handleBlur}
                                                 disabled={isLoading}
-                                                error={fieldErrors.nombre}
+                                                error={touched.nombre && errors.nombre}
                                             />
                                         </div>
 
@@ -328,11 +382,13 @@ const FormularioContacto = () => {
                                             <label style={labelStyle}>Correo electrónico *</label>
                                             <Input
                                                 type="email"
+                                                name="email"
                                                 icon="fa-envelope"
-                                                value={email}
-                                                onChange={(e) => setEmail(e.target.value)}
+                                                value={formData.email}
+                                                onChange={handleChange}
+                                                onBlur={handleBlur}
                                                 disabled={isLoading}
-                                                error={fieldErrors.email}
+                                                error={touched.email && errors.email}
                                             />
                                         </div>
 
@@ -340,10 +396,13 @@ const FormularioContacto = () => {
                                             <label style={labelStyle}>Teléfono (Opcional)</label>
                                             <Input
                                                 type="tel"
+                                                name="telefono"
                                                 icon="fa-phone"
-                                                value={telefono}
-                                                onChange={(e) => setTelefono(e.target.value)}
+                                                value={formData.telefono}
+                                                onChange={handleChange}
+                                                onBlur={handleBlur}
                                                 disabled={isLoading}
+                                                error={touched.telefono && errors.telefono}
                                             />
                                         </div>
 
@@ -358,20 +417,21 @@ const FormularioContacto = () => {
                                                     }}
                                                 ></i>
                                                 <select
-                                                    value={tipoConsulta}
-                                                    onChange={(e) => setTipoConsulta(e.target.value)}
+                                                    name="tipoConsulta"
+                                                    value={formData.tipoConsulta}
+                                                    onChange={handleChange}
+                                                    onBlur={handleBlur}
                                                     style={selectStyle}
                                                     disabled={isLoading}
                                                     onFocus={(e) => e.target.style.borderColor = 'var(--color-primary)'}
-                                                    onBlur={(e) => e.target.style.borderColor = fieldErrors.tipoConsulta ? 'var(--color-danger)' : 'var(--light-gray)'}
                                                 >
                                                     {TIPOS_CONSULTA.map((t) => (
                                                         <option key={t.value} value={t.value}>{t.label}</option>
                                                     ))}
                                                 </select>
                                             </div>
-                                            {fieldErrors.tipoConsulta && (
-                                                <span style={errorTextStyle}>{fieldErrors.tipoConsulta}</span>
+                                            {touched.tipoConsulta && errors.tipoConsulta && (
+                                                <span style={errorTextStyle}>{errors.tipoConsulta}</span>
                                             )}
                                         </div>
                                     </div>
@@ -383,9 +443,11 @@ const FormularioContacto = () => {
                                             <label style={labelStyle}>Asunto</label>
                                             <Input
                                                 type="text"
+                                                name="asunto"
                                                 icon="fa-tag"
-                                                value={asunto}
-                                                onChange={(e) => setAsunto(e.target.value)}
+                                                value={formData.asunto}
+                                                onChange={handleChange}
+                                                onBlur={handleBlur}
                                                 disabled={isLoading}
                                             />
                                         </div>
@@ -393,26 +455,42 @@ const FormularioContacto = () => {
                                         <div style={fieldWrapperStyle}>
                                             <label style={labelStyle}>Mensaje *</label>
                                             <textarea
-                                                value={mensaje}
-                                                onChange={(e) => setMensaje(e.target.value)}
+                                                name="mensaje"
+                                                value={formData.mensaje}
+                                                onChange={handleChange}
+                                                onBlur={handleBlur}
                                                 style={textareaStyle}
                                                 disabled={isLoading}
                                                 onFocus={(e) => e.target.style.borderColor = 'var(--color-primary)'}
-                                                onBlur={(e) => e.target.style.borderColor = fieldErrors.mensaje ? 'var(--color-danger)' : 'var(--light-gray)'}
                                             />
-                                            {fieldErrors.mensaje && (
-                                                <span style={errorTextStyle}>{fieldErrors.mensaje}</span>
+                                            {touched.mensaje && errors.mensaje && (
+                                                <span style={errorTextStyle}>{errors.mensaje}</span>
                                             )}
                                         </div>
 
                                         <div style={fieldWrapperStyle}>
                                             <Checkbox
-                                                checked={aceptaContacto}
-                                                onChange={() => setAceptaContacto(!aceptaContacto)}
+                                                name="aceptaContacto"
+                                                checked={formData.aceptaContacto}
+                                                onChange={() => {
+                                                    const nuevoValor = !formData.aceptaContacto;
+                                                    setFormData({ ...formData, aceptaContacto: nuevoValor });
+                                                    if (errors.aceptaContacto) {
+                                                        setErrors({ ...errors, aceptaContacto: '' });
+                                                    }
+                                                    if (!touched.aceptaContacto) {
+                                                        setTouched({ ...touched, aceptaContacto: true });
+                                                    }
+                                                }}
+                                                onBlur={() => {
+                                                    setTouched({ ...touched, aceptaContacto: true });
+                                                    const error = validateField('aceptaContacto', formData.aceptaContacto);
+                                                    setErrors({ ...errors, aceptaContacto: error });
+                                                }}
                                                 label="Acepto ser contactado por 4 Nexus."
                                             />
-                                            {fieldErrors.aceptaContacto && (
-                                                <span style={errorTextStyle}>{fieldErrors.aceptaContacto}</span>
+                                            {touched.aceptaContacto && errors.aceptaContacto && (
+                                                <span style={errorTextStyle}>{errors.aceptaContacto}</span>
                                             )}
                                         </div>
 
@@ -425,13 +503,13 @@ const FormularioContacto = () => {
                                                     Contacto
                                                 </span>
                                                 <span style={{ fontSize: '13px', color: 'var(--color-dark)', fontWeight: '600', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>
-                                                    {nombre} · {email}
+                                                    {formData.nombre} · {formData.email}
                                                 </span>
                                             </div>
                                         </div>
                                     </div>
                                 )}
-                            </div>
+                            </form>
                         )}
                     </div>
 
@@ -459,6 +537,7 @@ const FormularioContacto = () => {
                                 <Button
                                     variant="primary"
                                     size="sm"
+                                    type="button"
                                     onClick={handleNext}
                                     disabled={isLoading}
                                     style={{ padding: '10px 28px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}
@@ -469,8 +548,9 @@ const FormularioContacto = () => {
                                 <Button
                                     variant="primary"
                                     size="sm"
-                                    disabled={isLoading}
+                                    type="button"
                                     onClick={handleSubmit}
+                                    disabled={isLoading}
                                     style={{ padding: '10px 28px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}
                                 >
                                     {isLoading ? (

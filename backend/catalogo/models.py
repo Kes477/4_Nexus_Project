@@ -32,6 +32,7 @@ class Producto(models.Model):
     descripcion = models.TextField(blank=True)
     tipo_producto = models.CharField(max_length=20, choices=Tipo.choices, default=Tipo.ARTICULO)
     activo = models.BooleanField(default=True)
+    es_destacado = models.BooleanField(default=False)
     fecha_publicacion = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -61,6 +62,58 @@ class Articulo(models.Model):
 
     def __str__(self):
         return f'{self.marca} {self.modelo}'.strip() or str(self.producto)
+
+class Suscripcion(models.Model):
+    producto = models.OneToOneField(
+        Producto,
+        on_delete=models.CASCADE,
+        primary_key=True,
+        related_name='suscripcion'
+    )
+
+    periodo_facturacion_dias = models.IntegerField()
+    cantidad_mantenimientos_incluidos = models.IntegerField(default=0)
+    nivel_cobertura = models.CharField(max_length=100, blank=True)
+    renovacion_automatica = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = 'suscripción'
+        verbose_name_plural = 'suscripciones'
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(periodo_facturacion_dias__in=[30, 90, 365]),
+                name='suscripcion_periodo_valido'
+            ),
+            models.CheckConstraint(
+                condition=Q(cantidad_mantenimientos_incluidos__gte=0),
+                name='suscripcion_mantenimientos_positivos'
+            )
+        ]
+
+    def clean(self):
+        if self.producto_id and self.producto.tipo_producto != Producto.Tipo.SUSCRIPCION:
+            raise ValidationError('Solo un producto de tipo Suscripción puede tener datos de suscripción')
+
+    def __str__(self):
+        return str(self.producto)
+
+class EspecificacionProducto(models.Model):
+    producto = models.ForeignKey(Producto, on_delete=models.CASCADE, related_name='especificaciones')
+    clave_espec = models.CharField(max_length=100)
+    valor_espec = models.CharField(max_length=255)
+
+    class Meta:
+        verbose_name = 'especificación de producto'
+        verbose_name_plural = 'especificaciones de productos'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['producto', 'clave_espec'],
+                name='especificacion_unica_por_producto'
+            )
+        ]
+
+    def __str__(self):
+        return f'{self.clave_espec}: {self.valor_espec}'
 
 class Variante(models.Model):
     producto = models.ForeignKey(Producto, on_delete=models.CASCADE, related_name='variantes')
