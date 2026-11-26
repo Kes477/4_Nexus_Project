@@ -77,10 +77,12 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 
 from .models import EquipoCliente, OrdenServicio
+from usuarios.models import Tecnico
 
 from .serializers import (
     EquipoClienteSerializer,
     OrdenServicioSerializer,
+    SolicitudReparacionSerializer,
     AsignarTecnicoSerializer,
     CambiarEstadoSerializer,
 )
@@ -119,20 +121,10 @@ class EquipoClienteViewSet(
 
     def get_queryset(self):
         """
-        Obtiene los equipos del cliente autenticado.
-
-        SEGURIDAD:
-            El usuario únicamente puede consultar
-            los equipos asociados a su perfil.
+        Devuelve solamente los equipos del cliente autenticado.
         """
-
-        usuario = self.request.user
-
         return EquipoCliente.objects.filter(
-            cliente__usuario=usuario
-        ).select_related(
-            "cliente",
-            "articulo"
+            cliente__usuario=self.request.user
         )
 
     def create(self, request, *args, **kwargs):
@@ -209,16 +201,19 @@ class OrdenServicioViewSet(
 
     def get_permissions(self):
         """
-        Determina los permisos requeridos por cada acción.
-
-        REGLAS:
-            - Crear órdenes requiere permisos del modelo.
-            - Las demás acciones requieren autenticación.
-            - Las operaciones especiales verifican
-              sus propios permisos adicionales.
+        Determina los permisos requeridos por cada accion.
         """
-
         if self.action == "create":
+            usuario = self.request.user
+
+            if (
+                usuario.is_authenticated
+                and hasattr(usuario, "perfil_cliente")
+            ):
+                return [
+                    permissions.IsAuthenticated()
+                ]
+
             return [
                 permissions.IsAuthenticated(),
                 permissions.DjangoModelPermissions()
@@ -228,8 +223,26 @@ class OrdenServicioViewSet(
             permissions.IsAuthenticated()
         ]
 
+    def get_serializer_class(self):
+        """
+        Selecciona el serializer segun el tipo de usuario.
+        """
+        usuario = self.request.user
+
+        if (
+            self.action == "create"
+            and usuario.is_authenticated
+            and hasattr(usuario, "perfil_cliente")
+            and not usuario.has_perm(
+                "reparaciones.add_ordenservicio"
+            )
+        ):
+            return SolicitudReparacionSerializer
+
+        return OrdenServicioSerializer
+
     # ======================================================
-    # CONSULTA DE ÓRDENES
+    # CONSULTA DE ORDENES
     # ======================================================
 
     def get_queryset(self):
@@ -260,8 +273,8 @@ class OrdenServicioViewSet(
                 OrdenServicio.objects
                 .select_related(
                     "equipo",
-                    "equipo__cliente",
-                    "tecnico"
+                    "equipo__cliente__usuario",
+                    "tecnico__usuario"
                 )
                 .all()
             )
@@ -289,8 +302,8 @@ class OrdenServicioViewSet(
             .filter(filtros)
             .select_related(
                 "equipo",
-                "equipo__cliente",
-                "tecnico"
+                "equipo__cliente__usuario",
+                "tecnico__usuario"
             )
             .distinct()
         )
@@ -298,6 +311,47 @@ class OrdenServicioViewSet(
     # ======================================================
     # ASIGNACIÓN DE TÉCNICOS
     # ======================================================
+
+    def tecnicos_disponibles(self, request):
+        """
+        HU-014: Consulta los tecnicos disponibles.
+
+        Requiere permiso de modificacion de ordenes.
+        Solo devuelve tecnicos con cuentas activas.
+        """
+
+        if not request.user.has_perm(
+            "reparaciones.change_ordenservicio"
+        ):
+            raise PermissionDenied(
+                "No tiene permiso para consultar tecnicos."
+            )
+
+        tecnicos = Tecnico.objects.filter(
+            disponible=True,
+            usuario__is_active=True
+        ).select_related(
+            "usuario"
+        ).order_by(
+            "usuario__first_name",
+            "usuario__last_name"
+        )
+
+        datos = [
+            {
+                "id": tecnico.pk,
+                "nombre": tecnico.usuario.get_full_name(),
+                "especialidad_tecnica": tecnico.especialidad_tecnica,
+                "certificacion_fabricante": tecnico.certificacion_fabricante,
+                "disponible": tecnico.disponible
+            }
+            for tecnico in tecnicos
+        ]
+
+        return Response(
+            datos,
+            status=status.HTTP_200_OK
+        )
 
     def asignar_tecnico(self, request, pk=None):
         """
@@ -373,7 +427,7 @@ class OrdenServicioViewSet(
                 )
 
             # Comprobar disponibilidad del técnico.
-            if not tecnico.disponible:
+            if not tecnico.disponible or not tecnico.usuario.is_active:
                 return Response(
                     {
                         "detail": (
@@ -474,6 +528,10 @@ class OrdenServicioViewSet(
             "estado"
         ]
 
+        observaciones = serializer.validated_data.get(
+            "observaciones"
+        )
+
         # --------------------------------------------------
         # 2. STRATEGY + FACTORY METHOD
         # --------------------------------------------------
@@ -564,10 +622,33 @@ class OrdenServicioViewSet(
             #
             # El servicio centraliza esta operación.
 
-            ServicioOrdenReparacion.cambiar_estado(
-                orden,
-                nuevo_estado
-            )
+            try:
+
+                ServicioOrdenReparacion.cambiar_estado(
+                    orden,
+                    nuevo_estado,
+                    observaciones=observaciones
+                )
+
+            except ValidationError as error:
+
+                return Response(
+                    {
+                        "detail": (
+                            error.message_dict
+                            if hasattr(error, "message_dict")
+                            else error.messages
+                        )
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            except ValueError as error:
+
+                return Response(
+                    {"detail": str(error)},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
         # --------------------------------------------------
         # 8. RESPUESTA HTTP

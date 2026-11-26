@@ -1,9 +1,15 @@
-
 import { useCallback, useEffect, useState } from 'react';
+
 import {
   obtenerEquipos,
   registrarEquipo,
 } from '../../api/reparacionesService';
+
+import FormularioSolicitudReparacion from './FormularioSolicitudReparacion';
+
+// ======================================================
+// VALORES INICIALES
+// ======================================================
 
 const formularioInicial = {
   marca: '',
@@ -12,6 +18,11 @@ const formularioInicial = {
 };
 
 export default function ClienteEquipos() {
+
+  // ======================================================
+  // ESTADOS
+  // ======================================================
+
   const [equipos, setEquipos] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
@@ -21,6 +32,17 @@ export default function ClienteEquipos() {
   const [guardando, setGuardando] = useState(false);
   const [erroresFormulario, setErroresFormulario] = useState({});
   const [mensaje, setMensaje] = useState('');
+
+  // HU-012: Equipo seleccionado para reparación.
+
+  const [equipoSeleccionado, setEquipoSeleccionado] = useState(null);
+
+  const formularioActivo =
+    mostrarFormulario || Boolean(equipoSeleccionado);
+
+  // ======================================================
+  // HU-010: CONSULTAR EQUIPOS
+  // ======================================================
 
   const cargarEquipos = useCallback(async () => {
     setCargando(true);
@@ -36,11 +58,13 @@ export default function ClienteEquipos() {
           : [];
 
       setEquipos(lista);
+
     } catch (err) {
       setError(
         err.response?.data?.detail ||
         'No se pudieron consultar tus equipos.'
       );
+
     } finally {
       setCargando(false);
     }
@@ -49,6 +73,10 @@ export default function ClienteEquipos() {
   useEffect(() => {
     cargarEquipos();
   }, [cargarEquipos]);
+
+  // ======================================================
+  // HU-011: REGISTRAR EQUIPOS
+  // ======================================================
 
   const cambiarCampo = (evento) => {
     const { name, value } = evento.target;
@@ -75,6 +103,8 @@ export default function ClienteEquipos() {
 
   const guardarEquipo = async (evento) => {
     evento.preventDefault();
+
+    if (guardando) return;
 
     setMensaje('');
     setErroresFormulario({});
@@ -111,9 +141,13 @@ export default function ClienteEquipos() {
 
       setFormulario({ ...formularioInicial });
       setMostrarFormulario(false);
-      setMensaje('Equipo registrado correctamente.');
+
+      setMensaje(
+        'Equipo registrado correctamente.'
+      );
 
       await cargarEquipos();
+
     } catch (err) {
       const datosError = err.response?.data;
 
@@ -121,6 +155,7 @@ export default function ClienteEquipos() {
         const erroresBackend = {};
 
         for (const [campo, valor] of Object.entries(datosError)) {
+
           const texto = Array.isArray(valor)
             ? valor.join(' ')
             : typeof valor === 'string'
@@ -128,8 +163,11 @@ export default function ClienteEquipos() {
               : JSON.stringify(valor);
 
           if (['marca', 'modelo', 'numero_serie'].includes(campo)) {
+
             erroresBackend[campo] = texto;
+
           } else {
+
             erroresBackend.general = [
               erroresBackend.general,
               texto,
@@ -140,17 +178,49 @@ export default function ClienteEquipos() {
         setErroresFormulario(
           Object.keys(erroresBackend).length > 0
             ? erroresBackend
-            : { general: 'No se pudo registrar el equipo.' }
+            : {
+                general: 'No se pudo registrar el equipo.',
+              }
         );
+
       } else {
         setErroresFormulario({
-          general: 'No se pudo registrar el equipo. Inténtalo nuevamente.',
+          general:
+            'No se pudo registrar el equipo. Inténtalo nuevamente.',
         });
       }
+
     } finally {
       setGuardando(false);
     }
   };
+
+  // ======================================================
+  // HU-012: SOLICITAR REPARACIÓN
+  // ======================================================
+
+  const abrirSolicitudReparacion = (equipo) => {
+    if (formularioActivo) return;
+
+    setMensaje('');
+    setEquipoSeleccionado(equipo);
+  };
+
+  const cancelarSolicitudReparacion = () => {
+    setEquipoSeleccionado(null);
+  };
+
+  const manejarSolicitudCreada = (orden) => {
+    setEquipoSeleccionado(null);
+
+    setMensaje(
+      `Solicitud #${orden.id} registrada correctamente. Estado: ${orden.estado}.`
+    );
+  };
+
+  // ======================================================
+  // ESTILOS
+  // ======================================================
 
   const estiloBoton = {
     padding: '12px 20px',
@@ -178,6 +248,10 @@ export default function ClienteEquipos() {
     marginTop: '6px',
   };
 
+  // ======================================================
+  // INTERFAZ
+  // ======================================================
+
   return (
     <main
       style={{
@@ -189,6 +263,9 @@ export default function ClienteEquipos() {
         flex: 1,
       }}
     >
+
+      {/* ENCABEZADO */}
+
       <header
         style={{
           display: 'flex',
@@ -201,20 +278,32 @@ export default function ClienteEquipos() {
       >
         <div>
           <h1>Mis equipos registrados</h1>
-          <p>Consulta y registra los equipos asociados a tu cuenta.</p>
+
+          <p>
+            Consulta y registra los equipos asociados a tu cuenta.
+          </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+        <div
+          style={{
+            display: 'flex',
+            gap: '12px',
+            flexWrap: 'wrap',
+          }}
+        >
+
           <button
             type="button"
             onClick={cargarEquipos}
-            disabled={cargando}
+            disabled={cargando || formularioActivo}
             style={{
               ...estiloBoton,
               background: '#334155',
             }}
           >
-            {cargando ? 'Actualizando...' : 'Actualizar equipos'}
+            {cargando
+              ? 'Actualizando...'
+              : 'Actualizar equipos'}
           </button>
 
           <button
@@ -223,19 +312,47 @@ export default function ClienteEquipos() {
               setMensaje('');
               setMostrarFormulario(true);
             }}
-            disabled={mostrarFormulario}
-            style={estiloBoton}
+            disabled={formularioActivo}
+            style={{
+              ...estiloBoton,
+              opacity: formularioActivo ? 0.5 : 1,
+              cursor: formularioActivo
+                ? 'not-allowed'
+                : 'pointer',
+            }}
           >
             + Registrar equipo
           </button>
+
         </div>
       </header>
 
+      {/* MENSAJES DE CONFIRMACIÓN */}
+
       {mensaje && (
-        <p role="status" style={{ color: '#10b981', marginBottom: '20px' }}>
+        <p
+          role="status"
+          style={{
+            color: '#10b981',
+            marginBottom: '20px',
+          }}
+        >
           {mensaje}
         </p>
       )}
+
+      {/* HU-012: FORMULARIO DE SOLICITUD DE REPARACIÓN */}
+
+      {equipoSeleccionado && (
+        <FormularioSolicitudReparacion
+          key={equipoSeleccionado.id}
+          equipo={equipoSeleccionado}
+          onCancelar={cancelarSolicitudReparacion}
+          onSolicitudCreada={manejarSolicitudCreada}
+        />
+      )}
+
+      {/* HU-011: FORMULARIO DE REGISTRO DE EQUIPO */}
 
       {mostrarFormulario && (
         <section
@@ -246,18 +363,29 @@ export default function ClienteEquipos() {
             marginBottom: '28px',
           }}
         >
-          <h2 style={{ marginTop: 0 }}>Registrar nuevo equipo</h2>
-          <p>Completa la información del equipo que deseas registrar.</p>
+
+          <h2 style={{ marginTop: 0 }}>
+            Registrar nuevo equipo
+          </h2>
+
+          <p>
+            Completa la información del equipo que deseas registrar.
+          </p>
 
           <form onSubmit={guardarEquipo} noValidate>
+
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                gridTemplateColumns:
+                  'repeat(auto-fit, minmax(220px, 1fr))',
                 gap: '20px',
                 marginTop: '20px',
               }}
             >
+
+              {/* MARCA */}
+
               <div>
                 <label htmlFor="marca-equipo">
                   Marca *
@@ -271,14 +399,24 @@ export default function ClienteEquipos() {
                   onChange={cambiarCampo}
                   maxLength={100}
                   placeholder="Ejemplo: DJI"
-                  aria-invalid={Boolean(erroresFormulario.marca)}
-                  style={{ ...estiloCampo, marginTop: '8px' }}
+                  disabled={guardando}
+                  aria-invalid={
+                    Boolean(erroresFormulario.marca)
+                  }
+                  style={{
+                    ...estiloCampo,
+                    marginTop: '8px',
+                  }}
                 />
 
                 {erroresFormulario.marca && (
-                  <p style={estiloError}>{erroresFormulario.marca}</p>
+                  <p style={estiloError}>
+                    {erroresFormulario.marca}
+                  </p>
                 )}
               </div>
+
+              {/* MODELO */}
 
               <div>
                 <label htmlFor="modelo-equipo">
@@ -293,14 +431,24 @@ export default function ClienteEquipos() {
                   onChange={cambiarCampo}
                   maxLength={100}
                   placeholder="Ejemplo: Mini 4 Pro"
-                  aria-invalid={Boolean(erroresFormulario.modelo)}
-                  style={{ ...estiloCampo, marginTop: '8px' }}
+                  disabled={guardando}
+                  aria-invalid={
+                    Boolean(erroresFormulario.modelo)
+                  }
+                  style={{
+                    ...estiloCampo,
+                    marginTop: '8px',
+                  }}
                 />
 
                 {erroresFormulario.modelo && (
-                  <p style={estiloError}>{erroresFormulario.modelo}</p>
+                  <p style={estiloError}>
+                    {erroresFormulario.modelo}
+                  </p>
                 )}
               </div>
+
+              {/* NÚMERO DE SERIE */}
 
               <div>
                 <label htmlFor="serie-equipo">
@@ -315,8 +463,14 @@ export default function ClienteEquipos() {
                   onChange={cambiarCampo}
                   maxLength={100}
                   placeholder="Ejemplo: NEXUS-PRUEBA-011"
-                  aria-invalid={Boolean(erroresFormulario.numero_serie)}
-                  style={{ ...estiloCampo, marginTop: '8px' }}
+                  disabled={guardando}
+                  aria-invalid={
+                    Boolean(erroresFormulario.numero_serie)
+                  }
+                  style={{
+                    ...estiloCampo,
+                    marginTop: '8px',
+                  }}
                 />
 
                 {erroresFormulario.numero_serie && (
@@ -325,13 +479,18 @@ export default function ClienteEquipos() {
                   </p>
                 )}
               </div>
+
             </div>
+
+            {/* ERRORES GENERALES */}
 
             {erroresFormulario.general && (
               <p role="alert" style={estiloError}>
                 {erroresFormulario.general}
               </p>
             )}
+
+            {/* BOTONES DE REGISTRO */}
 
             <div
               style={{
@@ -341,12 +500,18 @@ export default function ClienteEquipos() {
                 flexWrap: 'wrap',
               }}
             >
+
               <button
                 type="submit"
                 disabled={guardando}
-                style={estiloBoton}
+                style={{
+                  ...estiloBoton,
+                  opacity: guardando ? 0.5 : 1,
+                }}
               >
-                {guardando ? 'Guardando...' : 'Guardar equipo'}
+                {guardando
+                  ? 'Guardando...'
+                  : 'Guardar equipo'}
               </button>
 
               <button
@@ -360,18 +525,27 @@ export default function ClienteEquipos() {
               >
                 Cancelar
               </button>
+
             </div>
           </form>
         </section>
       )}
 
-      {cargando && <p>Cargando equipos...</p>}
+      {/* ESTADO DE CARGA */}
+
+      {cargando && (
+        <p>Cargando equipos...</p>
+      )}
+
+      {/* ERROR DE CONSULTA */}
 
       {error && (
         <p role="alert" style={estiloError}>
           {error}
         </p>
       )}
+
+      {/* LISTA VACÍA */}
 
       {!cargando && !error && equipos.length === 0 && (
         <section
@@ -383,14 +557,19 @@ export default function ClienteEquipos() {
           }}
         >
           <h2>No tienes equipos registrados</h2>
+
           <p>
             Cuando registres tu primer equipo, aparecerá aquí.
           </p>
         </section>
       )}
 
+      {/* HU-010: TABLA DE EQUIPOS */}
+
       {!cargando && !error && equipos.length > 0 && (
+
         <section style={{ overflowX: 'auto' }}>
+
           <table
             style={{
               width: '100%',
@@ -398,34 +577,82 @@ export default function ClienteEquipos() {
               textAlign: 'left',
             }}
           >
+
             <thead>
               <tr>
-                <th style={{ padding: '14px' }}>Marca</th>
-                <th style={{ padding: '14px' }}>Modelo</th>
+
+                <th style={{ padding: '14px' }}>
+                  Marca
+                </th>
+
+                <th style={{ padding: '14px' }}>
+                  Modelo
+                </th>
+
                 <th style={{ padding: '14px' }}>
                   Número de serie
                 </th>
+
+                <th style={{ padding: '14px' }}>
+                  Acciones
+                </th>
+
               </tr>
             </thead>
 
             <tbody>
+
               {equipos.map((equipo) => (
+
                 <tr key={equipo.id}>
+
                   <td style={{ padding: '14px' }}>
                     {equipo.marca}
                   </td>
+
                   <td style={{ padding: '14px' }}>
                     {equipo.modelo}
                   </td>
+
                   <td style={{ padding: '14px' }}>
                     {equipo.numero_serie || 'No registrado'}
                   </td>
+
+                  {/* HU-012: ACCIÓN DE REPARACIÓN */}
+
+                  <td style={{ padding: '14px' }}>
+
+                    <button
+                      type="button"
+                      disabled={formularioActivo}
+                      onClick={() =>
+                        abrirSolicitudReparacion(equipo)
+                      }
+                      style={{
+                        ...estiloBoton,
+                        whiteSpace: 'nowrap',
+                        opacity: formularioActivo ? 0.5 : 1,
+                        cursor: formularioActivo
+                          ? 'not-allowed'
+                          : 'pointer',
+                      }}
+                    >
+
+                      Solicitar reparación
+
+                    </button>
+
+                  </td>
+
                 </tr>
+
               ))}
+
             </tbody>
           </table>
         </section>
       )}
+
     </main>
   );
 }

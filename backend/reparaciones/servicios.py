@@ -1,165 +1,128 @@
-
 """
-MÓDULO: REPARACIONES
+MODULO: REPARACIONES
 ARCHIVO: servicios.py
 
-OBJETIVO:
-    Centralizar la operación de cambio de estado de las
-    órdenes de reparación.
+PATRON ARQUITECTONICO: SERVICE LAYER
 
-PRINCIPIO SOLID: SRP (SINGLE RESPONSIBILITY PRINCIPLE)
-=====================================================
+PRINCIPIOS SOLID:
 
-Responsabilidad Única:
+SRP:
+    Centraliza las operaciones de negocio relacionadas
+    con la actualizacion de ordenes de servicio.
 
-    Esta clase se encarga de ejecutar la operación de negocio
-    relacionada con el cambio de estado de una orden.
+OCP:
+    Delega las reglas de transicion al patron State.
 
-SEPARACIÓN DE RESPONSABILIDADES:
-
-    views.py:
-        - Recibe solicitudes HTTP.
-        - Comprueba la identidad y permisos del usuario.
-        - Controla las transacciones y bloqueos.
-        - Devuelve las respuestas HTTP.
-
-    models.py:
-        - Representa los datos de la orden.
-        - Protege la integridad de los datos.
-        - Delega las reglas de transición al patrón State.
-
-    estados.py:
-        - Define las transiciones permitidas.
-        - Implementa las clases del patrón State.
-
-    servicios.py:
-        - Coordina la operación de cambio de estado.
-        - Actualiza la fecha de cierre cuando corresponde.
-        - Guarda la orden.
-
-PATRÓN ARQUITECTÓNICO:
-    Service Layer (Capa de Servicios).
-
-    Se utiliza como una técnica de separación de
-    responsabilidades, no como uno de los 23 patrones
-    de diseño GoF.
-
-OTROS PRINCIPIOS SOLID:
-
-    OCP:
-        El servicio utiliza el método puede_cambiar_a()
-        y no necesita conocer las clases concretas de estado.
-
-    DIP:
-        No se implementa completamente en este archivo,
-        porque todavía depende del modelo concreto
-        OrdenServicio y de su mecanismo de persistencia.
-
-    ISP:
-        No se demuestra directamente en esta clase.
+HU-015:
+    Permite actualizar el estado y registrar
+    observaciones tecnicas en una misma operacion.
 """
 
 from django.utils import timezone
 
 from .models import OrdenServicio
 
+
 class ServicioOrdenReparacion:
+
     """
-    Servicio de aplicación para órdenes de reparación.
+    Servicio de aplicacion para ordenes de reparacion.
 
-    PRINCIPIO SOLID: SRP
-    --------------------
-    Esta clase concentra la operación de cambio de estado.
-
-    No gestiona solicitudes HTTP, autenticación ni permisos.
+    No gestiona solicitudes HTTP, autenticacion
+    ni permisos de usuario.
     """
 
     @staticmethod
-    def cambiar_estado(orden, nuevo_estado):
+    def cambiar_estado(
+        orden,
+        nuevo_estado,
+        observaciones=None
+    ):
+
         """
-        Ejecuta el cambio de estado de una orden.
+        Ejecuta una transicion de estado y permite
+        agregar observaciones tecnicas.
 
-        RESPONSABILIDADES:
-            1. Validar la transición solicitada.
-            2. Actualizar el estado de la orden.
-            3. Registrar la fecha de cierre cuando corresponda.
-            4. Guardar los cambios en la base de datos.
-
-        PRINCIPIO SRP:
-            La operación de negocio está separada de la vista.
-
-        RELACIÓN CON EL PATRÓN STATE:
-            La validación se delega a
-            orden.puede_cambiar_a(nuevo_estado).
-
-            Este método utiliza las clases de estados.py
-            mediante el modelo OrdenServicio.
-
-        Parámetros:
-            orden (OrdenServicio):
-                Orden que se desea actualizar.
-
-            nuevo_estado (str):
-                Estado al que se desea cambiar.
-
-        Retorna:
-            OrdenServicio:
-                Orden actualizada.
-
-        Excepciones:
-            ValueError:
-                Si la transición no está permitida.
-
-            ValidationError:
-                Puede producirse si el modelo detecta
-                datos que incumplen sus validaciones.
-
-        IMPORTANTE:
-            La vista debe comprobar los permisos y utilizar
-            transaction.atomic() y select_for_update()
-            cuando la operación requiera protección
-            frente a actualizaciones concurrentes.
+        La vista debe comprobar los permisos y
+        controlar la transaccion.
         """
 
         # ==================================================
-        # VALIDACIÓN DE TRANSICIÓN - PATRÓN STATE
+        # 1. VALIDAR TRANSICION MEDIANTE STATE
         # ==================================================
 
-        # Se delega la comprobación al modelo, que utiliza
-        # las implementaciones de estado correspondientes.
         if not orden.puede_cambiar_a(nuevo_estado):
+
             raise ValueError(
                 "La transición solicitada no está permitida "
                 "desde el estado actual."
             )
 
         # ==================================================
-        # ACTUALIZACIÓN DEL ESTADO
+        # 2. ACTUALIZAR ESTADO
         # ==================================================
 
         orden.estado = nuevo_estado
 
+        campos_actualizados = [
+            "estado",
+            "fecha_cierre"
+        ]
+
         # ==================================================
-        # REGLA DE NEGOCIO: FECHA DE CIERRE
+        # 3. REGISTRAR OBSERVACIONES TECNICAS
         # ==================================================
 
-        # Las órdenes entregadas o canceladas deben
-        # registrar la fecha en que se cierran.
+        if observaciones is not None:
+
+            observaciones = observaciones.strip()
+
+            if observaciones:
+
+                fecha = timezone.localtime(
+                    timezone.now()
+                ).strftime("%d/%m/%Y %H:%M")
+
+                nombre_estado = orden.get_estado_display()
+
+                registro = (
+                    f"[{fecha} - {nombre_estado}]\n"
+                    f"{observaciones}"
+                )
+
+                if orden.observaciones.strip():
+
+                    orden.observaciones = (
+                        orden.observaciones.rstrip()
+                        + "\n\n"
+                        + registro
+                    )
+
+                else:
+
+                    orden.observaciones = registro
+
+                campos_actualizados.append(
+                    "observaciones"
+                )
+
+        # ==================================================
+        # 4. REGISTRAR FECHA DE CIERRE
+        # ==================================================
+
         if nuevo_estado in (
             OrdenServicio.Estado.ENTREGADA,
             OrdenServicio.Estado.CANCELADA,
         ):
+
             orden.fecha_cierre = timezone.now()
 
         # ==================================================
-        # PERSISTENCIA
+        # 5. PERSISTENCIA
         # ==================================================
 
-        # save() ejecuta full_clean() en el modelo,
-        # comprobando las reglas de integridad antes
-        # de guardar los cambios.
         orden.save(
-            update_fields=["estado", "fecha_cierre"]
+            update_fields=campos_actualizados
         )
 
         return orden

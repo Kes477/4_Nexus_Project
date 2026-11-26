@@ -1,21 +1,211 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { 
-    Drone, ChevronDown, User, LogOut, LayoutDashboard, FileText, 
-    CreditCard, Plane, MessageSquare, Shield, Navigation, Sun, Moon, 
-    Bell, Check, Trash2, X, AlertTriangle, Wrench, ShieldCheck, ThumbsUp 
+
+import {
+  Drone,
+  ChevronDown,
+  User,
+  LogOut,
+  LayoutDashboard,
+  FileText,
+  CreditCard,
+  Plane,
+  MessageSquare,
+  Shield,
+  Navigation,
+  Sun,
+  Moon,
+  Package,
+  Wrench,
+  Bell,
+  Check,
+  Trash2,
+  X,
+  AlertTriangle,
+  ShieldCheck,
+  ThumbsUp,
 } from 'lucide-react';
+
 import { Button } from '../ui';
 import { useSesion } from '../../hooks/useSesion';
-import { useTheme } from '../../context/useTheme'; 
+import { useTheme } from '../../context/useTheme';
+
+// ======================================================
+// CONFIGURACION DE NAVEGACION PUBLICA
+// ======================================================
+
+const publicNavItems = [
+  { id: 'inicio', label: 'Inicio', dedicatedPath: null },
+  { id: 'nosotros', label: 'Nosotros', dedicatedPath: null },
+  {
+    id: 'suscripciones',
+    label: 'Suscripciones',
+    dedicatedPath: '/suscription',
+  },
+  {
+    id: 'equipos',
+    label: 'Equipos',
+    dedicatedPath: '/catalog',
+  },
+  { id: 'proceso', label: 'Proceso', dedicatedPath: null },
+  { id: 'contacto', label: 'Contacto', dedicatedPath: null },
+];
+
+// ======================================================
+// CONFIGURACION DE MENUS POR ROL
+// ======================================================
+
+const menusPorRol = {
+
+  // CLIENTE
+
+  cliente: {
+    titulo: 'Servicios',
+    rutaBase: '/cliente',
+
+    opciones: [
+      {
+        ruta: 'suscripciones',
+        nombre: 'Suscripciones',
+        icono: CreditCard,
+      },
+      {
+        ruta: 'drones',
+        nombre: 'Drones',
+        icono: Plane,
+      },
+
+      // HU-010, HU-011 Y HU-012
+
+      {
+        ruta: 'equipos',
+        nombre: 'Mis equipos',
+        icono: Package,
+      },
+      {
+        ruta: 'reparaciones',
+        nombre: 'Mis reparaciones',
+        icono: Wrench,
+      },
+      {
+        ruta: 'historial-reparaciones',
+        nombre: 'Historial de reparaciones',
+        icono: FileText,
+      },
+      {
+        ruta: 'servicios',
+        nombre: 'Mis Servicios',
+        icono: FileText,
+      },
+      {
+        ruta: 'historial',
+        nombre: 'Historial',
+        icono: FileText,
+      },
+    ],
+  },
+
+  // ADMINISTRADOR
+
+  admin: {
+    titulo: 'Gestión',
+    rutaBase: '/admin',
+
+    opciones: [
+      {
+        ruta: 'usuarios',
+        nombre: 'Usuarios',
+        icono: Shield,
+      },
+      {
+        ruta: 'operaciones',
+        nombre: 'Operaciones Globales',
+        icono: Navigation,
+      },
+
+      // HU-013: GESTION DE ORDENES DE SERVICIO
+
+      {
+        ruta: 'reparaciones',
+        nombre: 'Reparaciones',
+        icono: Wrench,
+      },
+      {
+        ruta: 'precios',
+        nombre: 'Precios',
+        icono: CreditCard,
+      },
+      {
+        ruta: 'historial',
+        nombre: 'Historial',
+        icono: FileText,
+      },
+    ],
+  },
+
+  // PILOTO
+
+  piloto: {
+    titulo: 'Vuelos',
+    rutaBase: '/piloto',
+
+    opciones: [
+      {
+        ruta: 'misiones',
+        nombre: 'Mis Misiones',
+        icono: Navigation,
+      },
+      {
+        ruta: 'bitacora',
+        nombre: 'Bitácora',
+        icono: FileText,
+      },
+      {
+        ruta: 'facturacion',
+        nombre: 'Facturación',
+        icono: CreditCard,
+      },
+      {
+        ruta: 'historial',
+        nombre: 'Calificaciones',
+        icono: Shield,
+      },
+    ],
+  },
+
+  // TECNICO
+
+  tecnico: {
+    titulo: 'Mantenimiento',
+    rutaBase: '/tecnico',
+
+    opciones: [
+      {
+        ruta: 'ordenes',
+        nombre: 'Órdenes asignadas',
+        icono: Wrench,
+      },
+    ],
+  },
+};
+
+// ======================================================
+// COMPONENTE PRINCIPAL NAVBAR
+// ======================================================
 
 const Navbar = () => {
-    const location = useLocation();
-    const navigate = useNavigate();
-    const [isServicesOpen, setIsServicesOpen] = useState(false);
-    const [isUserOpen, setIsUserOpen] = useState(false);
-    const [hoveredPath, setHoveredPath] = useState(null);
-    const [isThemeHovered, setIsThemeHovered] = useState(false);
+
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // ====================================================
+  // ESTADOS DE LA INTERFAZ
+  // ====================================================
+
+  const [isServicesOpen, setIsServicesOpen] = useState(false);
+  const [isUserOpen, setIsUserOpen] = useState(false);
+  const [hoveredPath, setHoveredPath] = useState(null);
+  const [isThemeHovered, setIsThemeHovered] = useState(false);
 
     const [isNotifOpen, setIsNotifOpen] = useState(false);
     const [notificaciones, setNotificaciones] = useState([]);
@@ -27,19 +217,41 @@ const Navbar = () => {
     const hasLoadedMocks = useRef(false);
     const mocksRef = useRef([]);
 
-    const { theme, toggleTheme } = useTheme();
-    const { usuario, rol, cerrarSesion } = useSesion();
-    
-    let userRole = rol || 'cliente';
-    if (location.pathname.startsWith('/piloto')) userRole = 'piloto';
-    else if (location.pathname.startsWith('/admin')) userRole = 'admin';
-    else if (location.pathname.startsWith('/tecnico')) userRole = 'tecnico';
 
-    const basePath = userRole === 'admin' ? '/admin' : userRole === 'piloto' ? '/piloto' : userRole === 'tecnico' ? '/tecnico' : '/cliente';
-    const isDashboard = location.pathname.startsWith('/cliente') || location.pathname.startsWith('/admin') || location.pathname.startsWith('/piloto') || location.pathname.startsWith('/tecnico') || location.pathname.startsWith('/dashboard');
-    const isLanding = location.pathname === '/';
 
-    const isLight = theme === 'light';
+  // ====================================================
+  // CONTEXTOS
+  // ====================================================
+
+  const { theme, toggleTheme } = useTheme();
+
+  const {
+    usuario,
+    rol,
+    cerrarSesion,
+  } = useSesion();
+
+  // ====================================================
+  // DETERMINAR ROL Y RUTA BASE
+  // ====================================================
+
+  const userRole = rol || 'cliente';
+
+  const configuracionMenu =
+    menusPorRol[userRole] || menusPorRol.cliente;
+
+  const basePath = configuracionMenu.rutaBase;
+
+  const isDashboard =
+    location.pathname.startsWith('/cliente') ||
+    location.pathname.startsWith('/admin') ||
+    location.pathname.startsWith('/piloto') ||
+    location.pathname.startsWith('/tecnico') ||
+    location.pathname.startsWith('/dashboard');
+
+  const isLanding = location.pathname === '/';
+
+  const isLight = theme === 'light';
 
     useEffect(() => {
         if (userRole === 'piloto' && usuario?.id) {
@@ -64,13 +276,13 @@ const Navbar = () => {
                 const response = await fetch(`${API_URL}/pilotos/misiones/?estado=PENDIENTE`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
-                
+
                 let notifs = [];
-                
+
                 if (response.ok) {
                     const data = await response.json();
                     const misionesPendientes = Array.isArray(data) ? data : (data.results || []);
-                    
+
                     notifs = misionesPendientes
                         .filter(m => !eliminadasIds.includes(`mision-${m.id}`))
                         .map(m => ({
@@ -119,7 +331,7 @@ const Navbar = () => {
                 if (!isInitial) {
                     const prevIds = prevMisionesRef.current;
                     const nuevasMisiones = notifs.filter(n => n.type === 'aprobacion' && !prevIds.includes(n.id));
-                    
+
                     if (nuevasMisiones.length > 0) {
                         const audio = new Audio('https://cdn.pixabay.com/download/audio/2021/08/04/audio_bb630cc098.mp3?filename=bell-notification-9585.mp3');
                         audio.volume = 1.0;
@@ -176,10 +388,10 @@ const Navbar = () => {
     const eliminarNotificacion = (id, e) => {
         e.stopPropagation();
         setNotificaciones(prev => prev.filter(notif => notif.id !== id));
-        
+
         const nuevasEliminadas = [...new Set([...eliminadasIds, id])];
         actualizarEliminadas(nuevasEliminadas);
-        
+
         if (!leidasIds.includes(id)) {
             const nuevasLeidas = [...leidasIds, id];
             actualizarLeidas(nuevasLeidas);
@@ -191,9 +403,9 @@ const Navbar = () => {
         const idsAEliminar = notificaciones.map(n => n.id);
         const nuevasEliminadas = [...new Set([...eliminadasIds, ...idsAEliminar])];
         actualizarEliminadas(nuevasEliminadas);
-        
+
         setNotificaciones([]);
-        
+
         const allIds = [...new Set([...leidasIds, ...idsAEliminar])];
         actualizarLeidas(allIds);
     };
@@ -207,9 +419,9 @@ const Navbar = () => {
     const getTiempoRelativo = (fechaString) => {
         const fecha = new Date(fechaString);
         if (isNaN(fecha.getTime())) return 'Reciente';
-        
+
         const diff = Math.floor((new Date() - fecha) / 1000);
-        
+
         if (diff < 60) return `hace ${diff} seg`;
         if (diff < 3600) return `hace ${Math.floor(diff / 60)} min`;
         if (diff < 86400) return `hace ${Math.floor(diff / 3600)} h`;
@@ -237,48 +449,107 @@ const Navbar = () => {
 
     const notificacionesNoLeidas = notificaciones.filter(n => !leidasIds.includes(n.id));
 
-    const publicNavItems = [
-        { id: 'inicio', label: 'Inicio', dedicatedPath: null },
-        { id: 'nosotros', label: 'Nosotros', dedicatedPath: null },
-        { id: 'suscripciones', label: 'Suscripciones', dedicatedPath: '/suscription' },
-        { id: 'equipos', label: 'Equipos', dedicatedPath: '/catalog' },
-        { id: 'proceso', label: 'Proceso', dedicatedPath: null },
-        { id: 'contacto', label: 'Contacto', dedicatedPath: null },
-    ];
 
-    const linkStyle = (path) => ({
-        display: 'flex',
-        alignItems: 'center',
-        gap: '8px',
-        textDecoration: 'none',
-        fontSize: '14px',
-        fontWeight: '600',
-        padding: '10px 16px',
-        borderRadius: '8px',
-        color: (location.pathname === path || hoveredPath === path) ? 'var(--color-primary)' : 'var(--text-light)',
-        background: (location.pathname === path)
-            ? 'rgba(4, 201, 166, 0.1)'
-            : (hoveredPath === path ? 'rgba(4, 201, 166, 0.05)' : 'transparent'),
-        transition: 'all 0.2s ease',
-        border: 'none',
-        cursor: 'pointer'
-    });
 
-    const dropdownStyle = {
-        position: 'absolute',
-        top: '100%',
-        left: 0,
-        background: 'var(--white)',
-        border: '1px solid var(--light-gray)',
-        borderRadius: '8px',
-        boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
-        padding: '10px',
-        minWidth: '220px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '6px',
-        zIndex: 1001
-    };
+  // ====================================================
+  // ESTILOS DE NAVEGACION
+  // ====================================================
+
+  const linkStyle = (path) => ({
+
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    textDecoration: 'none',
+    fontSize: '14px',
+    fontWeight: '600',
+    padding: '10px 16px',
+    borderRadius: '8px',
+
+    color:
+      location.pathname === path || hoveredPath === path
+        ? 'var(--color-primary)'
+        : 'var(--text-light)',
+
+    background:
+      location.pathname === path
+        ? 'rgba(4, 201, 166, 0.1)'
+        : hoveredPath === path
+          ? 'rgba(4, 201, 166, 0.05)'
+          : 'transparent',
+
+    transition: 'all 0.2s ease',
+    border: 'none',
+    cursor: 'pointer',
+
+  });
+
+  // ====================================================
+  // ESTILOS DE MENUS DESPLEGABLES
+  // ====================================================
+
+  const dropdownStyle = {
+
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    background: 'var(--white)',
+    border: '1px solid var(--light-gray)',
+    borderRadius: '8px',
+    boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
+    padding: '10px',
+    minWidth: '220px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px',
+    zIndex: 1001,
+
+  };
+
+  // ====================================================
+  // CONTROL DE MENUS
+  // ====================================================
+
+  const toggleServicesMenu = () => {
+
+    setIsServicesOpen(anterior => !anterior);
+    setIsNotifOpen(false);
+    setIsUserOpen(false);
+
+  };
+
+  const toggleUserMenu = () => {
+
+    setIsUserOpen(anterior => !anterior);
+    setIsNotifOpen(false);
+    setIsServicesOpen(false);
+
+  };
+
+  const cerrarMenus = () => {
+    setIsNotifOpen(false);
+
+    setIsServicesOpen(false);
+    setIsUserOpen(false);
+    setHoveredPath(null);
+
+  };
+
+  // ====================================================
+  // CERRAR SESION
+  // ====================================================
+
+  const handleLogout = () => {
+
+    cerrarMenus();
+    cerrarSesion();
+    navigate('/login');
+
+  };
+
+  // ====================================================
+  // GENERAR ENLACES PUBLICOS
+  // ====================================================
 
     const filterBtnStyle = (isActive) => ({
         background: isActive ? 'rgba(4, 201, 166, 0.1)' : 'none',
@@ -292,32 +563,91 @@ const Navbar = () => {
         transition: 'all 0.2s'
     });
 
-    const renderPublicLink = (item) => {
-        if (isLanding) {
-            return (
-                <a key={item.id} href={`#${item.id}`} className="nav-link">
-                    {item.label}
-                </a>
-            );
-        }
+  const renderPublicLink = (item) => {
 
-        if (item.dedicatedPath) {
-            return (
-                <Link key={item.id} to={item.dedicatedPath} className="nav-link">
-                    {item.label}
-                </Link>
-            );
-        }
+    if (isLanding) {
 
-        return (
-            <Link key={item.id} to={`/#${item.id}`} className="nav-link">
-                {item.label}
-            </Link>
-        );
-    };
+      return (
+        <a
+          key={item.id}
+          href={`#${item.id}`}
+          className="nav-link"
+        >
+          {item.label}
+        </a>
+      );
+
+    }
+
+    if (item.dedicatedPath) {
+
+      return (
+        <Link
+          key={item.id}
+          to={item.dedicatedPath}
+          className="nav-link"
+        >
+          {item.label}
+        </Link>
+      );
+
+    }
 
     return (
-        <>
+      <Link
+        key={item.id}
+        to={`/#${item.id}`}
+        className="nav-link"
+      >
+        {item.label}
+      </Link>
+    );
+
+  };
+
+  // ====================================================
+  // GENERAR ENLACES SEGUN EL ROL
+  // ====================================================
+
+  const renderRoleLink = (opcion) => {
+
+    const Icono = opcion.icono;
+
+    const rutaCompleta =
+      `${basePath}/${opcion.ruta}`;
+
+    return (
+
+      <Link
+        key={opcion.ruta}
+        to={rutaCompleta}
+        style={linkStyle(rutaCompleta)}
+        onClick={cerrarMenus}
+        onMouseEnter={() =>
+          setHoveredPath(rutaCompleta)
+        }
+        onMouseLeave={() =>
+          setHoveredPath(null)
+        }
+      >
+
+        <Icono size={16} />
+
+        {opcion.nombre}
+
+      </Link>
+
+    );
+
+  };
+
+  // ====================================================
+  // INTERFAZ PRINCIPAL
+  // ====================================================
+
+  return (
+
+    <>
             <style>{`
                 .custom-scroll::-webkit-scrollbar {
                     width: 6px;
@@ -337,113 +667,186 @@ const Navbar = () => {
                     scrollbar-color: rgba(4, 201, 166, 0.3) transparent;
                 }
             `}</style>
-            <nav className="navbar">
-                <Link to={isDashboard ? basePath : "/"} style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none' }}>
-                    <div style={{ background: 'var(--color-primary)', padding: '8px', borderRadius: '8px', color: 'var(--white)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <Drone size={24} />
-                    </div>
-                    <div>
-                        <h1 style={{ margin: 0, fontSize: '22px', fontWeight: '800', letterSpacing: '1px', color: 'var(--color-dark)' }}>4 NEXUS</h1>
-                    </div>
-                </Link>
+    <nav className="navbar">
 
-                <div className="nav-links" style={{ display: 'flex', alignItems: 'center', gap: '30px' }}>
-                    {!isDashboard ? (
-                        <>
-                            {publicNavItems.map(renderPublicLink)}
-                        </>
-                    ) : (
-                        <>
-                            <Link
-                                to={basePath}
-                                style={linkStyle(basePath)}
-                                onMouseEnter={() => setHoveredPath(basePath)}
-                                onMouseLeave={() => setHoveredPath(null)}
-                            >
-                                <LayoutDashboard size={18} /> Dashboard
-                            </Link>
+      {/* ============================================== */}
+      {/* LOGOTIPO                                      */}
+      {/* ============================================== */}
 
-                            <div style={{ position: 'relative' }}>
-                                <button
-                                    onClick={() => setIsServicesOpen(!isServicesOpen)}
-                                    onMouseEnter={() => setHoveredPath('services')}
-                                    onMouseLeave={() => setHoveredPath(null)}
-                                    style={linkStyle('services')}
-                                >
-                                    {userRole === 'admin' ? 'Gestión' : userRole === 'piloto' ? 'Vuelos' : userRole === 'tecnico' ? 'Mantenimiento' : 'Servicios'}
-                                    <ChevronDown size={16} style={{ transform: isServicesOpen ? 'rotate(180deg)' : 'none', transition: 'all 0.3s' }} />
-                                </button>
+      <Link
+        to={isDashboard ? basePath : '/'}
+        onClick={cerrarMenus}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          textDecoration: 'none',
+        }}
+      >
 
-                                {isServicesOpen && (
-                                    <div style={dropdownStyle}>
-                                        {userRole === 'cliente' && (
-                                            <>
-                                                <Link to={`${basePath}/suscripciones`} style={linkStyle(`${basePath}/suscripciones`)} onClick={() => setIsServicesOpen(false)} onMouseEnter={() => setHoveredPath(`${basePath}/suscripciones`)} onMouseLeave={() => setHoveredPath(null)}>
-                                                    <CreditCard size={16} /> Suscripciones
-                                                </Link>
-                                                <Link to={`${basePath}/drones`} style={linkStyle(`${basePath}/drones`)} onClick={() => setIsServicesOpen(false)} onMouseEnter={() => setHoveredPath(`${basePath}/drones`)} onMouseLeave={() => setHoveredPath(null)}>
-                                                    <Plane size={16} /> Drones
-                                                </Link>
-                                                <Link to={`${basePath}/servicios`} style={linkStyle(`${basePath}/servicios`)} onClick={() => setIsServicesOpen(false)} onMouseEnter={() => setHoveredPath(`${basePath}/servicios`)} onMouseLeave={() => setHoveredPath(null)}>
-                                                    <FileText size={16} /> Mis Servicios
-                                                </Link>
-                                                <Link to={`${basePath}/historial`} style={linkStyle(`${basePath}/historial`)} onClick={() => setIsServicesOpen(false)} onMouseEnter={() => setHoveredPath(`${basePath}/historial`)} onMouseLeave={() => setHoveredPath(null)}>
-                                                    <FileText size={16} /> Historial
-                                                </Link>
-                                            </>
-                                        )}
+        <div
+          style={{
+            background: 'var(--color-primary)',
+            padding: '8px',
+            borderRadius: '8px',
+            color: 'var(--white)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
 
-                                        {userRole === 'admin' && (
-                                            <>
-                                                <Link to={`${basePath}/usuarios`} style={linkStyle(`${basePath}/usuarios`)} onClick={() => setIsServicesOpen(false)} onMouseEnter={() => setHoveredPath(`${basePath}/usuarios`)} onMouseLeave={() => setHoveredPath(null)}>
-                                                    <Shield size={16} /> Usuarios
-                                                </Link>
-                                                <Link to={`${basePath}/operaciones`} style={linkStyle(`${basePath}/operaciones`)} onClick={() => setIsServicesOpen(false)} onMouseEnter={() => setHoveredPath(`${basePath}/operaciones`)} onMouseLeave={() => setHoveredPath(null)}>
-                                                    <Navigation size={16} /> Operaciones Globales
-                                                </Link>
-                                                <Link to={`${basePath}/precios`} style={linkStyle(`${basePath}/precios`)} onClick={() => setIsServicesOpen(false)} onMouseEnter={() => setHoveredPath(`${basePath}/precios`)} onMouseLeave={() => setHoveredPath(null)}>
-                                                    <CreditCard size={16} /> Precios
-                                                </Link>
-                                                <Link to={`${basePath}/historial`} style={linkStyle(`${basePath}/historial`)} onClick={() => setIsServicesOpen(false)} onMouseEnter={() => setHoveredPath(`${basePath}/historial`)} onMouseLeave={() => setHoveredPath(null)}>
-                                                    <FileText size={16} /> Historial
-                                                </Link>
-                                            </>
-                                        )}
+          <Drone size={24} />
 
-                                        {userRole === 'piloto' && (
-                                            <>
-                                                <Link to={`${basePath}/misiones`} style={linkStyle(`${basePath}/misiones`)} onClick={() => setIsServicesOpen(false)} onMouseEnter={() => setHoveredPath(`${basePath}/misiones`)} onMouseLeave={() => setHoveredPath(null)}>
-                                                    <Navigation size={16} /> Mis Misiones
-                                                </Link>
-                                                <Link to={`${basePath}/bitacora`} style={linkStyle(`${basePath}/bitacora`)} onClick={() => setIsServicesOpen(false)} onMouseEnter={() => setHoveredPath(`${basePath}/bitacora`)} onMouseLeave={() => setHoveredPath(null)}>
-                                                    <FileText size={16} /> Bitácora
-                                                </Link>
-                                                <Link to={`${basePath}/facturacion`} style={linkStyle(`${basePath}/facturacion`)} onClick={() => setIsServicesOpen(false)} onMouseEnter={() => setHoveredPath(`${basePath}/facturacion`)} onMouseLeave={() => setHoveredPath(null)}>
-                                                    <CreditCard size={16} /> Facturación
-                                                </Link>
-                                                <Link to={`${basePath}/historial`} style={linkStyle(`${basePath}/historial`)} onClick={() => setIsServicesOpen(false)} onMouseEnter={() => setHoveredPath(`${basePath}/historial`)} onMouseLeave={() => setHoveredPath(null)}>
-                                                    <Shield size={16} /> Calificaciones
-                                                </Link>
-                                            </>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
+        </div>
 
-                            <Link
-                                to={`${basePath}/soporte`}
-                                style={linkStyle(`${basePath}/soporte`)}
-                                onMouseEnter={() => setHoveredPath(`${basePath}/soporte`)}
-                                onMouseLeave={() => setHoveredPath(null)}
-                            >
-                                <MessageSquare size={18} /> Soporte
-                            </Link>
-                        </>
-                    )}
+        <div>
+
+          <h1
+            style={{
+              margin: 0,
+              fontSize: '22px',
+              fontWeight: '800',
+              letterSpacing: '1px',
+              color: 'var(--color-dark)',
+            }}
+          >
+            4 NEXUS
+          </h1>
+
+        </div>
+
+      </Link>
+
+      {/* ============================================== */}
+      {/* NAVEGACION CENTRAL                             */}
+      {/* ============================================== */}
+
+      <div
+        className="nav-links"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '30px',
+        }}
+      >
+
+        {!isDashboard ? (
+
+          <>
+
+            {publicNavItems.map(renderPublicLink)}
+
+          </>
+
+        ) : (
+
+          <>
+
+            {/* DASHBOARD */}
+
+            <Link
+              to={basePath}
+              style={linkStyle(basePath)}
+              onClick={cerrarMenus}
+              onMouseEnter={() =>
+                setHoveredPath(basePath)
+              }
+              onMouseLeave={() =>
+                setHoveredPath(null)
+              }
+            >
+
+              <LayoutDashboard size={18} />
+
+              Dashboard
+
+            </Link>
+
+            {/* MENU DESPLEGABLE SEGUN EL ROL */}
+
+            <div style={{ position: 'relative' }}>
+
+              <button
+                type="button"
+                onClick={toggleServicesMenu}
+                onMouseEnter={() =>
+                  setHoveredPath('services')
+                }
+                onMouseLeave={() =>
+                  setHoveredPath(null)
+                }
+                style={linkStyle('services')}
+                aria-expanded={isServicesOpen}
+              >
+
+                {configuracionMenu.titulo}
+
+                <ChevronDown
+                  size={16}
+                  style={{
+                    transform: isServicesOpen
+                      ? 'rotate(180deg)'
+                      : 'none',
+
+                    transition: 'all 0.3s',
+                  }}
+                />
+
+              </button>
+
+              {isServicesOpen && (
+
+                <div style={dropdownStyle}>
+
+                  {configuracionMenu.opciones.map(
+                    renderRoleLink
+                  )}
+
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                    
+              )}
+
+            </div>
+
+            {/* SOPORTE */}
+
+            <Link
+              to={`${basePath}/soporte`}
+              style={linkStyle(`${basePath}/soporte`)}
+              onClick={cerrarMenus}
+              onMouseEnter={() =>
+                setHoveredPath(`${basePath}/soporte`)
+              }
+              onMouseLeave={() =>
+                setHoveredPath(null)
+              }
+            >
+
+              <MessageSquare size={18} />
+
+              Soporte
+
+            </Link>
+
+          </>
+
+        )}
+
+      </div>
+
+      {/* ============================================== */}
+      {/* CONTROLES DEL LADO DERECHO                     */}
+      {/* ============================================== */}
+
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '15px',
+        }}
+      >
+
                     {!isDashboard && (
                         <button
                             onClick={toggleTheme}
@@ -472,7 +875,11 @@ const Navbar = () => {
                     {isDashboard && userRole === 'piloto' && (
                         <div style={{ position: 'relative' }}>
                             <button
-                                onClick={() => setIsNotifOpen(!isNotifOpen)}
+                                onClick={() => {
+                                    setIsNotifOpen(anterior => !anterior);
+                                    setIsServicesOpen(false);
+                                    setIsUserOpen(false);
+                                }}
                                 style={{
                                     width: '40px', height: '40px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
                                     cursor: 'pointer', transition: 'all 0.2s ease', padding: 0,
@@ -485,8 +892,8 @@ const Navbar = () => {
                                 <Bell size={18} />
                                 {notificacionesNoLeidas.length > 0 && (
                                     <span style={{
-                                        position: 'absolute', top: '2px', right: '2px', background: 'var(--color-danger)', 
-                                        color: 'white', fontSize: '10px', fontWeight: 'bold', width: '16px', height: '16px', 
+                                        position: 'absolute', top: '2px', right: '2px', background: 'var(--color-danger)',
+                                        color: 'white', fontSize: '10px', fontWeight: 'bold', width: '16px', height: '16px',
                                         borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center'
                                     }}>
                                         {notificacionesNoLeidas.length}
@@ -548,7 +955,7 @@ const Navbar = () => {
                                                                 {notif.detail}
                                                             </p>
                                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                                <button 
+                                                                <button
                                                                     onClick={(e) => handleLinkClick(notif.link, notif.id, e)}
                                                                     style={{ fontSize: '12px', color: 'var(--color-primary)', fontWeight: 'bold', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
                                                                 >
@@ -556,7 +963,7 @@ const Navbar = () => {
                                                                 </button>
                                                                 <div style={{ display: 'flex', gap: '4px' }}>
                                                                     {!isLeida && (
-                                                                        <button 
+                                                                        <button
                                                                             onClick={(e) => marcarIndividualComoLeida(notif.id, e)}
                                                                             style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-success)', padding: '4px' }}
                                                                             title="Marcar como leída"
@@ -564,7 +971,7 @@ const Navbar = () => {
                                                                             <Check size={16} />
                                                                         </button>
                                                                     )}
-                                                                    <button 
+                                                                    <button
                                                                         onClick={(e) => eliminarNotificacion(notif.id, e)}
                                                                         style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'gray', padding: '4px' }}
                                                                         title="Eliminar notificación"
@@ -584,38 +991,159 @@ const Navbar = () => {
                         </div>
                     )}
 
-                    {!isDashboard ? (
-                        <Link to={usuario ? basePath: '/login'}>
-                            <Button variant="outline-dark" size="sm">{usuario ? 'Ir a mi panel': 'Acceso clientes'}</Button>
-                        </Link>
-                    ) : (
-                        <>
-                            <div style={{ position: 'relative' }}>
-                                <button
-                                    onClick={() => setIsUserOpen(!isUserOpen)}
-                                    onMouseEnter={() => setHoveredPath('user')}
-                                    onMouseLeave={() => setHoveredPath(null)}
-                                    style={{
-                                        display: 'flex', alignItems: 'center', gap: '10px',
-                                        background: hoveredPath === 'user' ? 'rgba(4, 201, 166, 0.05)' : 'var(--bg-color)',
-                                        border: hoveredPath === 'user' ? '1px solid var(--color-primary)' : '1px solid var(--light-gray)',
-                                        padding: '6px 12px', borderRadius: '20px', cursor: 'pointer',
-                                        transition: 'all 0.2s ease'
-                                    }}
-                                >
-                                    <div style={{ background: 'var(--color-primary)', color: 'white', width: '28px', height: '28px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '14px', textTransform: 'uppercase' }}>
-                                        {(usuario?.first_name || userRole).charAt(0)}
-                                    </div>
-                                    <span style={{ fontSize: '14px', fontWeight: 'bold', color: hoveredPath === 'user' ? 'var(--color-primary)' : 'var(--color-dark)', textTransform: 'capitalize' }}>{usuario?.first_name || userRole}</span>
-                                    <ChevronDown size={16} color={hoveredPath === 'user' ? 'var(--color-primary)' : 'var(--text-light)'} />
-                                </button>
+        {/* ============================================ */}
+        {/* ACCESO PUBLICO O MENU DE USUARIO              */}
+        {/* ============================================ */}
 
-                                {isUserOpen && (
-                                    <div style={{ ...dropdownStyle, left: 'auto', right: 0 }}>
-                                        <Link to={`${basePath}/perfil`} style={linkStyle(`${basePath}/perfil`)} onClick={() => setIsUserOpen(false)}
-                                            onMouseEnter={() => setHoveredPath(`${basePath}/perfil`)} onMouseLeave={() => setHoveredPath(null)}>
-                                            <User size={16} /> Mi Perfil
-                                        </Link>
+        {!isDashboard ? (
+
+          <Link to={usuario ? basePath : '/login'}>
+
+            <Button
+              variant="outline-dark"
+              size="sm"
+            >
+
+              {usuario
+                ? 'Ir a mi panel'
+                : 'Acceso clientes'
+              }
+
+            </Button>
+
+          </Link>
+
+        ) : (
+
+          <div style={{ position: 'relative' }}>
+
+            {/* BOTON DEL USUARIO */}
+
+            <button
+              type="button"
+              onClick={toggleUserMenu}
+              onMouseEnter={() =>
+                setHoveredPath('user')
+              }
+              onMouseLeave={() =>
+                setHoveredPath(null)
+              }
+              aria-expanded={isUserOpen}
+              style={{
+
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+
+                background:
+                  hoveredPath === 'user'
+                    ? 'rgba(4, 201, 166, 0.05)'
+                    : 'var(--bg-color)',
+
+                border:
+                  hoveredPath === 'user'
+                    ? '1px solid var(--color-primary)'
+                    : '1px solid var(--light-gray)',
+
+                padding: '6px 12px',
+                borderRadius: '20px',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+
+              }}
+            >
+
+              {/* AVATAR */}
+
+              <div
+                style={{
+                  background: 'var(--color-primary)',
+                  color: 'white',
+                  width: '28px',
+                  height: '28px',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontWeight: 'bold',
+                  fontSize: '14px',
+                  textTransform: 'uppercase',
+                }}
+              >
+
+                {(usuario?.first_name || userRole).charAt(0)}
+
+              </div>
+
+              {/* NOMBRE DEL USUARIO */}
+
+              <span
+                style={{
+                  fontSize: '14px',
+                  fontWeight: 'bold',
+
+                  color:
+                    hoveredPath === 'user'
+                      ? 'var(--color-primary)'
+                      : 'var(--color-dark)',
+
+                  textTransform: 'capitalize',
+                }}
+              >
+
+                {usuario?.first_name || userRole}
+
+              </span>
+
+              <ChevronDown
+                size={16}
+                color={
+                  hoveredPath === 'user'
+                    ? 'var(--color-primary)'
+                    : 'var(--text-light)'
+                }
+                style={{
+                  transform: isUserOpen
+                    ? 'rotate(180deg)'
+                    : 'none',
+
+                  transition: 'all 0.3s',
+                }}
+              />
+
+            </button>
+
+            {/* MENU DESPLEGABLE DEL USUARIO */}
+
+            {isUserOpen && (
+
+              <div
+                style={{
+                  ...dropdownStyle,
+                  left: 'auto',
+                  right: 0,
+                }}
+              >
+
+                {/* PERFIL */}
+
+                <Link
+                  to={`${basePath}/perfil`}
+                  style={linkStyle(`${basePath}/perfil`)}
+                  onClick={cerrarMenus}
+                  onMouseEnter={() =>
+                    setHoveredPath(`${basePath}/perfil`)
+                  }
+                  onMouseLeave={() =>
+                    setHoveredPath(null)
+                  }
+                >
+
+                  <User size={16} />
+
+                  Mi Perfil
+
+                </Link>
 
                                         <button
                                             onClick={(e) => { e.stopPropagation(); toggleTheme(); }}
@@ -623,28 +1151,72 @@ const Navbar = () => {
                                             onMouseLeave={() => setHoveredPath(null)}
                                             style={linkStyle('theme-toggle')}
                                         >
-                                            {isLight ? <Moon size={16} /> : <Sun size={16} />} 
+                                            {isLight ? <Moon size={16} /> : <Sun size={16} />}
                                             {isLight ? 'Modo Oscuro' : 'Modo Claro'}
                                         </button>
 
-                                        <hr style={{ border: 'none', borderTop: '1px solid var(--light-gray)', margin: '5px 0' }} />
-                                        <button
-                                            onClick={() => { setIsUserOpen(false); cerrarSesion(); navigate('/login'); }}
-                                            style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'none', border: 'none', padding: '10px 16px', fontSize: '14px', fontWeight: '600', color: 'var(--color-danger)', cursor: 'pointer', borderRadius: '8px', textAlign: 'left', width: '100%', transition: 'all 0.2s' }}
-                                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(240, 37, 88, 0.05)'}
-                                            onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
-                                        >
-                                            <LogOut size={16} /> Cerrar Sesión
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-                        </>
-                    )}
-                </div>
-            </nav>
-        </>
-    );
+                <hr
+                  style={{
+                    border: 'none',
+                    borderTop:
+                      '1px solid var(--light-gray)',
+
+                    margin: '5px 0',
+                  }}
+                />
+
+                {/* CERRAR SESION */}
+
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    background: 'none',
+                    border: 'none',
+                    padding: '10px 16px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    color: 'var(--color-danger)',
+                    cursor: 'pointer',
+                    borderRadius: '8px',
+                    textAlign: 'left',
+                    width: '100%',
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={(evento) => {
+                    evento.currentTarget.style.background =
+                      'rgba(240, 37, 88, 0.05)';
+                  }}
+                  onMouseLeave={(evento) => {
+                    evento.currentTarget.style.background =
+                      'none';
+                  }}
+                >
+
+                  <LogOut size={16} />
+
+                  Cerrar Sesión
+
+                </button>
+
+              </div>
+
+            )}
+
+          </div>
+
+        )}
+
+      </div>
+
+    </nav>
+    </>
+
+  );
+
 };
 
 export default Navbar;
