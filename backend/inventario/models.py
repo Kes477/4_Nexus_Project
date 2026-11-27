@@ -86,3 +86,23 @@ class MovimientoInventario(models.Model):
     def __str__(self):
         return f'{self.get_tipo_display()} de {self.cantidad}-{self.inventario}'
 
+class EstadoDron(models.Model):
+    class Estado(models.TextChoices):
+        DISPONIBLE = 'DISPONIBLE', 'Disponible'
+        ALQUILADO = 'ALQUILADO', 'Alquilado'
+        MANTENIMIENTO = 'EN_MANTENIMIENTO', 'En mantenimiento'
+
+    inventario = models.ForeignKey(
+        Inventario,
+        on_delete=models.PROTECT,
+        related_name='drones'
+    )
+
+    estado = models.CharField(
+        max_length=20,
+        choices=Estado.choices,
+        default=Estado.DISPONIBLE
+    )
+
+    def __str__(self):
+        return f'{self.inventario.variante} - {self.get_estado_display()}'

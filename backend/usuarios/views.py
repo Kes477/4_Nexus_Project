@@ -10,6 +10,10 @@ from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from rest_framework.views import APIView
+from rest_framework.permissions import IsAdminUser
+from .models import Usuario
+
 from .models import Usuario, PasswordResetCode
 from .serializers import (
     LoginSerializer,

@@ -2,7 +2,7 @@ from django.contrib import admin
 from django import forms
 
 from . import servicios
-from .models import Almacen, Inventario, MovimientoInventario
+from .models import Almacen, Inventario, MovimientoInventario, EstadoDron
 
 
 
@@ -107,4 +107,26 @@ class MovimientoInventarioAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+@admin.register(EstadoDron)
+class EstadoDronAdmin(admin.ModelAdmin):
+
+    list_display = ('id', 'modelo', 'inventario', 'estado')
+
+    list_filter = ('estado',)
+
+    search_fields = (
+        'inventario__variante__producto__nombre',
+        'inventario__variante__sku',
+    )
+
+    list_editable = ('estado',)
+
+    list_select_related = (
+        'inventario__variante__producto__articulo',
+    )
+
+    @admin.display(description='Modelo')
+    def modelo(self, obj):
+        return obj.inventario.variante.producto.articulo.modelo
 

@@ -35,6 +35,9 @@ def _rango_periodo(key):
         return hoy.replace(month=1, day=1), hoy.replace(month=12, day=31)
     return None, None
 
+from rest_framework.views import APIView
+from rest_framework.permissions import IsAdminUser
+from usuarios.models import Piloto
 
 class MisionViewSet(
     mixins.ListModelMixin,
@@ -379,3 +382,13 @@ class MisionViewSet(
         response = HttpResponse(pdf_bytes, content_type='application/pdf')
         response['Content-Disposition'] = 'attachment; filename="facturacion.pdf"'
         return response
+
+  # Vista para ver el total de pilotos
+
+class TotalPilotosView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def get(self, request):
+        total = Piloto.objects.count()
+
+        return Response({'total': total})

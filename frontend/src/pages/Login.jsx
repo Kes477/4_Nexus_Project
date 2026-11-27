@@ -106,10 +106,11 @@ const Login = () => {
             case 'identificacion':
                 if (!REGEX.identificacion.test(value)) return 'Ingresa un DNI válido (13 dígitos).';
                 break;
-            case 'password':
+            case 'password': {
                 const isPassValid = Object.values(passChecks).every(Boolean);
                 if (!isPassValid) return 'La contraseña no cumple con los requisitos.';
                 break;
+            }
             case 'confirmPassword':
                 if (value !== formData.password) return 'Las contraseñas no coinciden.';
                 break;
