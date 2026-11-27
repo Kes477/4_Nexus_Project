@@ -185,6 +185,21 @@ class PasswordResetConfirmView(generics.GenericAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
+        return Response({'detail': 'Contraseña actualizada correctamente. Ya puedes iniciar sesión.'}, status=status.HTTP_200_OK)
+
+class ClientesActivosView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def get(self, request):
+        total = Usuario.objects.filter(
+            estado_cuenta=Usuario.EstadoCuenta.ACTIVA,
+            is_staff=False,
+            perfil_piloto__isnull=True,
+            perfil_tecnico__isnull=True,
+            perfil_vendedor__isnull=True
+        ).count()
+
+        return Response({'total': total})
         return Response(
             {'detail': 'Contraseña actualizada correctamente. Ya puedes iniciar sesión.'},
             status=status.HTTP_200_OK,
