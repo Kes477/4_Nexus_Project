@@ -7,7 +7,7 @@ import {
 import { Navbar, Footer } from '../components/layout';
 import { Button } from '../components/ui';
 import { ServiceCard, ProductCard } from '../components/domain/Card';
-import { getProductos } from '../api/droneService'; 
+import { getProductosLanding } from '../api/droneService';
 
 const DEFAULT_DRONE_IMG =
     'https://images.unsplash.com/photo-1508614589041-895b88991e3e?q=80&w=600&auto=format&fit=crop';
@@ -42,6 +42,7 @@ const adaptSuscripcionToService = (sub, idx) => {
     if (sub.suscripcion?.periodo_facturacion_dias === 365) period = '/año';
 
     return {
+        id: sub.id,
         number: String(idx + 1).padStart(2, '0'),
         icon: idx % 2 === 0 ? Shield : Zap,
         title: sub.nombre,
@@ -102,12 +103,12 @@ const HeroSection = ({ onSolicitar, onExplorarEquipos }) => {
                 </div>
 
                 <div style={{ flex: '1 1 500px', position: 'relative' }}>
-                    <div style={{ 
-                        width: '100%', 
-                        height: '450px', 
-                        borderRadius: '16px', 
-                        boxShadow: '0 20px 40px rgba(0,0,0,0.1)', 
-                        position: 'relative', 
+                    <div style={{
+                        width: '100%',
+                        height: '450px',
+                        borderRadius: '16px',
+                        boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
+                        position: 'relative',
                         overflow: 'hidden',
                         backgroundColor: 'var(--bg-color)'
                     }}>
@@ -280,12 +281,12 @@ const CatalogoSection = ({
     return (
         <section id="catalogo" style={{ ...paddingCatalog, background: 'var(--white)', ...scrollAnchorStyle }}>
             <div style={containerStyle}>
-                
+
                 <div style={{ maxWidth: '1100px', margin: '0 auto', position: 'relative' }}>
-                    
+
                     <div style={{ marginBottom: '30px' }}>
                         <h2 style={{ ...titleStyle, textAlign: 'center' }}>Nuestros Planes y Equipos</h2>
-                        
+
                         <div
                             style={{
                                 display: 'flex',
@@ -492,8 +493,8 @@ const LandingPage = () => {
     useEffect(() => {
         const fetchProductos = async () => {
             try {
-                const data = await getProductos();
-                
+                const data = await getProductosLanding(10);
+
                 const listaProductos = Array.isArray(data) ? data : data.results || [];
 
                 setDrones(listaProductos.filter((item) => item.tipo_producto === 'ARTICULO'));

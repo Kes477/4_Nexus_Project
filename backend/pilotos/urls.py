@@ -5,6 +5,6 @@ from .views import MisionViewSet
 router = DefaultRouter()
 router.register(r'misiones', MisionViewSet, basename='mision-piloto')
 
-urlpatterns =[
+urlpatterns = [
     path('', include(router.urls)),
 ]

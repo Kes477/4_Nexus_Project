@@ -19,3 +19,11 @@ export const getProducto = async (id) => {
     const response = await axiosClient.get(`/catalogo/productos/${id}/`);
     return response.data;
 };
+
+// Productos marcados para la landing (mostrar_en_landing=True)
+export const getProductosLanding = async (limit = 10) => {
+    const response = await axiosClient.get('/catalogo/productos/landing/', {
+        params: { limit },
+    });
+    return response.data;
+};

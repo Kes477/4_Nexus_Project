@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   ArrowRight, ArrowLeft, CheckCircle2, MapPin, Calendar, 
-  Check, Star, User
+  Check, Star, User, DollarSign, RefreshCw
 } from 'lucide-react';
 
 import { 
@@ -13,8 +13,16 @@ import {
   Stepper, 
   SectionHeading,
   Alert,
-  Loader
+  Loader,
+  Tabs
 } from '../../components/ui';
+
+const PESTANAS = [
+  { key: 'todos', label: 'Todos' },
+  { key: 'en_proceso', label: 'En Proceso' },
+  { key: 'por_calificar', label: 'Por Calificar' },
+  { key: 'calificados', label: 'Calificados' },
+];
 
 export default function ClienteServicios() {
   const [loading, setLoading] = useState(true);
@@ -27,6 +35,7 @@ export default function ClienteServicios() {
 
   const [servicios, setServicios] = useState([]);
   const [catalogoServicios, setCatalogoServicios] = useState([]);
+  const [activeTabIndex, setActiveTabIndex] = useState(0);
 
   const [formData, setFormData] = useState({
     productoId: "",
@@ -46,6 +55,8 @@ export default function ClienteServicios() {
 
   const fetchServicios = async () => {
     try {
+      setLoading(true);
+      setErrorMsg(null);
       const token = localStorage.getItem('access_token');
       const headers = {
         'Authorization': `Bearer ${token}`,
@@ -57,9 +68,12 @@ export default function ClienteServicios() {
         fetch(`${API_URL}/pilotos/misiones/`, { headers })
       ]);
 
+      let catList = [];
+
       if (catalogoResp.ok) {
         const catalogoData = await catalogoResp.json();
-        setCatalogoServicios(Array.isArray(catalogoData) ? catalogoData : catalogoData.results || []);
+        catList = Array.isArray(catalogoData) ? catalogoData : catalogoData.results || [];
+        setCatalogoServicios(catList);
       }
 
       if (misionesResp.ok) {
@@ -72,6 +86,14 @@ export default function ClienteServicios() {
           else if (m.estado === 'EN_CURSO') statusText = 'En marcha';
           else if (m.estado === 'ACEPTADA') statusText = 'Aceptada';
           else if (m.estado === 'PENDIENTE') statusText = 'En revisión';
+          else if (m.estado === 'CANCELADA') statusText = 'Cancelada';
+
+          const productoCat = catList.find(p => p.id === m.producto);
+          let precioFormateado = 'Cotización pendiente';
+          
+          if (productoCat && productoCat.precio_desde) {
+            precioFormateado = `L ${Number(productoCat.precio_desde).toLocaleString('es-HN', { minimumFractionDigits: 2 })}`;
+          }
 
           return {
             id: m.id,
@@ -80,14 +102,17 @@ export default function ClienteServicios() {
             type: 'Servicio',
             location: m.ubicacion || 'Sin ubicación',
             status: statusText,
-            date: new Date(m.fecha_programada).toLocaleDateString(),
+            date: new Date(`${m.fecha_programada}T00:00:00`).toLocaleDateString(),
             notes: m.descripcion || 'Sin notas adicionales.',
             pilotoNombre: m.piloto_nombre,
-            isRated: m.esta_calificada
+            isRated: m.esta_calificada,
+            price: precioFormateado
           };
         });
         
         setServicios(mappedServicios);
+      } else {
+        setErrorMsg('No se pudieron cargar los servicios. Verifica tu sesión.');
       }
     } catch (err) {
       setErrorMsg('Error al cargar los datos. Verifica tu conexión.');
@@ -122,7 +147,7 @@ export default function ClienteServicios() {
         ubicacion: formData.location,
         fecha_programada: formData.date,
         dron_asignado: "Por asignar",
-        descripcion: `Solicitud de servicio: ${productoSeleccionado?.nombre}. Hora aproximada: ${formData.time}`,
+        descripcion: `Servicio: ${productoSeleccionado?.nombre}\nHora aproximada: ${formData.time}`,
         estado: "PENDIENTE"
       };
 
@@ -142,6 +167,7 @@ export default function ClienteServicios() {
       setRequestSuccess(true);
       setSuccessMsg('Solicitud enviada correctamente.');
       await fetchServicios();
+      setActiveTabIndex(0);
 
     } catch (error) {
       setErrorMsg(error.message);
@@ -178,6 +204,7 @@ export default function ClienteServicios() {
         },
         body: JSON.stringify({
           producto: serviceToRate.productId,
+          mision: serviceToRate.id,
           calificacion: ratingValue,
           comentario: reviewComment
         })
@@ -185,12 +212,12 @@ export default function ClienteServicios() {
 
       if (!response.ok) {
         let errorString = 'Error al enviar la calificación. Intenta de nuevo.';
-        
         const contentType = response.headers.get("content-type");
         if (contentType && contentType.indexOf("application/json") !== -1) {
           const errorData = await response.json();
-          
-          if (errorData.producto) {
+          if (errorData.mision) {
+            errorString = Array.isArray(errorData.mision) ? errorData.mision[0] : errorData.mision;
+          } else if (errorData.producto) {
             errorString = Array.isArray(errorData.producto) ? errorData.producto[0] : errorData.producto;
           } else if (errorData.non_field_errors) {
             errorString = errorData.non_field_errors[0];
@@ -202,7 +229,6 @@ export default function ClienteServicios() {
         } else {
           errorString = 'Ocurrió un error en el servidor al procesar tu calificación.';
         }
-        
         throw new Error(errorString);
       }
 
@@ -212,6 +238,7 @@ export default function ClienteServicios() {
 
       setIsRatingModalOpen(false);
       setSuccessMsg('¡Gracias por tu calificación!');
+      fetchServicios(); 
     } catch (error) {
       setRatingError(error.message);
     } finally {
@@ -219,7 +246,35 @@ export default function ClienteServicios() {
     }
   };
 
-  if (loading) {
+  const tabCounts = useMemo(() => {
+    return {
+      todos: servicios.length,
+      en_proceso: servicios.filter(srv => ['En revisión', 'Aceptada', 'En marcha'].includes(srv.status)).length,
+      por_calificar: servicios.filter(srv => srv.status === 'Completado' && !srv.isRated).length,
+      calificados: servicios.filter(srv => srv.status === 'Completado' && srv.isRated).length,
+    };
+  }, [servicios]);
+
+  const serviciosFiltrados = useMemo(() => {
+    const tabKey = PESTANAS[activeTabIndex].key;
+    if (tabKey === 'en_proceso') {
+      return servicios.filter(srv => ['En revisión', 'Aceptada', 'En marcha'].includes(srv.status));
+    }
+    if (tabKey === 'por_calificar') {
+      return servicios.filter(srv => srv.status === 'Completado' && !srv.isRated);
+    }
+    if (tabKey === 'calificados') {
+      return servicios.filter(srv => srv.status === 'Completado' && srv.isRated);
+    }
+    return servicios; 
+  }, [servicios, activeTabIndex]);
+
+  const tabsLabels = PESTANAS.map(p => {
+    const count = tabCounts[p.key];
+    return count > 0 ? `${p.label} (${count})` : p.label;
+  });
+
+  if (loading && servicios.length === 0) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: 'var(--bg-color)' }}>
         <Loader text="Cargando panel de servicios..." />
@@ -227,19 +282,25 @@ export default function ClienteServicios() {
     );
   }
 
-  const serviciosVisibles = servicios.filter(srv => !(srv.status === 'Completado' && srv.isRated));
+  const selectedService = catalogoServicios.find(c => c.id === parseInt(formData.productoId));
+  const formattedPrice = selectedService?.precio_desde
+    ? `L ${Number(selectedService.precio_desde).toLocaleString('es-HN', { minimumFractionDigits: 2 })}`
+    : 'Precio no disponible';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%', minHeight: '100vh', backgroundColor: 'var(--bg-color)', fontFamily: "'Roboto', sans-serif", overflow: 'hidden' }}>
       
       <div style={{ flex: 1, padding: '32px', display: 'flex', flexDirection: 'column', gap: '24px', overflowY: 'auto' }}>
         
-        <div style={{ backgroundColor: 'var(--white)', padding: '24px', borderRadius: '8px', border: '1px solid var(--light-gray)' }}>
+        <div style={{ backgroundColor: 'var(--white)', padding: '24px', borderRadius: '8px', border: '1px solid var(--light-gray)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
           <SectionHeading 
             eyebrow="Panel de Control" 
             title="Mis Servicios" 
             description="Gestiona tus solicitudes, monitorea las fichas técnicas y el estado de cada servicio." 
           />
+          <Button variant="outline-dark" onClick={fetchServicios} disabled={loading} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <RefreshCw size={16} className={loading ? 'spin' : ''} /> Refrescar
+          </Button>
         </div>
 
         {errorMsg && <Alert type="danger" title="Atención" message={errorMsg} onClose={() => setErrorMsg(null)} />}
@@ -247,52 +308,73 @@ export default function ClienteServicios() {
 
         <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
           
-          <div style={{ flex: 1, minWidth: '300px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '24px' }}>
-            {serviciosVisibles.length === 0 ? (
-              <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px', backgroundColor: 'var(--white)', borderRadius: '8px', border: '1px dashed var(--light-gray)' }}>
-                <p style={{ color: 'var(--text-light)' }}>No tienes servicios activos. Revisa tu historial para ver los completados.</p>
-              </div>
-            ) : (
-              serviciosVisibles.map(srv => (
-                <div key={srv.id} style={{ backgroundColor: 'var(--white)', border: '1px solid var(--light-gray)', borderRadius: '8px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                  
-                  <div style={{ height: '80px', backgroundColor: 'var(--color-dark)', position: 'relative', padding: '16px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
-                    <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase' }}>{srv.type}</span>
-                    <h3 style={{ margin: '4px 0 0 0', fontSize: '16px', color: 'var(--white)', fontWeight: 'bold' }}>{srv.title}</h3>
-                    <div style={{ position: 'absolute', top: '12px', right: '12px' }}>{getStatusBadge(srv.status)}</div>
-                  </div>
+          <div style={{ flex: 1, minWidth: '300px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            
+            <div style={{ backgroundColor: 'var(--white)', padding: '10px 20px', borderRadius: '8px', border: '1px solid var(--light-gray)' }}>
+              <Tabs
+                tabs={tabsLabels}
+                activeTab={activeTabIndex}
+                onChange={(index) => setActiveTabIndex(index)}
+              />
+            </div>
 
-                  <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--text-light)' }}>
-                      <MapPin size={16} color="var(--color-primary)" /> <span>{srv.location}</span>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '24px' }}>
+              {serviciosFiltrados.length === 0 ? (
+                <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px', backgroundColor: 'var(--white)', borderRadius: '8px', border: '1px dashed var(--light-gray)' }}>
+                  <p style={{ color: 'var(--text-light)' }}>No hay servicios en esta categoría.</p>
+                </div>
+              ) : (
+                serviciosFiltrados.map(srv => (
+                  <div key={srv.id} style={{ backgroundColor: 'var(--white)', border: '1px solid var(--light-gray)', borderRadius: '8px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                    
+                    <div style={{ height: '80px', backgroundColor: 'var(--color-dark)', position: 'relative', padding: '16px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+                      <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase' }}>{srv.type}</span>
+                      <h3 style={{ margin: '4px 0 0 0', fontSize: '16px', color: 'var(--white)', fontWeight: 'bold' }}>{srv.title}</h3>
+                      <div style={{ position: 'absolute', top: '12px', right: '12px' }}>{getStatusBadge(srv.status)}</div>
                     </div>
-                    
-                    {srv.pilotoNombre && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--text-light)' }}>
-                        <User size={16} color="var(--color-primary)" /> <span>Piloto: <strong>{srv.pilotoNombre}</strong></span>
-                      </div>
-                    )}
 
-                    <p style={{ margin: 0, fontSize: '13px', color: 'var(--color-dark)', backgroundColor: 'var(--bg-color)', padding: '12px', borderRadius: '4px', border: '1px solid var(--light-gray)' }}>
-                      {srv.notes}
-                    </p>
-                    
-                    <div style={{ marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid var(--light-gray)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div>
-                        <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-light)', textTransform: 'uppercase' }}>Fecha</span>
-                        <span style={{ fontSize: '13px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}><Calendar size={14} /> {srv.date}</span>
+                    <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', flex: 1 }}>
+                      
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--text-light)' }}>
+                        <DollarSign size={16} color="var(--color-primary)" /> 
+                        <span>Precio estimado: <strong style={{ color: 'var(--color-dark)' }}>{srv.price}</strong></span>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--text-light)' }}>
+                        <MapPin size={16} color="var(--color-primary)" /> <span>{srv.location}</span>
                       </div>
                       
-                      {srv.status === 'Completado' && !srv.isRated && (
-                        <Button variant="primary" size="sm" onClick={() => openRatingModal(srv)} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <Star size={14} /> Calificar
-                        </Button>
+                      {srv.pilotoNombre && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--text-light)' }}>
+                          <User size={16} color="var(--color-primary)" /> <span>Piloto: <strong>{srv.pilotoNombre}</strong></span>
+                        </div>
                       )}
+
+                      <p style={{ margin: 0, fontSize: '13px', color: 'var(--color-dark)', backgroundColor: 'var(--bg-color)', padding: '12px', borderRadius: '4px', border: '1px solid var(--light-gray)', whiteSpace: 'pre-line' }}>
+                        {srv.notes}
+                      </p>
+                      
+                      <div style={{ marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid var(--light-gray)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-light)', textTransform: 'uppercase' }}>Fecha</span>
+                          <span style={{ fontSize: '13px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}><Calendar size={14} /> {srv.date}</span>
+                        </div>
+                        
+                        {srv.status === 'Completado' && (
+                          srv.isRated ? (
+                            <Badge text="Calificado" color="success" />
+                          ) : (
+                            <Button variant="primary" size="sm" onClick={() => openRatingModal(srv)} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <Star size={14} /> Calificar
+                            </Button>
+                          )
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))
-            )}
+                ))
+              )}
+            </div>
           </div>
 
           <div style={{ width: '360px', flexShrink: 0, backgroundColor: 'var(--white)', border: '1px solid var(--light-gray)', borderRadius: '8px', overflow: 'hidden' }}>
@@ -330,6 +412,12 @@ export default function ClienteServicios() {
                           value={formData.productoId} 
                           onChange={e => setFormData({ ...formData, productoId: e.target.value })} 
                         />
+                        {formData.productoId && (
+                          <div style={{ marginTop: '10px', padding: '10px', backgroundColor: 'rgba(4, 201, 166, 0.1)', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-primary)', fontSize: '13px', fontWeight: 'bold' }}>
+                            <DollarSign size={16} />
+                            Precio estimado: {formattedPrice}
+                          </div>
+                        )}
                       </div>
                       <div>
                         <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: 'var(--text-light)', marginBottom: '6px' }}>Ubicación</label>
@@ -366,7 +454,8 @@ export default function ClienteServicios() {
                     <>
                       <div style={{ backgroundColor: 'var(--bg-color)', padding: '16px', borderRadius: '8px', border: '1px solid var(--light-gray)' }}>
                         <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', color: 'var(--color-dark)' }}>Resumen</h4>
-                        <p style={{ margin: '0 0 4px 0', fontSize: '13px' }}><strong>Servicio:</strong> {catalogoServicios.find(c => c.id === parseInt(formData.productoId))?.nombre}</p>
+                        <p style={{ margin: '0 0 4px 0', fontSize: '13px' }}><strong>Servicio:</strong> {selectedService?.nombre}</p>
+                        <p style={{ margin: '0 0 4px 0', fontSize: '13px' }}><strong>Precio estimado:</strong> {formattedPrice}</p>
                         <p style={{ margin: '0 0 4px 0', fontSize: '13px' }}><strong>Fecha:</strong> {formData.date}</p>
                         <p style={{ margin: '0 0 4px 0', fontSize: '13px' }}><strong>Hora aprox:</strong> {formData.time}</p>
                         <p style={{ margin: 0, fontSize: '13px' }}><strong>Lugar:</strong> {formData.location}</p>

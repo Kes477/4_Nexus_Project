@@ -68,29 +68,53 @@ export default function PilotoMisiones() {
 
     const estadosDisponibles = ['PENDIENTE', 'ACEPTADA', 'EN_CURSO', 'COMPLETADA', 'RECHAZADA', 'CANCELADA'];
 
+    const fetchAllMisiones = async () => {
+        const [personal, terceros] = await Promise.all([
+            getMisiones('PERSONAL'),
+            getMisiones('TERCEROS')
+        ]);
+        return [...personal, ...terceros];
+    };
+
     useEffect(() => {
         let isMounted = true;
-        const fetchData = async () => {
+        const initFetch = async () => {
             setCargando(true);
             try {
-                const data = await getMisiones(mainMode);
-                if (isMounted) setMisiones(data);
+                const data = await fetchAllMisiones();
+                if (isMounted) {
+                    setMisiones(data);
+                    
+                    const hasPersonal = data.some(m => m.tipo_mision === 'PERSONAL');
+                    const hasTerceros = data.some(m => m.tipo_mision === 'TERCEROS');
+                    
+                    if (!hasPersonal && hasTerceros) {
+                        setMainMode('TERCEROS');
+                    } else {
+                        setMainMode('PERSONAL');
+                    }
+                }
             } catch (error) {
-                console.error(error);
                 if (isMounted) setErrorMsg(error.message || "Error al cargar las misiones.");
             } finally {
                 if (isMounted) setCargando(false);
             }
         };
-        fetchData();
+        initFetch();
         return () => { isMounted = false; };
-    }, [mainMode]);
+    }, []);
 
     useEffect(() => {
         if (!cargando && misionIdParam && misiones.length > 0) {
             const found = misiones.find(m => String(m.id) === String(misionIdParam));
             
             if (found) {
+                if (found.tipo_mision === 'TERCEROS') {
+                    setMainMode('TERCEROS');
+                } else {
+                    setMainMode('PERSONAL');
+                }
+
                 setHighlightedId(misionIdParam);
                 
                 setTimeout(() => {
@@ -101,7 +125,7 @@ export default function PilotoMisiones() {
 
                 const timer = setTimeout(() => {
                     setHighlightedId(null);
-                }, 5000);
+                }, 4000);
 
                 return () => clearTimeout(timer);
             }
@@ -112,7 +136,7 @@ export default function PilotoMisiones() {
         setErrorMsg(null);
         try {
             await cambiarEstadoMision(id, nuevoEstado);
-            const data = await getMisiones(mainMode);
+            const data = await fetchAllMisiones();
             setMisiones(data);
         } catch (error) {
             setErrorMsg(error.message);
@@ -139,7 +163,7 @@ export default function PilotoMisiones() {
                 throw new Error('Error al editar la misión. Revisa los datos.');
             }
 
-            const data = await getMisiones(mainMode);
+            const data = await fetchAllMisiones();
             setMisiones(data);
         } catch (error) {
             setErrorMsg(error.message);
@@ -172,7 +196,7 @@ export default function PilotoMisiones() {
                 throw new Error('Error al crear la misión. Verifica los datos.');
             }
 
-            const data = await getMisiones(mainMode);
+            const data = await fetchAllMisiones();
             setMisiones(data);
             setIsCreateModalOpen(false);
             setCreateForm({
@@ -190,10 +214,12 @@ export default function PilotoMisiones() {
         }
     };
 
-    const categoriasUnicas = [...new Set(misiones.map(m => m.categoria).filter(Boolean))];
+    const misionesBase = misiones.filter(m => m.tipo_mision === mainMode);
+
+    const categoriasUnicas = [...new Set(misionesBase.map(m => m.categoria).filter(Boolean))];
     
     const resumenCategorias = categoriasUnicas.map(cat => {
-        const misionesCat = misiones.filter(m => m.categoria === cat);
+        const misionesCat = misionesBase.filter(m => m.categoria === cat);
         const total = misionesCat.length;
         
         const desgloseEstados = estadosDisponibles.reduce((acc, est) => {
@@ -216,7 +242,21 @@ export default function PilotoMisiones() {
         ...estadosDisponibles.map(est => ({ value: est, label: est }))
     ];
 
-    const misionesFiltradas = misiones.filter(mision => {
+    const categoriasGlobales = [...new Set(misiones.map(m => m.categoria).filter(Boolean))];
+    const opcionesCategoriaModal = categoriasGlobales.length > 0
+        ? categoriasGlobales.map(cat => ({ 
+            value: cat, 
+            label: cat.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) 
+          }))
+        : [
+            { value: 'fotografia', label: 'Fotografía' },
+            { value: 'fumigacion', label: 'Fumigación' },
+            { value: 'mapeo', label: 'Mapeo' },
+            { value: 'carreras_fpv', label: 'Carreras FPV' },
+            { value: 'monitoreo', label: 'Monitoreo' }
+          ];
+
+    const misionesFiltradas = misionesBase.filter(mision => {
         const esVisible = ['PENDIENTE', 'ACEPTADA', 'EN_CURSO'].includes(mision.estado);
         if (!esVisible) return false;
 
@@ -238,7 +278,6 @@ export default function PilotoMisiones() {
                 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '20px', marginBottom: '20px' }}>
                     <SectionHeading 
-                        eyebrow="Gestión de Vuelos"
                         title="Misiones Asignadas" 
                         description="Administra tus vuelos personales y los servicios solicitados por terceros."
                     />
@@ -348,10 +387,10 @@ export default function PilotoMisiones() {
                                     key={mision.id} 
                                     ref={isHighlighted ? scrollTargetRef : null}
                                     style={{
-                                        transition: 'all 0.5s ease',
+                                        transition: 'all 0.4s ease',
                                         borderRadius: '12px',
-                                        boxShadow: isHighlighted ? '0 0 0 4px var(--color-primary), 0 10px 30px rgba(4,201,166,0.3)' : 'none',
-                                        transform: isHighlighted ? 'scale(1.02)' : 'scale(1)'
+                                        border: isHighlighted ? '2px solid var(--color-primary)' : '2px solid transparent',
+                                        boxShadow: isHighlighted ? '0 0 0 2px rgba(4, 201, 166, 0.2)' : 'none'
                                     }}
                                 >
                                     <MisionCard 
@@ -431,24 +470,24 @@ export default function PilotoMisiones() {
             </div>
 
             <Modal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} title="Crear Misión Personal">
-                <form onSubmit={handleCreateMission} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <form onSubmit={handleCreateMission} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     {createError && (
                         <Alert type="danger" title="Error" message={createError} onClose={() => setCreateError(null)} />
                     )}
                     
-                    <div>
-                        <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: 'var(--text-light)', marginBottom: '6px' }}>Categoría</label>
-                        <Select 
-                            options={[
-                                { value: 'fotografia', label: 'Fotografía' },
-                                { value: 'fumigacion', label: 'Fumigación' },
-                                { value: 'mapeo', label: 'Mapeo' },
-                                { value: 'carreras_fpv', label: 'Carreras FPV' },
-                                { value: 'monitoreo', label: 'Monitoreo' }
-                            ]} 
-                            value={createForm.categoria} 
-                            onChange={e => setCreateForm({ ...createForm, categoria: e.target.value })} 
-                        />
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                        <div>
+                            <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: 'var(--text-light)', marginBottom: '6px' }}>Categoría</label>
+                            <Select 
+                                options={opcionesCategoriaModal} 
+                                value={createForm.categoria} 
+                                onChange={e => setCreateForm({ ...createForm, categoria: e.target.value })} 
+                            />
+                        </div>
+                        <div>
+                            <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: 'var(--text-light)', marginBottom: '6px' }}>Fecha</label>
+                            <Input required type="date" value={createForm.fecha_programada} onChange={e => setCreateForm({ ...createForm, fecha_programada: e.target.value })} />
+                        </div>
                     </div>
                     
                     <div>
@@ -456,19 +495,15 @@ export default function PilotoMisiones() {
                         <Input required value={createForm.ubicacion} onChange={e => setCreateForm({ ...createForm, ubicacion: e.target.value })} placeholder="Ej. Lago de Yojoa" />
                     </div>
 
-                    <div>
-                        <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: 'var(--text-light)', marginBottom: '6px' }}>Fecha Programada</label>
-                        <Input required type="date" value={createForm.fecha_programada} onChange={e => setCreateForm({ ...createForm, fecha_programada: e.target.value })} />
-                    </div>
-
-                    <div>
-                        <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: 'var(--text-light)', marginBottom: '6px' }}>Dron Asignado</label>
-                        <Input required value={createForm.dron_asignado} onChange={e => setCreateForm({ ...createForm, dron_asignado: e.target.value })} placeholder="Ej. DJI Mavic 3" />
-                    </div>
-
-                    <div>
-                        <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: 'var(--text-light)', marginBottom: '6px' }}>Área / Tamaño (Opcional)</label>
-                        <Input value={createForm.area_size} onChange={e => setCreateForm({ ...createForm, area_size: e.target.value })} placeholder="Ej. 4.2 km dist." />
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                        <div>
+                            <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: 'var(--text-light)', marginBottom: '6px' }}>Dron Asignado</label>
+                            <Input required value={createForm.dron_asignado} onChange={e => setCreateForm({ ...createForm, dron_asignado: e.target.value })} placeholder="Ej. DJI Mavic 3" />
+                        </div>
+                        <div>
+                            <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: 'var(--text-light)', marginBottom: '6px' }}>Área (Opcional)</label>
+                            <Input value={createForm.area_size} onChange={e => setCreateForm({ ...createForm, area_size: e.target.value })} placeholder="Ej. 4.2 km dist." />
+                        </div>
                     </div>
 
                     <div>
@@ -478,7 +513,7 @@ export default function PilotoMisiones() {
                             value={createForm.descripcion}
                             onChange={(e) => setCreateForm({ ...createForm, descripcion: e.target.value })}
                             placeholder="Detalles de la misión..."
-                            rows={3}
+                            rows={2}
                             style={{
                                 width: '100%',
                                 padding: '12px',
