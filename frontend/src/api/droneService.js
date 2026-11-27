@@ -27,3 +27,19 @@ export const getProductosLanding = async (limit = 10) => {
     });
     return response.data;
 };
+
+// Para cambiar estado de un dron desde panel de administrador
+export async function actualizarEstadoDron(id, estado) {
+    const response = await axiosClient.patch(
+        `/inventario/drones/${id}/`,
+        { estado }
+    );
+
+    return response.data;
+}
+
+// Obtener drones
+export async function getDrones() {
+    const response = await axiosClient.get('/inventario/drones/');
+    return response.data;
+}
