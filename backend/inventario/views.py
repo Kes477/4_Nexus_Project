@@ -3,10 +3,11 @@ from rest_framework import permissions, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
+from rest_framework import mixins
 
 from . import servicios
-from .models import Almacen, Inventario,MovimientoInventario
-from .serializers import (AjusteSerializer, AlmacenSerializer, EntradaSerializer, InventarioSerializer, MovimientoInventarioSerializer,)
+from .models import Almacen, Inventario,MovimientoInventario, EstadoDron
+from .serializers import (AjusteSerializer, AlmacenSerializer, EntradaSerializer, InventarioSerializer, MovimientoInventarioSerializer,EstadoDronSerializer,)
 
 class AlmacenViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Almacen.objects.all()
@@ -63,3 +64,22 @@ class MovimientoInventarioViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = MovimientoInventarioSerializer
     permission_classes = [permissions.IsAdminUser]
     filterset_fields = ['inventario', 'tipo', 'inventario__almacen']
+
+class EstadoDronViewSet(
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.UpdateModelMixin,
+    viewsets.GenericViewSet
+):
+
+    queryset = EstadoDron.objects.select_related(
+        'inventario__variante__producto__articulo'
+    ).filter(
+        inventario__variante__producto__articulo__isnull=False
+    ).order_by('id')
+
+    serializer_class = EstadoDronSerializer
+    permission_classes = [permissions.IsAdminUser]
+    pagination_class = None
+
+    http_method_names = ['get', 'patch', 'head', 'options']
