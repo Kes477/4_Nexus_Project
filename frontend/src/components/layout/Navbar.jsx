@@ -1,60 +1,34 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import {
-  Drone,
-  ChevronDown,
-  User,
-  LogOut,
-  LayoutDashboard,
-  FileText,
-  CreditCard,
-  Plane,
-  MessageSquare,
-  Shield,
-  Navigation,
-  Sun,
-  Moon,
-  Package,
-  Wrench,
-  Bell,
-  Check,
-  Trash2,
-  X,
-  AlertTriangle,
-  ShieldCheck,
-  ThumbsUp,
-  ShoppingCart,
-} from 'lucide-react';
+import { Drone, ChevronDown, User, LogOut, LayoutDashboard, FileText, CreditCard, Plane, MessageSquare, Navigation, Sun, Moon, Package, Wrench, Bell, Check, Trash2, X, AlertTriangle, ShieldCheck, ThumbsUp, ShoppingCart, Home, Users, Mail, History, Globe, Tag, Receipt, Star, ClipboardList, Workflow, BookOpen, } from 'lucide-react';
 
 import { Button } from '../ui';
 import { useSesion } from '../../hooks/useSesion';
 import { useCarrito } from '../../hooks/useCarrito';
 import { useTheme } from '../../context/useTheme';
 
-// ======================================================
 // CONFIGURACION DE NAVEGACION PUBLICA
-// ======================================================
 
 const publicNavItems = [
-  { id: 'inicio', label: 'Inicio', dedicatedPath: null },
-  { id: 'nosotros', label: 'Nosotros', dedicatedPath: null },
+  { id: 'inicio', label: 'Inicio', dedicatedPath: null, icono: Home },
+  { id: 'nosotros', label: 'Nosotros', dedicatedPath: null, icono: Users },
   {
     id: 'suscripciones',
     label: 'Suscripciones',
     dedicatedPath: '/suscription',
+    icono: CreditCard,
   },
   {
     id: 'equipos',
     label: 'Equipos',
     dedicatedPath: '/catalog',
+    icono: Plane,
   },
-  { id: 'proceso', label: 'Proceso', dedicatedPath: null },
-  { id: 'contacto', label: 'Contacto', dedicatedPath: null },
+  { id: 'proceso', label: 'Proceso', dedicatedPath: null, icono: Workflow },
+  { id: 'contacto', label: 'Contacto', dedicatedPath: null, icono: Mail },
 ];
 
-// ======================================================
 // CONFIGURACION DE MENUS POR ROL
-// ======================================================
 
 const menusPorRol = {
 
@@ -96,7 +70,7 @@ const menusPorRol = {
       {
         ruta: 'historial-reparaciones',
         nombre: 'Historial de reparaciones',
-        icono: FileText,
+        icono: History,
       },
       {
         ruta: 'servicios',
@@ -106,7 +80,7 @@ const menusPorRol = {
       {
         ruta: 'historial',
         nombre: 'Historial',
-        icono: FileText,
+        icono: History,
       },
     ],
   },
@@ -121,12 +95,12 @@ const menusPorRol = {
       {
         ruta: 'usuarios',
         nombre: 'Usuarios',
-        icono: Shield,
+        icono: Users,
       },
       {
         ruta: 'operaciones',
         nombre: 'Operaciones Globales',
-        icono: Navigation,
+        icono: Globe,
       },
 
       // HU-013: GESTION DE ORDENES DE SERVICIO
@@ -139,12 +113,12 @@ const menusPorRol = {
       {
         ruta: 'precios',
         nombre: 'Precios',
-        icono: CreditCard,
+        icono: Tag,
       },
       {
         ruta: 'historial',
         nombre: 'Historial',
-        icono: FileText,
+        icono: History,
       },
     ],
   },
@@ -164,17 +138,17 @@ const menusPorRol = {
       {
         ruta: 'bitacora',
         nombre: 'Bitácora',
-        icono: FileText,
+        icono: BookOpen,
       },
       {
         ruta: 'facturacion',
         nombre: 'Facturación',
-        icono: CreditCard,
+        icono: Receipt,
       },
       {
         ruta: 'historial',
         nombre: 'Calificaciones',
-        icono: Shield,
+        icono: Star,
       },
     ],
   },
@@ -189,15 +163,13 @@ const menusPorRol = {
       {
         ruta: 'ordenes',
         nombre: 'Órdenes asignadas',
-        icono: Wrench,
+        icono: ClipboardList,
       },
     ],
   },
 };
 
-// ======================================================
 // COMPONENTE PRINCIPAL NAVBAR
-// ======================================================
 
 
 const Navbar = () => {
@@ -205,9 +177,7 @@ const Navbar = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // ====================================================
   // ESTADOS DE LA INTERFAZ
-  // ====================================================
 
   const [isServicesOpen, setIsServicesOpen] = useState(false);
   const [isUserOpen, setIsUserOpen] = useState(false);
@@ -221,12 +191,8 @@ const Navbar = () => {
     const [filtroNotif, setFiltroNotif] = useState('todas');
 
     const prevMisionesRef = useRef([]);
-    const hasLoadedMocks = useRef(false);
-    const mocksRef = useRef([]);
 
-  // ====================================================
   // CONTEXTOS
-  // ====================================================
 
    const { theme, toggleTheme } = useTheme();
 
@@ -238,9 +204,7 @@ const Navbar = () => {
 
   const { cantidadArticulos } = useCarrito();
 
-  // ====================================================
   // DETERMINAR ROL Y RUTA BASE
-  // ====================================================
 
   const userRole = rol || 'cliente';
 
@@ -301,39 +265,6 @@ const Navbar = () => {
                             link: `${basePath}/misiones?id=${m.id}`
                         }));
                 }
-
-                if (!hasLoadedMocks.current) {
-                    mocksRef.current = [
-                        {
-                            id: `alerta-1`,
-                            type: 'alerta',
-                            title: 'Alerta técnica detectada',
-                            detail: 'Batería del dron DJI Agras T40 reporta temperatura alta.',
-                            time: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-                            link: `${basePath}/bitacora`
-                        },
-                        {
-                            id: `mantenimiento-1`,
-                            type: 'mantenimiento',
-                            title: 'Mantenimiento programado',
-                            detail: 'Revisión de hélices y motores en el dron Matrice 350 RTK.',
-                            time: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-                            link: `${basePath}/historial`
-                        },
-                        {
-                            id: `licencia-1`,
-                            type: 'licencia',
-                            title: 'Licencia aprobada',
-                            detail: 'Tu licencia aeronáutica ha sido verificada y aprobada.',
-                            time: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-                            link: `${basePath}/perfil`
-                        }
-                    ].filter(n => !eliminadasIds.includes(n.id));
-                    hasLoadedMocks.current = true;
-                }
-
-                const mocksValidos = mocksRef.current.filter(n => !eliminadasIds.includes(n.id));
-                notifs = [...notifs, ...mocksValidos];
 
                 if (!isInitial) {
                     const prevIds = prevMisionesRef.current;
@@ -458,9 +389,7 @@ const Navbar = () => {
 
 
 
-  // ====================================================
   // ESTILOS DE NAVEGACION
-  // ====================================================
 
   const linkStyle = (path) => ({
 
@@ -491,9 +420,7 @@ const Navbar = () => {
 
   });
 
-  // ====================================================
   // ESTILOS DE MENUS DESPLEGABLES
-  // ====================================================
 
   const dropdownStyle = {
 
@@ -513,9 +440,7 @@ const Navbar = () => {
 
   };
 
-  // ====================================================
   // CONTROL DE MENUS
-  // ====================================================
 
   const toggleServicesMenu = () => {
 
@@ -542,9 +467,7 @@ const Navbar = () => {
 
   };
 
-  // ====================================================
   // CERRAR SESION
-  // ====================================================
 
   const handleLogout = () => {
 
@@ -554,9 +477,7 @@ const Navbar = () => {
 
   };
 
-  // ====================================================
   // GENERAR ENLACES PUBLICOS
-  // ====================================================
 
     const filterBtnStyle = (isActive) => ({
         background: isActive ? 'rgba(4, 201, 166, 0.1)' : 'none',
@@ -570,7 +491,15 @@ const Navbar = () => {
         transition: 'all 0.2s'
     });
 
+  const publicLinkStyle = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+  };
+
   const renderPublicLink = (item) => {
+
+    const Icono = item.icono;
 
     if (isLanding) {
 
@@ -579,7 +508,9 @@ const Navbar = () => {
           key={item.id}
           href={`#${item.id}`}
           className="nav-link"
+          style={publicLinkStyle}
         >
+          <Icono size={16} />
           {item.label}
         </a>
       );
@@ -593,7 +524,9 @@ const Navbar = () => {
           key={item.id}
           to={item.dedicatedPath}
           className="nav-link"
+          style={publicLinkStyle}
         >
+          <Icono size={16} />
           {item.label}
         </Link>
       );
@@ -605,16 +538,16 @@ const Navbar = () => {
         key={item.id}
         to={`/#${item.id}`}
         className="nav-link"
+        style={publicLinkStyle}
       >
+        <Icono size={16} />
         {item.label}
       </Link>
     );
 
   };
 
-  // ====================================================
   // GENERAR ENLACES SEGUN EL ROL
-  // ====================================================
 
   const renderRoleLink = (opcion) => {
 
@@ -648,9 +581,7 @@ const Navbar = () => {
 
   };
 
-  // ====================================================
   // INTERFAZ PRINCIPAL
-  // ====================================================
 
   return (
 
@@ -676,9 +607,7 @@ const Navbar = () => {
             `}</style>
     <nav className="navbar">
 
-      {/* ============================================== */}
-      {/* LOGOTIPO                                      */}
-      {/* ============================================== */}
+      {/* LOGOTIPO */}
 
       <Link
         to={isDashboard ? basePath : '/'}
@@ -725,9 +654,7 @@ const Navbar = () => {
 
       </Link>
 
-      {/* ============================================== */}
-      {/* NAVEGACION CENTRAL                             */}
-      {/* ============================================== */}
+      {/* NAVEGACION CENTRAL */}
 
       <div
         className="nav-links"
@@ -842,9 +769,7 @@ const Navbar = () => {
 
       </div>
 
-      {/* ============================================== */}
-      {/* CONTROLES DEL LADO DERECHO                     */}
-      {/* ============================================== */}
+      {/* CONTROLES DEL LADO DERECHO */}
 
       <div
         style={{
@@ -1022,9 +947,7 @@ const Navbar = () => {
                         </Link>
                     )}
 
-        {/* ============================================ */}
-        {/* ACCESO PUBLICO O MENU DE USUARIO              */}
-        {/* ============================================ */}
+        {/* ACCESO PUBLICO O MENU DE USUARIO */}
 
         {!isDashboard ? (
 

@@ -152,14 +152,19 @@ MEDIA_ROOT = BASE_DIR / 'media'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'usuarios.Usuario'
 
-# Email
-# https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
+# ---------------------------------------------------------
+# CONFIGURACIÓN DE CORREO (VARIABLES CLÁSICAS)
+# ---------------------------------------------------------
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
 
-MAILERS = {
-    'default': {
-        'BACKEND': 'django.core.mail.backends.console.EmailBackend',
-    },
-}
+# Estas variables se cargarán desde tu archivo .env
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '4nexus.contact@gmail.com')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '') 
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', '4 Nexus <4nexus.contact@gmail.com>')
+
 
 CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ALLOWED_ORIGINS', 'http://localhost:5173').split(',')
 

@@ -288,10 +288,7 @@ function App() {
 
       {/* Pendiente de implementación. */}
 
-      {/* ================================================= */}
       {/* 7. RUTA PARA ERRORES 404                          */}
-      {/* ================================================= */}
-
       <Route path="*" element={<NotFound />} />
 
     </Routes>

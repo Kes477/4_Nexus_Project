@@ -34,6 +34,8 @@ class Producto(models.Model):
     activo = models.BooleanField(default=True)
     es_destacado = models.BooleanField(default=False)
     fecha_publicacion = models.DateTimeField(auto_now_add=True)
+    mostrar_en_landing = models.BooleanField(default=False)
+    orden_landing = models.PositiveIntegerField(default=0)
 
     class Meta:
         ordering = ['-fecha_publicacion']
@@ -174,6 +176,7 @@ class ImagenArticulo(models.Model):
 class Resenia(models.Model):
     producto = models.ForeignKey(Producto, on_delete=models.CASCADE, related_name='resenias')
     cliente = models.ForeignKey('usuarios.Usuario', on_delete=models.CASCADE, related_name='resenias_escritas')
+    mision = models.ForeignKey('pilotos.Mision', on_delete=models.CASCADE, null=True, blank=True, related_name='resenias')
     calificacion = models.DecimalField(max_digits=2, decimal_places=1)
     titulo = models.CharField(max_length=100, blank=True, null=True)
     comentario = models.TextField(blank=True, null=True)
@@ -185,8 +188,8 @@ class Resenia(models.Model):
         verbose_name_plural = 'reseñas'
         constraints = [
             models.UniqueConstraint(
-                fields=['cliente', 'producto'],
-                name='resenia_unica_por_cliente_producto'
+                fields=['cliente', 'mision'],
+                name='resenia_unica_por_cliente_mision'
             ),
             models.CheckConstraint(
                 condition=Q(calificacion__gte=1, calificacion__lte=5),

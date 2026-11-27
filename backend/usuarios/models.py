@@ -1,7 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.conf import settings
-
+from django.utils import timezone
+from datetime import timedelta
 
 class UsuarioManager(BaseUserManager):
     use_in_migrations = True
@@ -76,12 +77,7 @@ class PerfilCliente(models.Model):
         related_name='perfil_cliente',
         primary_key=True
     )
-
-    nivel_fidelidad = models.CharField(
-        max_length=20,
-        blank=True
-    )
-
+    nivel_fidelidad = models.CharField(max_length=20, blank=True)
     saldo_puntos = models.PositiveIntegerField(default=0)
 
     def __str__(self):
@@ -94,14 +90,8 @@ class PerfilEmpleado(models.Model):
         on_delete=models.CASCADE,
         related_name='perfil_empleado'
     )
-
-    codigo_empleado = models.CharField(
-        max_length=20,
-        unique=True
-    )
-
+    codigo_empleado = models.CharField(max_length=20, unique=True)
     cargo = models.CharField(max_length=100)
-
     fecha_ingreso = models.DateField()
 
     def __str__(self):
@@ -115,16 +105,8 @@ class Tecnico(models.Model):
         related_name='perfil_tecnico',
         primary_key=True
     )
-
-    especialidad_tecnica = models.CharField(
-        max_length=100
-    )
-
-    certificacion_fabricante = models.CharField(
-        max_length=100,
-        blank=True
-    )
-
+    especialidad_tecnica = models.CharField(max_length=100)
+    certificacion_fabricante = models.CharField(max_length=100, blank=True)
     disponible = models.BooleanField(default=True)
 
     class Meta:
@@ -146,23 +128,9 @@ class Piloto(models.Model):
         related_name='perfil_piloto',
         primary_key=True
     )
-
-    numero_licencia_aeronautica = models.CharField(
-        max_length=50,
-        unique=True
-    )
-
-    horas_vuelo_acumuladas = models.DecimalField(
-        max_digits=8,
-        decimal_places=2,
-        default=0
-    )
-
-    tipo_certificacion = models.CharField(
-        max_length=100,
-        blank=True
-    )
-
+    numero_licencia_aeronautica = models.CharField(max_length=50, unique=True)
+    horas_vuelo_acumuladas = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+    tipo_certificacion = models.CharField(max_length=100, blank=True)
     disponible = models.BooleanField(default=True)
 
     class Meta:
@@ -184,37 +152,33 @@ class Vendedor(models.Model):
         related_name='perfil_vendedor',
         primary_key=True
     )
-
-    rtn_empresa = models.CharField(
-        max_length=20,
-        unique=True
-    )
-
-    nombre_comercial = models.CharField(
-        max_length=100
-    )
-
-    sitio_web = models.URLField(
-        max_length=255,
-        blank=True
-    )
-
-    comision_pactada = models.DecimalField(
-        max_digits=5,
-        decimal_places=2,
-        default=0
-    )
+    rtn_empresa = models.CharField(max_length=20, unique=True)
+    nombre_comercial = models.CharField(max_length=100)
+    sitio_web = models.URLField(max_length=255, blank=True)
+    comision_pactada = models.DecimalField(max_digits=5, decimal_places=2, default=0)
 
     class Meta:
         constraints = [
             models.CheckConstraint(
-                condition=models.Q(
-                    comision_pactada__gte=0,
-                    comision_pactada__lte=100
-                ),
+                condition=models.Q(comision_pactada__gte=0, comision_pactada__lte=100),
                 name='vendedor_comision_entre_0_y_100'
             )
         ]
 
     def __str__(self):
         return f"Vendedor: {self.usuario.email}"
+
+
+# NUEVO MODELO PARA EL CÓDIGO DE RECUPERACIÓN DE LA CUENTA
+class PasswordResetCode(models.Model):
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='reset_codes')
+    code = models.CharField(max_length=6)
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_used = models.BooleanField(default=False)
+
+    def is_valid(self):
+        # El código expira a los 3 minutos
+        return not self.is_used and timezone.now() < self.created_at + timedelta(minutes=3)
+
+    def __str__(self):
+        return f"Reset {self.code} for {self.usuario.email}"

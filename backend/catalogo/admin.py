@@ -29,9 +29,9 @@ class EspecificacionProductoInline(admin.TabularInline):
 
 @admin.register(Producto)
 class ProductoAdmin(admin.ModelAdmin):
-    list_display = ('nombre','categoria','tipo_producto','activo','es_destacado','fecha_publicacion')
-    list_filter = ('tipo_producto','activo','es_destacado','categoria')
-    list_editable = ('activo', 'es_destacado')
+    list_display = ('nombre','categoria','tipo_producto','activo','es_destacado','mostrar_en_landing','orden_landing','fecha_publicacion')
+    list_filter = ('tipo_producto','activo','es_destacado','mostrar_en_landing','categoria')
+    list_editable = ('activo', 'es_destacado', 'mostrar_en_landing', 'orden_landing')
     search_fields = ('nombre', 'descripcion')
     inlines = [ArticuloInline, SuscripcionInline, EspecificacionProductoInline, VarianteInline, ReseniaInline]
 

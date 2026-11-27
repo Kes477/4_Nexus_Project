@@ -6,45 +6,39 @@ import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import { SearchBar, Select, Modal, Button, Loader } from '../components/ui';
 
-import { ItemServiceCard } from '../components/domain/ItemCard'; 
+import { ServiceCard } from '../components/domain/Card';
 
 import { getProductos } from '../api/droneService';
 
 const formatPrice = (precioDesde) =>
     precioDesde
-        ? Number(precioDesde).toLocaleString('en-US', {
+        ? `L ${Number(precioDesde).toLocaleString('en-US', {
               minimumFractionDigits: 0,
               maximumFractionDigits: 2,
-          })
+          })}`
         : 'Consultar';
 
-const adaptSuscripcion = (item, idx) => {
-    const defaultFeatures = [
-        "2 vuelos de monitoreo mensuales",
-        "Reportes analíticos de vigor en PDF",
-        "Cobertura de hasta 10 manzanas",
-        "Soporte técnico prioritario",
-        "Acceso a plataforma web"
-    ];
+// Mismo adaptador que usa LandingPage, más `precioNumerico` para poder ordenar por precio.
+const adaptSuscripcionToService = (sub, idx) => {
+    const features = sub.especificaciones && sub.especificaciones.length > 0
+        ? sub.especificaciones.map(e => e.clave_espec)
+        : ['Soporte técnico', 'Acceso a plataforma', 'Reportes mensuales'];
+
+    let period = '/mes';
+    if (sub.suscripcion?.periodo_facturacion_dias === 90) period = '/trimestre';
+    if (sub.suscripcion?.periodo_facturacion_dias === 365) period = '/año';
 
     return {
-        id: item.id,
+        id: sub.id,
         number: String(idx + 1).padStart(2, '0'),
         icon: idx % 2 === 0 ? Shield : Zap,
-        title: item.nombre || item.name || 'Plan sin nombre',
-        description: item.descripcion || item.description || 'Plan de servicios aéreos diseñado para potenciar tu operación.',
-        price: formatPrice(item.precio_desde),
-        precioNumerico: Number(item.precio_desde) || 0,
-        period: item.periodo || '/mes',
-        destacado: item.destacado === true || item.es_nuevo === true,
-        features: (Array.isArray(item.caracteristicas) && item.caracteristicas.length > 0)
-            ? item.caracteristicas
-            : (Array.isArray(item.features) && item.features.length > 0)
-                ? item.features
-                : defaultFeatures, 
-        tags: Array.isArray(item.tags) && item.tags.length > 0
-            ? item.tags 
-            : (item.destacado ? ["Soporte 24/7", "Sin contratos"] : [])
+        title: sub.nombre,
+        description: sub.descripcion || 'Plan de servicios aéreos.',
+        price: formatPrice(sub.precio_desde),
+        precioNumerico: Number(sub.precio_desde) || 0,
+        period: period,
+        destacado: sub.es_destacado,
+        features: features,
     };
 };
 
@@ -69,8 +63,9 @@ export const Suscription = () => {
         const fetchSuscripciones = async () => {
             try {
                 const data = await getProductos();
-                const subs = data.filter((item) => item.tipo_producto === 'SUSCRIPCION');
-                setSuscripciones(subs.map(adaptSuscripcion));
+                const lista = Array.isArray(data) ? data : data.results || [];
+                const subs = lista.filter((item) => item.tipo_producto === 'SUSCRIPCION');
+                setSuscripciones(subs.map(adaptSuscripcionToService));
             } catch (err) {
                 console.error('❌ Error al traer los planes:', err);
                 setError('No pudimos cargar los planes. Intenta nuevamente.');
@@ -91,7 +86,7 @@ export const Suscription = () => {
         const ordenadas = [...filtradas];
         switch (sortBy) {
             case 'destacados':
-                ordenadas.sort((a, b) => Number(b.destacado) - Number(a.destacado));
+                ordenadas.sort((a, b) => Number(!!b.destacado) - Number(!!a.destacado));
                 break;
             case 'precio-asc':
                 ordenadas.sort((a, b) => a.precioNumerico - b.precioNumerico);
@@ -217,15 +212,15 @@ export const Suscription = () => {
                     ) : (
                         <div style={{
                             display: 'grid',
-                            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-                            gap: '24px',
-                            alignItems: 'stretch',
+                            gridTemplateColumns: 'repeat(auto-fill, 260px)',
+                            justifyContent: 'center',
+                            gap: '20px',
                         }}>
                             {suscripcionesFiltradas.map((suscripcion) => (
-                                <div key={suscripcion.id} style={{ display: 'flex', justifyContent: 'center', height: '100%' }}>
-                                    <ItemServiceCard
-                                        item={suscripcion}
-                                        onAction={setSelected}
+                                <div key={suscripcion.id} style={{ width: '260px' }}>
+                                    <ServiceCard
+                                        service={suscripcion}
+                                        onSuscribir={() => setSelected(suscripcion)}
                                     />
                                 </div>
                             ))}

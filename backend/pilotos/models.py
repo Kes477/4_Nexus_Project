@@ -44,7 +44,10 @@ class Mision(models.Model):
     fecha_programada = models.DateField()
     dron_asignado = models.CharField(max_length=100)
     descripcion = models.TextField(blank=True)
-    
+
+    capturas_generadas = models.PositiveIntegerField(default=0)
+    distancia_km = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+
     estado = models.CharField(max_length=20, choices=Estado.choices, default=Estado.PENDIENTE)
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_cierre = models.DateTimeField(null=True, blank=True)
