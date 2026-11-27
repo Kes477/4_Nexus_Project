@@ -13,6 +13,7 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 from datetime import timedelta
+from decimal import Decimal
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -199,3 +200,13 @@ SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
 }
+
+
+
+# --- Ventas -----------------------------------------------------------------
+
+# ISV de Honduras (15 %) y tarifa fija de envío para pedidos con artículos
+
+VENTAS_TASA_ISV = Decimal(os.environ.get('VENTAS_TASA_ISV', '0.15'))
+VENTAS_COSTO_ENVIO = Decimal(os.environ.get('VENTAS_COSTO_ENVIO', '150.00'))
+

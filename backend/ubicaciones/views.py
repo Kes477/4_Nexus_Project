@@ -1,4 +1,6 @@
 from rest_framework import permissions, viewsets
+from django.core.exceptions import ValidationError as DjangoValidationError
+from rest_framework.exceptions import ValidationError
 
 from .models import Ubicacion
 from .serializers import DireccionSerializer, UbicacionSerializer
@@ -26,4 +28,7 @@ class DireccionViewSet(viewsets.ModelViewSet):
         return self.request.user.direcciones.select_related('ubicacion__padre__padre')
 
     def perform_destroy(self, instance):
-        eliminar_direccion(instance)
+        try:
+            eliminar_direccion(instance)
+        except DjangoValidationError as error:
+            raise ValidationError({'detail': error.messages})
