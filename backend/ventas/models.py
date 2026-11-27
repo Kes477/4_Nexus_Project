@@ -1,3 +1,4 @@
+import re
 from decimal import Decimal
 
 from django.conf import settings
@@ -214,7 +215,7 @@ class ReservaPedido(models.Model):
 
 class MetodoPago(models.Model):
     "Tarjeta guardada del cliente (TBL_METODOS_PAGOS). Nunca se guarda el número completo."
-
+    FORMATO_EXPIRACION = re.compile(r'^(0[1-9]|1[0-2])/[0-9]{4}$')
     usuario = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='metodos_pago'
     )

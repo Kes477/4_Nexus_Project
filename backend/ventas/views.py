@@ -5,9 +5,11 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from django.db.models import ProtectedError
 
-from .models import Carrito, CarritoDetalle, Pedido
-from .serializers import AgregarAlCarritoSerializer, CambiarCantidadSerializer, CarritoSerializer, ConfirmarPedidoSerializer, PedidoSerializer
+from .models import Carrito, CarritoDetalle, MetodoPago, Pedido
+from .pagos import ESTRATEGIAS
+from .serializers import (AgregarAlCarritoSerializer, CambiarCantidadSerializer, CarritoSerializer, ConfirmarPedidoSerializer, MetodoPagoSerializer, PagarPedidoSerializer,PedidoSerializer)
 from .servicios import (
     agregar_al_carrito,
     buscar_cupon,
@@ -19,6 +21,7 @@ from .servicios import (
     quitar_del_carrito,
     requiere_direccion,
     vaciar_carrito,
+    pagar_pedido,
 )
 
 
@@ -93,13 +96,15 @@ class PedidoViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.G
         return (Pedido.objects
                 .filter(usuario=self.request.user)
                 .select_related('cupon', 'direccion__ubicacion__padre__padre')
-                .prefetch_related('detalles__variante__producto'))
+                .prefetch_related('detalles__variante__producto', 'transacciones__metodo_pago'))
 
     def get_serializer_class(self):
         if self.action in ('create', 'resumen'):
             return ConfirmarPedidoSerializer
+        if self.action == 'pagar':
+            return PagarPedidoSerializer
         return PedidoSerializer
-
+    
     def _respuesta(self, pedido, estado=status.HTTP_200_OK):
         pedido = self.get_queryset().get(pk=pedido.pk)
         return Response(PedidoSerializer(pedido).data, status=estado)
@@ -144,3 +149,52 @@ class PedidoViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.G
         pedido = self.get_object()
         ejecutar(cancelar_pedido, pedido, request.user)
         return self._respuesta(pedido)
+
+    @action(detail=True, methods=['post'])
+    def pagar(self, request, pk=None):
+        pedido = self.get_object()
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        transaccion, resultado = ejecutar(
+            pagar_pedido,
+            pedido,
+            serializer.validated_data['forma_pago'],
+            serializer.validated_data['metodo_pago'],
+        )
+
+        pedido = self.get_queryset().get(pk=pedido.pk)
+        return Response({
+            'pago': {
+                'id': transaccion.id,
+                'estado': resultado.estado,
+                'mensaje': resultado.mensaje,
+                'referencia': resultado.referencia,
+            },
+            'pedido': PedidoSerializer(pedido).data,
+        })
+
+class FormasPagoView(APIView):
+    """Las formas de pago salen del registro de estrategias, no de una lista escrita a mano."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        return Response([
+            {'clave': clave, 'nombre': estrategia.nombre}
+            for clave, estrategia in ESTRATEGIAS.items()
+        ])
+
+
+class MetodoPagoViewSet(mixins.ListModelMixin, mixins.CreateModelMixin,
+                        mixins.DestroyModelMixin, viewsets.GenericViewSet):
+    serializer_class = MetodoPagoSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return MetodoPago.objects.filter(usuario=self.request.user)
+
+    def perform_destroy(self, instance):
+        try:
+            instance.delete()
+        except ProtectedError:
+            raise ValidationError({'detail': ['Esta tarjeta tiene pagos registrados y no se puede eliminar.']})

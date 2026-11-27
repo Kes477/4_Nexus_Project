@@ -8,7 +8,8 @@ from catalogo.models import Producto
 from inventario.models import Inventario
 from inventario.servicios import liberar_reserva, reservar_stock
 
-from .models import Carrito, CarritoDetalle, Cupon, DetallePedido, Pedido, ReservaPedido
+from .models import Carrito, CarritoDetalle, Cupon, DetallePedido, Pedido, ReservaPedido, TransaccionPago
+from .pagos import obtener_estrategia
 
 
 def obtener_carrito(usuario):
@@ -223,6 +224,76 @@ def cancelar_pedido(pedido, usuario=None):
             usuario=usuario, motivo=f'Cancelación del pedido #{pedido.pk}',
         )
 
+     # Si había un pago esperando (transferencia o contra entrega), ya no aplica
+    pedido.transacciones.filter(
+        estado_pago=TransaccionPago.Estado.PENDIENTE
+    ).update(estado_pago=TransaccionPago.Estado.RECHAZADO)
+
     pedido.estado_pedido = Pedido.Estado.CANCELADO
     pedido.save(update_fields=['estado_pedido'])
     return pedido
+
+
+###########################        PAGOS (contexto del patrón Strategy)        ###############################
+
+
+ESTADOS_QUE_BLOQUEAN = [TransaccionPago.Estado.APROBADO, TransaccionPago.Estado.PENDIENTE]
+
+
+@transaction.atomic
+def pagar_pedido(pedido, forma_pago, metodo_pago=None):
+    """
+    Contexto del patrón Strategy: elige la estrategia por su clave y la usa
+    sin saber qué forma de pago es. Devuelve (transaccion, resultado).
+    """
+    pedido = Pedido.objects.select_for_update().get(pk=pedido.pk)
+
+    if pedido.estado_pedido != Pedido.Estado.PENDIENTE:
+        raise ValidationError('Este pedido ya no está pendiente de pago.')
+    if pedido.transacciones.filter(estado_pago__in=ESTADOS_QUE_BLOQUEAN).exists():
+        raise ValidationError('Este pedido ya tiene un pago registrado.')
+    if pedido.total_final <= 0:
+        raise ValidationError('Este pedido no requiere pago.')
+
+    estrategia = obtener_estrategia(forma_pago)
+    datos = {'metodo_pago': metodo_pago}
+
+    estrategia.validar(pedido, datos)
+    resultado = estrategia.procesar(pedido, datos)
+
+    transaccion = TransaccionPago.objects.create(
+        pedido=pedido,
+        metodo_pago=metodo_pago if estrategia.clave == TransaccionPago.Forma.TARJETA else None,
+        forma_pago=estrategia.clave,
+        monto=pedido.total_final,
+        estado_pago=resultado.estado,
+        id_transaccion_externa=resultado.referencia,
+    )
+
+    if resultado.estado == TransaccionPago.Estado.APROBADO:
+        pedido.estado_pedido = Pedido.Estado.PAGADO
+        pedido.save(update_fields=['estado_pedido'])
+
+    return transaccion, resultado
+
+
+@transaction.atomic
+def confirmar_pago(transaccion):
+    "El admin confirma un pago pendiente (transferencia recibida o cobro contra entrega)."
+    transaccion = (TransaccionPago.objects
+                   .select_for_update()
+                   .select_related('pedido')
+                   .get(pk=transaccion.pk))
+
+    if transaccion.estado_pago != TransaccionPago.Estado.PENDIENTE:
+        raise ValidationError('Solo se pueden confirmar pagos pendientes.')
+    if transaccion.pedido.estado_pedido != Pedido.Estado.PENDIENTE:
+        raise ValidationError('El pedido ya no está pendiente de pago.')
+
+    transaccion.estado_pago = TransaccionPago.Estado.APROBADO
+    transaccion.save(update_fields=['estado_pago'])
+
+    pedido = transaccion.pedido
+    pedido.estado_pedido = Pedido.Estado.PAGADO
+    pedido.save(update_fields=['estado_pedido'])
+    return transaccion

@@ -1,9 +1,11 @@
-from decimal import Decimal
 from datetime import timedelta
+from decimal import Decimal
+from unittest.mock import patch
 
+from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError, transaction
-from django.test import override_settings
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework import status
@@ -13,8 +15,9 @@ from catalogo.models import Articulo, Categoria, Producto, Variante
 from inventario.models import Almacen, Inventario
 from ubicaciones.models import Direccion, Ubicacion
 
-from .models import CarritoDetalle, Cupon, Pedido, ReservaPedido
-from .servicios import stock_disponible
+from .models import CarritoDetalle, Cupon, MetodoPago, Pedido, ReservaPedido, TransaccionPago
+from .pagos import ESTRATEGIAS, EstrategiaPago, ResultadoPago
+from .servicios import confirmar_pago, pagar_pedido, stock_disponible
 
 Usuario = get_user_model()
 
@@ -401,3 +404,240 @@ class GestionPedidoTests(PedidoBaseTest):
 
         self.assertEqual(respuesta.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertTrue(Direccion.objects.filter(pk=self.direccion.id).exists())
+
+
+############################             4. PATRÓN STRATEGY (sin API)                    #####################################
+ 
+
+class EstrategiasPagoTests(TestCase):
+
+    def test_registro_tiene_las_tres_formas(self):
+        self.assertEqual(set(ESTRATEGIAS), {'TARJETA', 'TRANSFERENCIA', 'CONTRA_ENTREGA'})
+
+    def test_todas_cumplen_la_interfaz(self):
+        for estrategia in ESTRATEGIAS.values():
+            with self.subTest(estrategia=estrategia.clave):
+                self.assertIsInstance(estrategia, EstrategiaPago)
+                self.assertTrue(estrategia.nombre)
+
+    def test_una_estrategia_sin_procesar_no_se_puede_crear(self):
+        class EstrategiaIncompleta(EstrategiaPago):
+            clave = 'INCOMPLETA'
+
+        with self.assertRaises(TypeError):
+            EstrategiaIncompleta()
+
+
+####################################                    5. PAGOS                   ##########################################
+
+
+class PagoBaseTest(PedidoBaseTest):
+
+    def setUp(self):
+        super().setUp()
+        self.agregar(self.dron)
+        self.pedido_id = self.confirmar().data['id']
+        self.url_pagar = reverse('pedido-pagar', args=[self.pedido_id])
+        self.tarjeta = self.crear_tarjeta('4242')
+
+    def crear_tarjeta(self, ultimos, expiracion='12/2099', usuario=None):
+        return MetodoPago.objects.create(
+            usuario=usuario or self.cliente,
+            tipo_tarjeta='Visa',
+            ultimos_cuatro=ultimos,
+            token_pasarela='tok_sim_prueba',
+            fecha_expiracion=expiracion,
+        )
+
+    def pagar(self, **datos):
+        return self.client.post(self.url_pagar, datos, format='json')
+
+    def pedido(self):
+        return Pedido.objects.get(pk=self.pedido_id)
+
+
+class AgregarEstrategiaTests(PagoBaseTest):
+
+    def test_nueva_forma_de_pago_sin_tocar_el_contexto(self):
+        """Abierto/Cerrado: se registra una estrategia nueva y pagar_pedido la usa tal cual."""
+
+        class PagoDePrueba(EstrategiaPago):
+            clave = 'PRUEBA'
+            nombre = 'Pago de prueba'
+
+            def procesar(self, pedido, datos):
+                return ResultadoPago(TransaccionPago.Estado.APROBADO, referencia='PRUEBA-1')
+
+        with patch.dict(ESTRATEGIAS, {'PRUEBA': PagoDePrueba()}):
+            transaccion, resultado = pagar_pedido(self.pedido(), 'PRUEBA')
+
+        self.assertEqual(resultado.estado, 'APROBADO')
+        self.assertEqual(transaccion.forma_pago, 'PRUEBA')
+        self.assertEqual(self.pedido().estado_pedido, 'PAGADO')
+
+
+class MetodoPagoAPITests(PagoBaseTest):
+
+    def setUp(self):
+        super().setUp()
+        self.url_tarjetas = reverse('metodo-pago-list')
+
+    def guardar(self, **cambios):
+        datos = {
+            'tipo_tarjeta': 'Mastercard',
+            'ultimos_cuatro': '5555',
+            'fecha_expiracion': '06/2030',
+            'token_pasarela': 'tok_sim_abc',
+            **cambios,
+        }
+        return self.client.post(self.url_tarjetas, datos, format='json')
+
+    def test_formas_de_pago_salen_del_registro(self):
+        respuesta = self.client.get(reverse('formas-pago'))
+
+        self.assertEqual(respuesta.status_code, status.HTTP_200_OK)
+        self.assertEqual({f['clave'] for f in respuesta.data}, set(ESTRATEGIAS))
+
+    def test_guardar_tarjeta_sin_devolver_el_token(self):
+        respuesta = self.guardar()
+
+        self.assertEqual(respuesta.status_code, status.HTTP_201_CREATED)
+        self.assertNotIn('token_pasarela', respuesta.data)
+        self.assertFalse(respuesta.data['vencida'])
+        self.assertEqual(MetodoPago.objects.get(pk=respuesta.data['id']).usuario, self.cliente)
+
+    def test_datos_de_tarjeta_invalidos(self):
+        casos = {
+            'fecha_expiracion': ['13/2030', '2030-06', '01/2020'],
+            'ultimos_cuatro': ['abcd', '123'],
+        }
+        for campo, valores in casos.items():
+            for valor in valores:
+                with self.subTest(campo=campo, valor=valor):
+                    respuesta = self.guardar(**{campo: valor})
+                    self.assertEqual(respuesta.status_code, status.HTTP_400_BAD_REQUEST)
+                    self.assertIn(campo, respuesta.data)
+
+    def test_solo_ve_y_borra_sus_tarjetas(self):
+        otro = self.crear_usuario('otro@nexus.com', '0801199900805')
+        ajena = self.crear_tarjeta('1111', usuario=otro)
+
+        ids = [t['id'] for t in self.client.get(self.url_tarjetas).data]
+        self.assertNotIn(ajena.id, ids)
+
+        respuesta = self.client.delete(reverse('metodo-pago-detail', args=[ajena.id]))
+        self.assertEqual(respuesta.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_no_se_borra_una_tarjeta_con_pagos(self):
+        self.pagar(forma_pago='TARJETA', metodo_pago=self.tarjeta.id)
+
+        respuesta = self.client.delete(reverse('metodo-pago-detail', args=[self.tarjeta.id]))
+
+        self.assertEqual(respuesta.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertTrue(MetodoPago.objects.filter(pk=self.tarjeta.id).exists())
+
+
+class PagarConTarjetaTests(PagoBaseTest):
+
+    def test_pago_aprobado(self):
+        respuesta = self.pagar(forma_pago='TARJETA', metodo_pago=self.tarjeta.id)
+
+        self.assertEqual(respuesta.status_code, status.HTTP_200_OK)
+        self.assertEqual(respuesta.data['pago']['estado'], 'APROBADO')
+        self.assertTrue(respuesta.data['pago']['referencia'].startswith('SIM-'))
+        self.assertEqual(respuesta.data['pedido']['estado_pedido'], 'PAGADO')
+        self.assertFalse(respuesta.data['pedido']['puede_pagar'])
+        self.assertFalse(respuesta.data['pedido']['puede_cancelar'])
+
+        transaccion = TransaccionPago.objects.get()
+        self.assertEqual(transaccion.monto, self.pedido().total_final)
+
+    def test_rechazada_se_registra_y_se_puede_reintentar(self):
+        rechazada = self.crear_tarjeta('0000')
+
+        respuesta = self.pagar(forma_pago='TARJETA', metodo_pago=rechazada.id)
+        self.assertEqual(respuesta.data['pago']['estado'], 'RECHAZADO')
+        self.assertEqual(self.pedido().estado_pedido, 'PENDIENTE')
+        self.assertTrue(respuesta.data['pedido']['puede_pagar'])
+
+        respuesta = self.pagar(forma_pago='TARJETA', metodo_pago=self.tarjeta.id)
+        self.assertEqual(respuesta.data['pago']['estado'], 'APROBADO')
+        self.assertEqual(TransaccionPago.objects.count(), 2)
+
+    def test_tarjeta_obligatoria_vencida_o_ajena(self):
+        otro = self.crear_usuario('otro@nexus.com', '0801199900806')
+        casos = {
+            'sin tarjeta': {},
+            'vencida': {'metodo_pago': self.crear_tarjeta('9999', expiracion='01/2020').id},
+            'de otro cliente': {'metodo_pago': self.crear_tarjeta('8888', usuario=otro).id},
+        }
+        for caso, datos in casos.items():
+            with self.subTest(caso=caso):
+                respuesta = self.pagar(forma_pago='TARJETA', **datos)
+                self.assertEqual(respuesta.status_code, status.HTTP_400_BAD_REQUEST)
+
+        self.assertFalse(TransaccionPago.objects.exists())
+
+    def test_no_se_paga_dos_veces(self):
+        self.pagar(forma_pago='TARJETA', metodo_pago=self.tarjeta.id)
+        respuesta = self.pagar(forma_pago='TARJETA', metodo_pago=self.tarjeta.id)
+
+        self.assertEqual(respuesta.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(TransaccionPago.objects.count(), 1)
+
+    def test_otro_cliente_no_puede_pagar(self):
+        otro = self.crear_usuario('otro@nexus.com', '0801199900807')
+        self.client.force_authenticate(user=otro)
+
+        respuesta = self.pagar(forma_pago='TRANSFERENCIA')
+        self.assertEqual(respuesta.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_base_de_datos_exige_tarjeta_en_pagos_con_tarjeta(self):
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            TransaccionPago.objects.create(
+                pedido=self.pedido(), forma_pago='TARJETA', monto=100, estado_pago='APROBADO'
+            )
+
+
+class PagarSinTarjetaTests(PagoBaseTest):
+
+    def test_transferencia_queda_pendiente_hasta_que_el_admin_confirma(self):
+        respuesta = self.pagar(forma_pago='TRANSFERENCIA')
+
+        self.assertEqual(respuesta.data['pago']['estado'], 'PENDIENTE')
+        self.assertEqual(respuesta.data['pago']['referencia'], f'NEXUS-{self.pedido_id:06d}')
+        self.assertEqual(self.pedido().estado_pedido, 'PENDIENTE')
+        self.assertFalse(respuesta.data['pedido']['puede_pagar'])
+
+        confirmar_pago(TransaccionPago.objects.get())
+
+        self.assertEqual(self.pedido().estado_pedido, 'PAGADO')
+        self.assertEqual(TransaccionPago.objects.get().estado_pago, 'APROBADO')
+
+    def test_contra_entrega_requiere_envio(self):
+        self.agregar(self.servicio)
+        solo_servicio = self.client.post(self.url_pedidos, {}, format='json').data['id']
+
+        respuesta = self.client.post(
+            reverse('pedido-pagar', args=[solo_servicio]), {'forma_pago': 'CONTRA_ENTREGA'}, format='json'
+        )
+        self.assertEqual(respuesta.status_code, status.HTTP_400_BAD_REQUEST)
+
+        respuesta = self.pagar(forma_pago='CONTRA_ENTREGA')
+        self.assertEqual(respuesta.data['pago']['estado'], 'PENDIENTE')
+
+    def test_cancelar_rechaza_el_pago_pendiente(self):
+        self.pagar(forma_pago='TRANSFERENCIA')
+        self.client.post(reverse('pedido-cancelar', args=[self.pedido_id]))
+
+        self.assertEqual(TransaccionPago.objects.get().estado_pago, 'RECHAZADO')
+        respuesta = self.pagar(forma_pago='TRANSFERENCIA')
+        self.assertEqual(respuesta.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_no_se_confirma_dos_veces(self):
+        self.pagar(forma_pago='TRANSFERENCIA')
+        transaccion = TransaccionPago.objects.get()
+        confirmar_pago(transaccion)
+
+        with self.assertRaises(ValidationError):
+            confirmar_pago(transaccion)
