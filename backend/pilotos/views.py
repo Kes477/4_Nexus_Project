@@ -1,21 +1,46 @@
+from datetime import timedelta
+
 from rest_framework import viewsets, mixins, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
 from django.db.models import Q
 from django.http import HttpResponse
+from django.utils import timezone
 
 from .models import Mision
 from .serializers import MisionSerializer, CambiarEstadoSerializer, HistorialMisionSerializer
 from .servicios import ServicioMisionPiloto
 from .politicas import SelectorPoliticas
-from .exportadores import generar_pdf_bitacora
+from .exportadores import generar_pdf_bitacora, generar_pdf_facturacion
+
+TARIFA_RESPALDO = {
+    'fumigacion': 120, 'agronomia': 120, 'agricultura': 120,
+    'inspeccion_industrial': 150, 'audiovisual_pro': 100,
+    'fotografia': 100, 'carreras_fpv': 100, 'topografia': 130,
+    'vigilancia': 90, 'seguridad': 90,
+}
+
+
+def _rango_periodo(key):
+    hoy = timezone.localdate()
+    if key == 'semanal':
+        return hoy - timedelta(days=6), hoy
+    if key == 'mensual':
+        desde = hoy.replace(day=1)
+        siguiente = (desde + timedelta(days=32)).replace(day=1)
+        hasta = siguiente - timedelta(days=1)
+        return desde, hasta
+    if key == 'anual':
+        return hoy.replace(month=1, day=1), hoy.replace(month=12, day=31)
+    return None, None
+
 
 class MisionViewSet(
-    mixins.ListModelMixin, 
-    mixins.RetrieveModelMixin, 
-    mixins.UpdateModelMixin, 
-    mixins.CreateModelMixin, 
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.UpdateModelMixin,
+    mixins.CreateModelMixin,
     viewsets.GenericViewSet
 ):
     serializer_class = MisionSerializer
@@ -23,7 +48,7 @@ class MisionViewSet(
 
     def get_queryset(self):
         usuario = self.request.user
-        
+
         if usuario.is_staff:
             queryset = Mision.objects.all()
         elif hasattr(usuario, 'perfil_piloto'):
@@ -48,6 +73,10 @@ class MisionViewSet(
         if estado:
             queryset = queryset.filter(estado=estado)
 
+        categoria = self.request.query_params.get('categoria', None)
+        if categoria:
+            queryset = queryset.filter(categoria=categoria)
+
         return queryset.order_by('-fecha_programada')
 
     def perform_create(self, serializer):
@@ -57,7 +86,7 @@ class MisionViewSet(
         if tipo_mision == Mision.TipoMision.PERSONAL:
             if not hasattr(usuario, 'perfil_piloto'):
                 raise ValidationError({'detail': 'Solo los pilotos pueden crear misiones personales.'})
-            
+
             serializer.save(
                 piloto=usuario.perfil_piloto,
                 tipo_mision=Mision.TipoMision.PERSONAL,
@@ -76,7 +105,7 @@ class MisionViewSet(
     @action(detail=True, methods=['patch'])
     def cambiar_estado(self, request, pk=None):
         mision = self.get_object()
-        
+
         serializer = CambiarEstadoSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         nuevo_estado = serializer.validated_data['estado']
@@ -97,7 +126,7 @@ class MisionViewSet(
     @action(detail=False, methods=['get'], url_path='historial')
     def historial(self, request):
         usuario = request.user
-        
+
         if not hasattr(usuario, 'perfil_piloto'):
             return Response(
                 {'detail': 'Solo un piloto puede consultar su historial.'},
@@ -105,9 +134,9 @@ class MisionViewSet(
             )
 
         piloto = usuario.perfil_piloto
-        
+
         misiones_completadas = Mision.objects.filter(
-            piloto=piloto, 
+            piloto=piloto,
             estado=Mision.Estado.COMPLETADA,
             tipo_mision=Mision.TipoMision.TERCEROS
         ).order_by('-fecha_programada')
@@ -117,8 +146,89 @@ class MisionViewSet(
             misiones_completadas = misiones_completadas.filter(categoria=filtro_categoria)
 
         serializer = HistorialMisionSerializer(misiones_completadas, many=True)
-        
+
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def _calcular_metricas_para(self, piloto, modo, categoria):
+        qs = Mision.objects.filter(piloto=piloto, tipo_mision=modo, categoria=categoria)
+        completadas = qs.filter(estado=Mision.Estado.COMPLETADA)
+        activas = qs.filter(estado__in=[Mision.Estado.ACEPTADA, Mision.Estado.EN_CURSO])
+
+        horas = 0.0
+        for m in completadas:
+            if m.fecha_cierre and m.fecha_creacion:
+                diff = (m.fecha_cierre - m.fecha_creacion).total_seconds() / 3600
+                if diff > 0:
+                    horas += diff
+
+        capturas = sum(int(m.capturas_generadas or 0) for m in completadas)
+        distancia = float(sum(float(m.distancia_km or 0) for m in completadas))
+        drones = qs.exclude(dron_asignado='').values_list('dron_asignado', flat=True).distinct().count()
+
+        facturacion_total = 0.0
+        horas_comerciales = 0.0
+        if modo == Mision.TipoMision.TERCEROS:
+            for registro in self._calcular_facturacion(piloto, categoria=categoria):
+                facturacion_total += float(registro['monto'] or 0)
+                horas_comerciales += float(registro['horas'] or 0)
+
+        calificaciones = []
+        for m in completadas:
+            for resenia in m.resenias.all():
+                try:
+                    valor = float(resenia.calificacion)
+                except (TypeError, ValueError):
+                    continue
+                if valor > 0:
+                    calificaciones.append(valor)
+
+        reputacion = None
+        if calificaciones:
+            reputacion = round(sum(calificaciones) / len(calificaciones), 2)
+
+        return {
+            'horas_vuelo': round(horas, 2),
+            'capturas': capturas,
+            'distancia_km': round(distancia, 2),
+            'drones_hangar': drones,
+            'facturacion': round(facturacion_total, 2),
+            'contratos_activos': activas.count(),
+            'horas_comerciales': round(horas_comerciales, 2),
+            'reputacion': reputacion,
+            'misiones_completadas': completadas.count(),
+            'misiones_totales': qs.count(),
+        }
+
+    @action(detail=False, methods=['get'], url_path='resumen')
+    def resumen(self, request):
+        usuario = request.user
+
+        if not hasattr(usuario, 'perfil_piloto'):
+            return Response(
+                {'detail': 'Solo un piloto puede consultar sus métricas.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        piloto = usuario.perfil_piloto
+        modo = (request.query_params.get('modo') or 'PERSONAL').upper()
+
+        categorias = (
+            Mision.objects
+            .filter(piloto=piloto, tipo_mision=modo)
+            .exclude(categoria='')
+            .values_list('categoria', flat=True)
+            .distinct()
+            .order_by('categoria')
+        )
+
+        resultado = []
+        for cat in categorias:
+            resultado.append({
+                'id': cat,
+                'metricas': self._calcular_metricas_para(piloto, modo, cat),
+            })
+
+        return Response({'modo': modo, 'categorias': resultado}, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=['get'], url_path='exportar-pdf')
     def exportar_pdf(self, request):
@@ -167,4 +277,96 @@ class MisionViewSet(
 
         response = HttpResponse(pdf_bytes, content_type='application/pdf')
         response['Content-Disposition'] = 'attachment; filename="bitacora_vuelos.pdf"'
+        return response
+
+    def _calcular_facturacion(self, piloto, categoria=None):
+        qs = Mision.objects.filter(
+            piloto=piloto,
+            estado=Mision.Estado.COMPLETADA,
+            tipo_mision=Mision.TipoMision.TERCEROS,
+        ).select_related('producto').prefetch_related('producto__variantes').order_by('-fecha_programada')
+
+        if categoria:
+            qs = qs.filter(categoria=categoria)
+
+        data = []
+        for m in qs:
+            horas = None
+            if m.fecha_cierre and m.fecha_creacion:
+                horas = round((m.fecha_cierre - m.fecha_creacion).total_seconds() / 3600, 1)
+
+            monto = 0
+
+            if m.producto:
+                primera_variante = m.producto.variantes.first()
+                if primera_variante:
+                    monto = float(primera_variante.precio)
+
+            if monto == 0:
+                tarifa_respaldo = TARIFA_RESPALDO.get(m.categoria, 0)
+                monto = round((horas or 0) * tarifa_respaldo, 2)
+
+            data.append({
+                'id': m.id,
+                'fecha': m.fecha_programada,
+                'categoria': m.categoria,
+                'referencia': m.descripcion or m.ubicacion or f'MIS-{m.id}',
+                'horas': horas or 0,
+                'monto': monto,
+                'estado': m.estado,
+            })
+
+        return data
+
+    @action(detail=False, methods=['get'], url_path='facturacion')
+    def facturacion(self, request):
+        usuario = request.user
+
+        if not hasattr(usuario, 'perfil_piloto'):
+            return Response(
+                {'detail': 'Solo un piloto puede consultar su facturación.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        categoria = request.query_params.get('categoria') or None
+        return Response(
+            self._calcular_facturacion(usuario.perfil_piloto, categoria=categoria),
+            status=status.HTTP_200_OK,
+        )
+
+    @action(detail=False, methods=['get'], url_path='facturacion/exportar-pdf')
+    def exportar_pdf_facturacion(self, request):
+        usuario = request.user
+
+        if not hasattr(usuario, 'perfil_piloto'):
+            return Response(
+                {'detail': 'Solo un piloto puede exportar su facturación.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        piloto = usuario.perfil_piloto
+        periodo = (request.query_params.get('periodo') or 'mensual').strip()
+        categoria = (request.query_params.get('categoria') or 'TODAS').strip()
+
+        registros = self._calcular_facturacion(piloto)
+
+        if categoria and categoria != 'TODAS':
+            registros = [r for r in registros if r['categoria'] == categoria]
+
+        desde, hasta = _rango_periodo(periodo)
+        if desde and hasta:
+            registros = [r for r in registros if desde <= r['fecha'] <= hasta]
+
+        total_periodo = sum(float(r['monto'] or 0) for r in registros)
+
+        pdf_bytes = generar_pdf_facturacion(
+            piloto,
+            registros,
+            periodo=periodo,
+            categoria=categoria,
+            total_periodo=total_periodo,
+        )
+
+        response = HttpResponse(pdf_bytes, content_type='application/pdf')
+        response['Content-Disposition'] = 'attachment; filename="facturacion.pdf"'
         return response

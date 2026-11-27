@@ -4,20 +4,24 @@ from .models import (
     Producto, Variante, Resenia, Suscripcion, EspecificacionProducto
 )
 
+
 class CategoriaSerializer(serializers.ModelSerializer):
     class Meta:
         model = Categoria
         fields = ['id', 'nombre', 'descripcion', 'categoria_padre']
+
 
 class ImagenArticuloSerializer(serializers.ModelSerializer):
     class Meta:
         model = ImagenArticulo
         fields = ['id', 'url_imagen', 'imagen_principal', 'orden']
 
+
 class AtributoVarianteSerializer(serializers.ModelSerializer):
     class Meta:
         model = AtributoVariante
         fields = ['nombre_atributo', 'valor_atributo']
+
 
 class VarianteSerializer(serializers.ModelSerializer):
     atributos = AtributoVarianteSerializer(many=True, read_only=True)
@@ -30,6 +34,7 @@ class VarianteSerializer(serializers.ModelSerializer):
     def get_disponible(self, obj):
         return any(inv.cantidad_disponible > 0 for inv in obj.inventarios.all())
 
+
 class ArticulosSerializer(serializers.ModelSerializer):
     imagenes = ImagenArticuloSerializer(many=True, read_only=True)
 
@@ -37,15 +42,18 @@ class ArticulosSerializer(serializers.ModelSerializer):
         model = Articulo
         fields = ['marca', 'modelo', 'peso_kg', 'dimensiones', 'tiempo_vuelo_max_min', 'alcance_max_km', 'imagenes']
 
+
 class SuscripcionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Suscripcion
         fields = ['periodo_facturacion_dias', 'cantidad_mantenimientos_incluidos', 'nivel_cobertura', 'renovacion_automatica']
 
+
 class EspecificacionProductoSerializer(serializers.ModelSerializer):
     class Meta:
         model = EspecificacionProducto
         fields = ['clave_espec', 'valor_espec']
+
 
 class ProductoListaSerializer(serializers.ModelSerializer):
     categoria = serializers.StringRelatedField()
@@ -73,6 +81,7 @@ class ProductoListaSerializer(serializers.ModelSerializer):
                 return imagen.url_imagen
         return None
 
+
 class ProductoDetalleSerializer(ProductoListaSerializer):
     articulo = ArticulosSerializer(read_only=True, allow_null=True)
     variantes = VarianteSerializer(many=True, read_only=True)
@@ -80,16 +89,25 @@ class ProductoDetalleSerializer(ProductoListaSerializer):
     class Meta(ProductoListaSerializer.Meta):
         fields = ProductoListaSerializer.Meta.fields + ['fecha_publicacion', 'articulo', 'variantes']
 
+
 class ReseniaSerializer(serializers.ModelSerializer):
     class Meta:
         model = Resenia
-        fields = ['id', 'producto', 'cliente', 'calificacion', 'titulo', 'comentario', 'fecha_resenia', 'compra_verificada']
+        fields = ['id', 'producto', 'mision', 'cliente', 'calificacion', 'titulo', 'comentario', 'fecha_resenia', 'compra_verificada']
         read_only_fields = ['id', 'cliente', 'fecha_resenia', 'compra_verificada']
 
     def validate(self, attrs):
         request = self.context.get('request')
-        if request and request.user:
-            producto = attrs.get('producto')
-            if Resenia.objects.filter(cliente=request.user, producto=producto).exists():
-                raise serializers.ValidationError({'producto': 'Ya has calificado este servicio anteriormente.'})
+        producto = attrs.get('producto')
+        mision = attrs.get('mision')
+
+        if producto and producto.tipo_producto == Producto.Tipo.SERVICIO and mision is None:
+            raise serializers.ValidationError({
+                'mision': 'Debes indicar la misión asociada para calificar un servicio.'
+            })
+
+        if request and request.user and mision:
+            if Resenia.objects.filter(cliente=request.user, mision=mision).exists():
+                raise serializers.ValidationError({'mision': 'Ya has calificado esta misión anteriormente.'})
+
         return attrs

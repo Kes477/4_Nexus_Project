@@ -56,7 +56,7 @@ export const MisionCard = ({ mision, onStatusChange, onEdit, isPersonal }) => {
     const cardStyle = {
         background: "var(--white)",
         borderRadius: "12px",
-        border: mision.estado === 'EN_CURSO' ? "2px solid var(--color-primary)" : "1px solid var(--light-gray)",
+        border: mision.estado === 'EN_CURSO' ? "1px solid var(--color-primary)" : "1px solid var(--light-gray)",
         overflow: "hidden",
         display: "flex",
         flexDirection: "column",
@@ -64,29 +64,19 @@ export const MisionCard = ({ mision, onStatusChange, onEdit, isPersonal }) => {
         height: "100%",
         boxSizing: "border-box",
         position: "relative",
-        boxShadow: mision.estado === 'EN_CURSO' ? "0 8px 25px rgba(4, 201, 166, 0.15)" : "0 4px 15px rgba(0,0,0,0.04)",
+        boxShadow: mision.estado === 'EN_CURSO' ? "0 8px 25px rgba(4, 201, 166, 0.1)" : "0 4px 15px rgba(0,0,0,0.03)",
         transition: "transform 0.3s ease, box-shadow 0.3s ease",
     };
 
     const hoverEffect = {
         onMouseEnter: (e) => {
-            e.currentTarget.style.transform = "translateY(-5px)";
-            e.currentTarget.style.boxShadow = "0 12px 30px rgba(0,0,0,0.08)";
+            e.currentTarget.style.transform = "translateY(-4px)";
+            e.currentTarget.style.boxShadow = mision.estado === 'EN_CURSO' ? "0 12px 30px rgba(4, 201, 166, 0.15)" : "0 12px 30px rgba(0,0,0,0.06)";
         },
         onMouseLeave: (e) => {
             e.currentTarget.style.transform = "translateY(0)";
-            e.currentTarget.style.boxShadow = mision.estado === 'EN_CURSO' ? "0 8px 25px rgba(4, 201, 166, 0.15)" : "0 4px 15px rgba(0,0,0,0.04)";
+            e.currentTarget.style.boxShadow = mision.estado === 'EN_CURSO' ? "0 8px 25px rgba(4, 201, 166, 0.1)" : "0 4px 15px rgba(0,0,0,0.03)";
         }
-    };
-
-    const specBoxStyle = {
-        display: 'grid', 
-        gridTemplateColumns: '1fr 1fr', 
-        gap: '10px', 
-        background: 'var(--bg-color)', 
-        padding: '12px', 
-        borderRadius: '8px', 
-        marginBottom: '16px',
     };
 
     const handleEditChange = (e) => {
@@ -131,65 +121,77 @@ export const MisionCard = ({ mision, onStatusChange, onEdit, isPersonal }) => {
         <>
             <article style={cardStyle} {...hoverEffect}>
                 
-                <div style={{ padding: "20px 20px 0 20px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <div style={{ background: iconBg, color: iconColor, padding: "10px", borderRadius: "10px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                            <MissionIcon size={24} strokeWidth={2} />
+                <div style={{ padding: "20px 20px 16px 20px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ background: iconBg, color: iconColor, padding: "12px", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            <MissionIcon size={22} strokeWidth={2.5} />
                         </div>
                         <div>
-                            <span style={{ fontSize: '12px', color: 'var(--text-light)', fontWeight: 'bold', display: 'block' }}>ID: {mision.identificador || mision.id || 'N/A'}</span>
-                            <h3 style={{ color: "var(--color-dark)", fontSize: "18px", margin: 0, fontWeight: "800", textTransform: "capitalize" }}>
+                            <h3 style={{ color: "var(--color-dark)", fontSize: "16px", margin: 0, fontWeight: "800", textTransform: "capitalize", lineHeight: 1.2 }}>
                                 {mision.categoria}
                             </h3>
+                            <span style={{ fontSize: '12px', color: 'var(--text-light)', fontWeight: '600', display: 'block', marginTop: '2px' }}>
+                                ID: {mision.identificador || mision.id || 'N/A'}
+                            </span>
                         </div>
                     </div>
                     <Badge text={mision.estado} color={getBadgeColor(mision.estado)} />
                 </div>
 
-                <div style={{ padding: "16px 20px 20px 20px", display: "flex", flexDirection: "column", flexGrow: 1 }}>
+                <div style={{ padding: "0 20px 20px 20px", display: "flex", flexDirection: "column", flexGrow: 1 }}>
                     <p style={{ 
                         color: "var(--text-light)", 
                         fontSize: "13px", 
                         lineHeight: "1.5", 
                         margin: "0 0 16px 0", 
-                        wordBreak: "break-word"
+                        wordBreak: "break-word",
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden'
                     }}>
                         {mision.descripcion || "Sin descripción adicional."}
                     </p>
 
-                    <div style={specBoxStyle}>
-                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px' }}>
-                            <MapPin size={16} color="var(--color-primary)" style={{ flexShrink: 0, marginTop: '2px' }} />
-                            <div style={{ minWidth: 0 }}>
-                                <span style={{ display: 'block', fontSize: '10px', color: 'var(--text-light)', fontWeight: 'bold' }}>Ubicación</span>
-                                <strong style={{ fontSize: '12px', color: 'var(--color-dark)', wordBreak: 'break-word', display: 'block' }} title={mision.ubicacion}>
+                    <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: '1fr 1fr',
+                        gap: '16px',
+                        marginBottom: '20px'
+                    }}>
+                        <div>
+                            <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-light)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Ubicación</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
+                                <MapPin size={14} color="var(--color-primary)" style={{ flexShrink: 0 }} />
+                                <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--color-dark)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={mision.ubicacion}>
                                     {mision.ubicacion}
-                                </strong>
+                                </span>
                             </div>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px' }}>
-                            <Calendar size={16} color="var(--color-primary)" style={{ flexShrink: 0, marginTop: '2px' }} />
-                            <div style={{ minWidth: 0 }}>
-                                <span style={{ display: 'block', fontSize: '10px', color: 'var(--text-light)', fontWeight: 'bold' }}>Fecha</span>
-                                <strong style={{ fontSize: '12px', color: 'var(--color-dark)', wordBreak: 'break-word' }}>{mision.fecha_programada}</strong>
+                        <div>
+                            <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-light)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Fecha</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
+                                <Calendar size={14} color="var(--color-primary)" style={{ flexShrink: 0 }} />
+                                <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--color-dark)' }}>{mision.fecha_programada}</span>
                             </div>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', gridColumn: (!isPersonal && mision.cliente_nombre) ? 'span 1' : 'span 2' }}>
-                            <Clock size={16} color="var(--color-primary)" style={{ flexShrink: 0, marginTop: '2px' }} />
-                            <div style={{ minWidth: 0 }}>
-                                <span style={{ display: 'block', fontSize: '10px', color: 'var(--text-light)', fontWeight: 'bold' }}>Dron Asignado</span>
-                                <strong style={{ fontSize: '12px', color: 'var(--color-dark)', wordBreak: 'break-word', display: 'block' }}>{mision.dron_asignado || 'N/A'}</strong>
+                        <div>
+                            <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-light)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Dron</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
+                                <Clock size={14} color="var(--color-primary)" style={{ flexShrink: 0 }} />
+                                <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--color-dark)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={mision.dron_asignado}>
+                                    {mision.dron_asignado || 'N/A'}
+                                </span>
                             </div>
                         </div>
-                        
                         {!isPersonal && mision.cliente_nombre && (
-                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px' }}>
-                                <User size={16} color="var(--color-primary)" style={{ flexShrink: 0, marginTop: '2px' }} />
-                                <div style={{ minWidth: 0 }}>
-                                    <span style={{ display: 'block', fontSize: '10px', color: 'var(--text-light)', fontWeight: 'bold' }}>Cliente</span>
-                                    <strong style={{ fontSize: '12px', color: 'var(--color-dark)', wordBreak: 'break-word', display: 'block' }} title={mision.cliente_nombre}>
+                            <div>
+                                <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-light)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Cliente</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
+                                    <User size={14} color="var(--color-primary)" style={{ flexShrink: 0 }} />
+                                    <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--color-dark)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={mision.cliente_nombre}>
                                         {mision.cliente_nombre}
-                                    </strong>
+                                    </span>
                                 </div>
                             </div>
                         )}
@@ -200,10 +202,10 @@ export const MisionCard = ({ mision, onStatusChange, onEdit, isPersonal }) => {
                             
                             {mision.estado === 'PENDIENTE' && (
                                 <>
-                                    <Button variant="primary" size="sm" style={{ flex: 1, display: 'flex', gap: '6px' }} onClick={() => onStatusChange(mision.id, 'ACEPTADA')}>
+                                    <Button variant="primary" size="sm" style={{ flex: 1, display: 'flex', gap: '6px', justifyContent: 'center' }} onClick={() => onStatusChange(mision.id, 'ACEPTADA')}>
                                         <Check size={16} /> Aceptar
                                     </Button>
-                                    <Button variant="outline-danger" size="sm" style={{ flex: 1, display: 'flex', gap: '6px' }} onClick={() => onStatusChange(mision.id, 'RECHAZADA')}>
+                                    <Button variant="outline-danger" size="sm" style={{ flex: 1, display: 'flex', gap: '6px', justifyContent: 'center' }} onClick={() => onStatusChange(mision.id, 'RECHAZADA')}>
                                         <X size={16} /> Rechazar
                                     </Button>
                                 </>
@@ -211,13 +213,13 @@ export const MisionCard = ({ mision, onStatusChange, onEdit, isPersonal }) => {
 
                             {mision.estado === 'ACEPTADA' && (
                                 <>
-                                    <Button variant="dark" size="sm" style={{ width: '100%', display: 'flex', gap: '6px', marginBottom: '8px' }} onClick={() => onStatusChange(mision.id, 'EN_CURSO')}>
+                                    <Button variant="dark" size="sm" style={{ width: '100%', display: 'flex', gap: '6px', justifyContent: 'center', marginBottom: '8px' }} onClick={() => onStatusChange(mision.id, 'EN_CURSO')}>
                                         <Play size={16} /> Iniciar Vuelo
                                     </Button>
-                                    <Button variant="outline-dark" size="sm" style={{ flex: 1, display: 'flex', gap: '6px' }} onClick={() => setIsEditing(true)}>
+                                    <Button variant="outline-dark" size="sm" style={{ flex: 1, display: 'flex', gap: '6px', justifyContent: 'center' }} onClick={() => setIsEditing(true)}>
                                         <Edit2 size={16} /> Editar
                                     </Button>
-                                    <Button variant="outline-danger" size="sm" style={{ flex: 1, display: 'flex', gap: '6px' }} onClick={() => setIsCanceling(true)}>
+                                    <Button variant="outline-danger" size="sm" style={{ flex: 1, display: 'flex', gap: '6px', justifyContent: 'center' }} onClick={() => setIsCanceling(true)}>
                                         <XCircle size={16} /> Cancelar
                                     </Button>
                                 </>
@@ -225,13 +227,13 @@ export const MisionCard = ({ mision, onStatusChange, onEdit, isPersonal }) => {
 
                             {mision.estado === 'EN_CURSO' && (
                                 <>
-                                    <Button variant="success" size="sm" style={{ width: '100%', display: 'flex', gap: '6px', marginBottom: '8px' }} onClick={() => onStatusChange(mision.id, 'COMPLETADA')}>
+                                    <Button variant="success" size="sm" style={{ width: '100%', display: 'flex', gap: '6px', justifyContent: 'center', marginBottom: '8px' }} onClick={() => onStatusChange(mision.id, 'COMPLETADA')}>
                                         <CheckCircle size={16} /> Completar Misión
                                     </Button>
-                                    <Button variant="outline-dark" size="sm" style={{ flex: 1, display: 'flex', gap: '6px' }} onClick={() => setIsEditing(true)}>
+                                    <Button variant="outline-dark" size="sm" style={{ flex: 1, display: 'flex', gap: '6px', justifyContent: 'center' }} onClick={() => setIsEditing(true)}>
                                         <Edit2 size={16} /> Editar
                                     </Button>
-                                    <Button variant="outline-danger" size="sm" style={{ flex: 1, display: 'flex', gap: '6px' }} onClick={() => setIsCanceling(true)}>
+                                    <Button variant="outline-danger" size="sm" style={{ flex: 1, display: 'flex', gap: '6px', justifyContent: 'center' }} onClick={() => setIsCanceling(true)}>
                                         <XCircle size={16} /> Cancelar
                                     </Button>
                                 </>
