@@ -641,3 +641,38 @@ class PagarSinTarjetaTests(PagoBaseTest):
 
         with self.assertRaises(ValidationError):
             confirmar_pago(transaccion)
+
+
+############################       6. COMPRAR AHORA (sin carrito)        #####################################
+
+
+class ComprarAhoraTests(PedidoBaseTest):
+
+    def test_resumen_de_una_variante(self):
+        respuesta = self.client.post(self.url_resumen, {'variante': self.dron.id, 'cantidad': 1}, format='json')
+
+        self.assertEqual(respuesta.status_code, status.HTTP_200_OK)
+        self.assertEqual(respuesta.data['subtotal'], '18500.00')
+        self.assertTrue(respuesta.data['requiere_direccion'])
+
+    def test_comprar_ahora_no_toca_el_carrito(self):
+        self.agregar(self.servicio)
+
+        respuesta = self.confirmar(variante=self.dron.id, cantidad=1)
+
+        self.assertEqual(respuesta.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(len(respuesta.data['detalles']), 1)
+        self.assertEqual(respuesta.data['detalles'][0]['sku'], 'MINI5-STD')
+        self.assertEqual(self.inventario().cantidad_reservada, 1)
+        # Lo que había en el carrito sigue ahí
+        self.assertEqual(CarritoDetalle.objects.get().variante, self.servicio)
+
+    def test_comprar_ahora_respeta_el_stock(self):
+        respuesta = self.confirmar(variante=self.dron.id, cantidad=4)
+
+        self.assertEqual(respuesta.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(Pedido.objects.exists())
+
+    def test_comprar_ahora_requiere_direccion(self):
+        respuesta = self.client.post(self.url_pedidos, {'variante': self.dron.id}, format='json')
+        self.assertEqual(respuesta.status_code, status.HTTP_400_BAD_REQUEST)

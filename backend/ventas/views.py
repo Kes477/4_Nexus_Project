@@ -17,11 +17,12 @@ from .servicios import (
     cambiar_cantidad,
     cancelar_pedido,
     confirmar_pedido,
+    crear_pedido,
     obtener_carrito,
+    pagar_pedido,
     quitar_del_carrito,
     requiere_direccion,
     vaciar_carrito,
-    pagar_pedido,
 )
 
 
@@ -109,17 +110,23 @@ class PedidoViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.G
         pedido = self.get_queryset().get(pk=pedido.pk)
         return Response(PedidoSerializer(pedido).data, status=estado)
 
-    @action(detail=False, methods=['post'])
-    def resumen(self, request):
-        """Totales del carrito actual, sin crear el pedido."""
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
+    def _lineas(self, request, datos):
+        """'Comprar ahora' si viene una variante; si no, el carrito."""
+        if datos['variante'] is not None:
+            return [(datos['variante'], datos['cantidad'])]
         carrito = obtener_carrito(request.user)
-        lineas = [
+        return [
             (detalle.variante, detalle.cantidad)
             for detalle in carrito.detalles.select_related('variante__producto')
         ]
+
+    @action(detail=False, methods=['post'])
+    def resumen(self, request):
+        """Totales del pedido (carrito o "Comprar ahora"), sin crearlo."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        lineas = self._lineas(request, serializer.validated_data)
         if not lineas:
             raise ValidationError({'detail': ['El carrito está vacío.']})
 
@@ -133,15 +140,20 @@ class PedidoViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.G
         })
 
     def create(self, request):
-        """Confirma la compra con el carrito actual."""
+        """Confirma la compra: del carrito, o de una sola variante ("Comprar ahora")."""
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        pedido = ejecutar(
-            confirmar_pedido,
-            request.user,
-            serializer.validated_data['direccion'],
-            serializer.validated_data['cupon'],
-        )
+        datos = serializer.validated_data
+
+        if datos['variante'] is not None:
+            pedido = ejecutar(
+                crear_pedido, request.user,
+                [(datos['variante'], datos['cantidad'])],
+                datos['direccion'], datos['cupon'],
+            )
+        else:
+            pedido = ejecutar(confirmar_pedido, request.user, datos['direccion'], datos['cupon'])
+
         return self._respuesta(pedido, status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['post'])

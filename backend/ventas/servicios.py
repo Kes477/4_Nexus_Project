@@ -160,49 +160,64 @@ def _reservar_en_almacenes(detalle, usuario):
     if pendiente > 0:
         raise ValidationError(f'Ya no hay suficiente stock de {detalle.variante}.')
 
-
 @transaction.atomic
-def confirmar_pedido(usuario, direccion=None, codigo_cupon=''):
-    """Convierte el carrito en un pedido PENDIENTE, reserva el stock y vacía el carrito."""
-    carrito = obtener_carrito(usuario)
-    lineas = list(
-        carrito.detalles
-        .select_related('variante__producto')
-        .select_for_update(of=('self',))
-    )
-
+def crear_pedido(usuario, lineas, direccion=None, codigo_cupon=''):
+    """
+    Núcleo de la compra: crea un pedido PENDIENTE a partir de una lista de
+    (variante, cantidad), reserva el stock y devuelve el pedido.
+    Lo usan el carrito y "Comprar ahora".
+    """
     if not lineas:
-        raise ValidationError('El carrito está vacío.')
+        raise ValidationError('No hay productos para crear el pedido.')
 
-    # Se vuelve a validar: el stock o el producto pudieron cambiar desde que se agregó
-    for linea in lineas:
-        _validar_cantidad(linea.variante, linea.cantidad)
-
-    lleva_articulos = any(_es_articulo(linea.variante) for linea in lineas)
+    # Se valida otra vez: el stock o el producto pudieron cambiar
+    for variante, cantidad in lineas:
+        _validar_cantidad(variante, cantidad)
 
     # Regla de db.sql (FN_VALIDAR_DIRECCION_PEDIDO)
-    if lleva_articulos and direccion is None:
+    if requiere_direccion(lineas) and direccion is None:
         raise ValidationError('Elige una dirección de envío.')
     if direccion is not None and direccion.usuario_id != usuario.id:
         raise ValidationError('La dirección elegida no es válida.')
 
     cupon = buscar_cupon(codigo_cupon)
-    totales = calcular_totales([(linea.variante, linea.cantidad) for linea in lineas], cupon)
+    totales = calcular_totales(lineas, cupon)
 
     pedido = Pedido.objects.create(usuario=usuario, direccion=direccion, cupon=cupon, **totales)
 
-    for linea in lineas:
-        precio = linea.variante.precio
+    for variante, cantidad in lineas:
         detalle = DetallePedido.objects.create(
             pedido=pedido,
-            variante=linea.variante,
-            tipo_producto=linea.variante.producto.tipo_producto,
-            cantidad=linea.cantidad,
-            precio_unitario=precio,
-            subtotal_linea=precio * linea.cantidad,
+            variante=variante,
+            tipo_producto=variante.producto.tipo_producto,
+            cantidad=cantidad,
+            precio_unitario=variante.precio,
+            subtotal_linea=variante.precio * cantidad,
         )
-        if _es_articulo(linea.variante):
+        if _es_articulo(variante):
             _reservar_en_almacenes(detalle, usuario)
+
+    return pedido
+
+
+@transaction.atomic
+def confirmar_pedido(usuario, direccion=None, codigo_cupon=''):
+    """Convierte el carrito en un pedido y vacía el carrito."""
+    carrito = obtener_carrito(usuario)
+    detalles = list(
+        carrito.detalles
+        .select_related('variante__producto')
+        .select_for_update(of=('self',))
+    )
+    if not detalles:
+        raise ValidationError('El carrito está vacío.')
+
+    pedido = crear_pedido(
+        usuario,
+        [(detalle.variante, detalle.cantidad) for detalle in detalles],
+        direccion,
+        codigo_cupon,
+    )
 
     carrito.detalles.all().delete()
     _tocar(carrito)

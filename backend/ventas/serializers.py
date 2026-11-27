@@ -142,6 +142,11 @@ class ConfirmarPedidoSerializer(serializers.Serializer):
         queryset=Direccion.objects.none(), required=False, allow_null=True, default=None
     )
     cupon = serializers.CharField(required=False, allow_blank=True, default='')
+    variante = serializers.PrimaryKeyRelatedField(
+        queryset=Variante.objects.select_related('producto'),
+        required=False, allow_null=True, default=None,
+    )
+    cantidad = serializers.IntegerField(min_value=1, default=1)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

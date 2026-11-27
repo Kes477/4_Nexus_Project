@@ -5,6 +5,7 @@ import { ChevronDown, ChevronUp, Package } from 'lucide-react';
 import { Alert, Badge, Button, SectionHeading } from '../../components/ui';
 import { cancelarPedido, obtenerPedidos } from '../../api/pedidoService';
 import { primerError } from '../../utils/errores';
+import PagarPedidoModal from '../../components/cliente/PagarPedidoModal';
 
 const formatoLempiras = (valor) =>
   `L ${Number(valor).toLocaleString('es-HN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -34,6 +35,7 @@ export default function ClientePedidos() {
   const [error, setError] = useState(null);
   const [abierto, setAbierto] = useState(nuevoPedido);
   const [ocupado, setOcupado] = useState(null);
+  const [pedidoAPagar, setPedidoAPagar] =useState(null);
 
   useEffect(() => {
     let activo = true;
@@ -52,12 +54,16 @@ export default function ClientePedidos() {
     setOcupado(pedido.id);
     try {
       const actualizado = await cancelarPedido(pedido.id);
-      setPedidos((lista) => lista.map((p) => (p.id === actualizado.id ? actualizado : p)));
+      actualizarPedido(actualizado);
     } catch (err) {
       setError(primerError(err));
     } finally {
       setOcupado(null);
     }
+  };
+
+  const actualizarPedido = (actualizado) => {
+    setPedidos((lista) => lista.map((p) => (p.id === actualizado.id ? actualizado : p)));
   };
 
   return (
@@ -66,7 +72,7 @@ export default function ClientePedidos() {
 
       {nuevoPedido && (
         <div style={{ marginBottom: '16px' }}>
-          <Alert type="success" title="¡Pedido confirmado!" message={`Tu pedido #${nuevoPedido} está pendiente de pago.`} />
+          <Alert type="success" title="¡Pedido confirmado!" message={`Tu pedido #${nuevoPedido} está listo para pagar. Abre el detalle y presiona "Pagar".`} />
         </div>
       )}
 
@@ -129,11 +135,30 @@ export default function ClientePedidos() {
                     </div>
                   </div>
 
-                  {pedido.puede_cancelar && (
-                    <div style={{ marginTop: '8px' }}>
-                      <Button variant="danger" size="sm" onClick={() => cancelar(pedido)} disabled={ocupado === pedido.id}>
-                        {ocupado === pedido.id ? 'Cancelando...' : 'Cancelar pedido'}
-                      </Button>
+                                    {pedido.transacciones.length > 0 && (
+                    <div style={{ fontSize: '13px', color: 'var(--text-light)', marginTop: '8px' }}>
+                      <strong style={{ color: 'var(--color-dark)' }}>Pagos</strong>
+                      {pedido.transacciones.map((t) => (
+                        <div key={t.id}>
+                          {t.forma_texto}{t.tarjeta ? ` (${t.tarjeta})` : ''} · {t.estado_texto}
+                          {t.id_transaccion_externa ? ` · Ref. ${t.id_transaccion_externa}` : ''}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {(pedido.puede_pagar || pedido.puede_cancelar) && (
+                    <div style={{ marginTop: '8px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      {pedido.puede_pagar && (
+                        <Button variant="primary" size="sm" onClick={() => setPedidoAPagar(pedido)}>
+                          Pagar
+                        </Button>
+                      )}
+                      {pedido.puede_cancelar && (
+                        <Button variant="danger" size="sm" onClick={() => cancelar(pedido)} disabled={ocupado === pedido.id}>
+                          {ocupado === pedido.id ? 'Cancelando...' : 'Cancelar pedido'}
+                        </Button>
+                      )}
                     </div>
                   )}
                 </div>
@@ -142,6 +167,13 @@ export default function ClientePedidos() {
           );
         })}
       </div>
+            {pedidoAPagar && (
+        <PagarPedidoModal
+          pedido={pedidoAPagar}
+          onClose={() => setPedidoAPagar(null)}
+          onPagado={actualizarPedido}
+        />
+      )}
     </div>
   );
 }
