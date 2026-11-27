@@ -6,6 +6,10 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from rest_framework.views import APIView
+from rest_framework.permissions import IsAdminUser
+from .models import Usuario
+
 from .models import Usuario, PasswordResetCode
 from .serializers import (
     LoginSerializer,
@@ -124,3 +128,17 @@ class PasswordResetConfirmView(generics.GenericAPIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response({'detail': 'Contraseña actualizada correctamente. Ya puedes iniciar sesión.'}, status=status.HTTP_200_OK)
+
+class ClientesActivosView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def get(self, request):
+        total = Usuario.objects.filter(
+            estado_cuenta=Usuario.EstadoCuenta.ACTIVA,
+            is_staff=False,
+            perfil_piloto__isnull=True,
+            perfil_tecnico__isnull=True,
+            perfil_vendedor__isnull=True
+        ).count()
+
+        return Response({'total': total})

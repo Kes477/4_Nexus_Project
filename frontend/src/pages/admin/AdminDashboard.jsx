@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Users, ChevronRight, UserCheck, Wrench, TrendingUp, Battery, Droplet, Wind, RotateCcw, BarChart3, MapPin, Activity, AlertTriangle } from 'lucide-react';
 import { Button, IconButton, Badge, Tabs } from '../../components/ui';
+import axiosClient from '../../api/axiosClient';
+import { getDrones, actualizarEstadoDron } from '../../api/droneService';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -44,6 +46,105 @@ export default function AdminDashboard() {
     boxSizing: 'border-box'
   };
 
+  const [actualizandoDron, setActualizandoDron] = useState(null);
+  const [clientesActivos, setClientesActivos] = useState(null);
+  const [totalPilotos, setTotalPilotos] = useState(null);
+
+  const cambiarEstado = async (id, nuevoEstado) => {
+    setActualizandoDron(id);
+
+    try {
+        const actualizado = await actualizarEstadoDron(
+            id,
+            nuevoEstado
+        );
+
+        setDrones(prev =>
+            prev.map(dron =>
+                dron.id === id ? actualizado : dron
+            )
+        );
+
+    } catch {
+        alert('No se pudo actualizar el estado del dron');
+    } finally {
+        setActualizandoDron(null);
+    }
+   };
+
+  const [drones, setDrones] = useState([]);
+  const [cargandoDrones, setCargandoDrones] = useState(true);
+  const [errorDrones, setErrorDrones] = useState('');
+
+  const [filtroModelo, setFiltroModelo] = useState('');
+  const [filtroTipo, setFiltroTipo] = useState('');
+  const [filtroEstado, setFiltroEstado] = useState('');
+
+  const modelos = [...new Set(drones.map(d => d.modelo))];
+
+  const tipos = [...new Set(drones.map(d => d.tipo_producto))];
+
+  const estados = [...new Set(drones.map(d => d.estado))];
+
+  const dronesFiltrados = drones.filter(dron =>
+    (!filtroModelo || dron.modelo === filtroModelo) &&
+    (!filtroTipo || dron.tipo_producto === filtroTipo) &&
+    (!filtroEstado || dron.estado === filtroEstado)
+  );
+
+  const coloresEstado = {
+    DISPONIBLE: 'success',
+    ALQUILADO: 'info',
+    EN_MANTENIMIENTO: 'warning'
+  };
+
+  const celdaStyle = {
+    padding: '16px',
+    fontSize: '14px',
+    textAlign: 'left',
+    borderBottom: '1px solid var(--light-gray)'
+  };
+
+  const filtroStyle = {
+    width: '100%',
+    padding: '8px',
+    marginTop: '8px',
+    borderRadius: '6px',
+    border: '1px solid var(--light-gray)',
+    backgroundColor: 'var(--white)',
+    color: 'var(--color-dark)'
+  };
+
+  useEffect(() => {
+  // Devuelve clientes activos
+    axiosClient.get('/auth/clientes/activos/')
+        .then(response => {
+            setClientesActivos(response.data.total);
+        })
+        .catch(error => {
+            console.error(error);
+        });
+
+        // Devuelve total de pilotos
+    axiosClient.get('/pilotos/total/')
+        .then(response => {
+            setTotalPilotos(response.data.total);
+        })
+        .catch(error => {
+            console.error('Error al consultar pilotos:', error);
+        });
+     
+        // Devuelve drones
+    getDrones()
+        .then(setDrones)
+        .catch(() => {
+            setErrorDrones('No se pudo cargar la flota');
+        })
+        .finally(() => {
+            setCargandoDrones(false);
+        });
+  }, []);
+
   return (
     <div style={{ 
       width: '100%', 
@@ -82,13 +183,12 @@ export default function AdminDashboard() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px', marginBottom: '32px' }}>
         <div style={cardStyle}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-            <span style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--text-light)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Clientes activos</span>
+            <span style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--text-light)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Clientes</span>
             <div style={{ backgroundColor: 'rgba(4, 201, 166, 0.1)', padding: '8px', borderRadius: '8px' }}>
               <Users size={20} color="var(--color-success)" />
             </div>
           </div>
-          <p style={{ margin: 0, fontSize: '28px', fontWeight: '900' }}>48 <span style={{ fontSize: '16px', fontWeight: '500', color: 'var(--text-light)' }}>clientes</span></p>
-          <p style={{ margin: '6px 0 0 0', fontSize: '13px', color: 'var(--color-success)', fontWeight: '600' }}>+12% respecto al mes anterior</p>
+          <p style={{ margin: 0, fontSize: '28px', fontWeight: '900' }}>{clientesActivos ?? '—'}{' '} <span style={{ fontSize: '16px', fontWeight: '500', color: 'var(--text-light)' }}>clientes activos</span></p>
         </div>
         
         <div style={cardStyle}>
@@ -104,13 +204,12 @@ export default function AdminDashboard() {
 
         <div style={cardStyle}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-            <span style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--text-light)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Técnicos y soporte</span>
+            <span style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--text-light)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Pilotos</span>
             <div style={{ backgroundColor: 'rgba(4, 201, 166, 0.1)', padding: '8px', borderRadius: '8px' }}>
               <Wrench size={20} color="var(--color-primary)" />
             </div>
           </div>
-          <p style={{ margin: 0, fontSize: '28px', fontWeight: '900' }}>8 <span style={{ fontSize: '16px', fontWeight: '500', color: 'var(--text-light)' }}>técnicos</span></p>
-          <p style={{ margin: '6px 0 0 0', fontSize: '13px', color: 'var(--text-light)', fontWeight: '500' }}>3 en taller técnico</p>
+          <p style={{ margin: 0, fontSize: '28px', fontWeight: '900' }}>{totalPilotos ?? '—'}{' '} <span style={{ fontSize: '16px', fontWeight: '500', color: 'var(--text-light)' }}>pilotos</span></p>
         </div>
 
         <div style={cardStyle}>
@@ -127,12 +226,13 @@ export default function AdminDashboard() {
 
       <div style={{ marginBottom: '24px' }}>
         <Tabs 
-          tabs={["Métricas y Finanzas", "Mapa en Vivo", "Simulador de Vuelo", "Flota y Personal"]} 
+          tabs={["Métricas y Finanzas", "Mapa en Vivo", "Simulador de Vuelo", "Estado de Drones"]} 
           activeTab={activeTab} 
           onChange={setActiveTab} 
         />
       </div>
-
+ 
+      {/* Pestaña 1 */} 
       {activeTab === 0 && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '24px' }}>
           <div style={panelStyle}>
@@ -232,40 +332,180 @@ export default function AdminDashboard() {
 
       {activeTab === 3 && (
         <div style={panelStyle}>
-          <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Users size={20} color="var(--color-primary)"/> Control de Flota y Personal
-          </h3>
-          
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-              <thead style={{ backgroundColor: 'var(--bg-color)', borderBottom: '2px solid var(--light-gray)' }}>
+
+    <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '20px'
+    }}>
+        <h3 style={{
+            margin: 0,
+            fontSize: '18px',
+            fontWeight: '800',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+        }}>
+            <MapPin size={20} color="var(--color-primary)" />
+            Flota de Drones
+        </h3>
+
+        <Badge
+            text={`${dronesFiltrados.length} drones`}
+            color="primary"
+        />
+    </div>
+
+    <div style={{ overflowX: 'auto' }}>
+
+        <table style={{
+            width: '100%',
+            borderCollapse: 'collapse'
+        }}>
+
+            <thead style={{
+                backgroundColor: 'var(--bg-color)'
+            }}>
                 <tr>
-                  <th style={{ padding: '16px', fontSize: '13px', color: 'var(--text-light)' }}>Dron</th>
-                  <th style={{ padding: '16px', fontSize: '13px', color: 'var(--text-light)' }}>Piloto Asignado</th>
-                  <th style={{ padding: '16px', fontSize: '13px', color: 'var(--text-light)' }}>Batería</th>
-                  <th style={{ padding: '16px', fontSize: '13px', color: 'var(--text-light)' }}>Estado</th>
+                    <th style={celdaStyle}>
+                        Modelo
+
+                        <select
+                            style={filtroStyle}
+                            value={filtroModelo}
+                            onChange={e => setFiltroModelo(e.target.value)}
+                        >
+                            <option value="">Todos</option>
+
+                            {modelos.map(modelo => (
+                                <option key={modelo} value={modelo}>
+                                    {modelo}
+                                </option>
+                            ))}
+                        </select>
+                    </th>
+
+                    <th style={celdaStyle}>
+                        Tipo de producto
+
+                        <select
+                            style={filtroStyle}
+                            value={filtroTipo}
+                            onChange={e => setFiltroTipo(e.target.value)}
+                        >
+                            <option value="">Todos</option>
+
+                            {tipos.map(tipo => (
+                                <option key={tipo} value={tipo}>
+                                    {tipo}
+                                </option>
+                            ))}
+                        </select>
+                    </th>
+
+                    <th style={celdaStyle}>
+                        Estado
+
+                        <select
+                            style={filtroStyle}
+                            value={filtroEstado}
+                            onChange={e => setFiltroEstado(e.target.value)}
+                        >
+                            <option value="">Todos</option>
+
+                            {estados.map(estado => (
+                                <option key={estado} value={estado}>
+                                    {estado}
+                                </option>
+                            ))}
+                        </select>
+                    </th>
                 </tr>
-              </thead>
-              <tbody>
-                {[
-                  { dron: 'Agras T40', piloto: 'Carlos Mendoza', bat: '85%', estado: 'En vuelo', color: 'success' },
-                  { dron: 'Matrice 300 RTK', piloto: 'Ana Bermúdez', bat: '42%', estado: 'En vuelo', color: 'warning' },
-                  { dron: 'GRIFF Aviation 300', piloto: 'Roberto Varela', bat: '100%', estado: 'En base', color: 'info' },
-                  { dron: 'DJI Agras T30', piloto: 'Sofía Reyes', bat: '15%', estado: 'Crítico', color: 'danger' }
-                ].map((row, i) => (
-                  <tr key={i} style={{ borderBottom: '1px solid var(--light-gray)' }}>
-                    <td style={{ padding: '16px', fontWeight: 'bold', fontSize: '14px' }}>{row.dron}</td>
-                    <td style={{ padding: '16px', fontSize: '14px' }}>{row.piloto}</td>
-                    <td style={{ padding: '16px', fontWeight: 'bold', fontSize: '14px', color: row.color === 'danger' ? 'var(--color-danger)' : 'var(--color-dark)' }}>{row.bat}</td>
-                    <td style={{ padding: '16px' }}>
-                      <Badge text={row.estado} color={row.color} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+            </thead>
+
+            <tbody>
+
+                {cargandoDrones ? (
+                    <tr>
+                        <td colSpan={3} style={celdaStyle}>
+                            Cargando drones...
+                        </td>
+                    </tr>
+                ) : errorDrones ? (
+                    <tr>
+                        <td colSpan={3} style={celdaStyle}>
+                            {errorDrones}
+                        </td>
+                    </tr>
+                ) : dronesFiltrados.length === 0 ? (
+                    <tr>
+                        <td colSpan={3} style={celdaStyle}>
+                            No se encontraron drones.
+                        </td>
+                    </tr>
+                ) : (
+                    dronesFiltrados.map(dron => (
+                        <tr key={dron.id}>
+
+                            <td style={celdaStyle}>
+                                {dron.modelo}
+                            </td>
+
+                            <td style={celdaStyle}>
+                                {dron.tipo_producto}
+                            </td>
+
+                            <td style={celdaStyle}>
+    <select
+        style={{
+            ...filtroStyle,
+            marginTop: 0,
+            color: `var(--color-${coloresEstado[dron.estado]})`,
+            fontWeight: 'bold'
+        }}
+        value={dron.estado}
+        disabled={actualizandoDron !== null}
+        onChange={e =>
+            cambiarEstado(dron.id, e.target.value)
+        }
+    >
+        <option value="DISPONIBLE">
+            Disponible
+        </option>
+
+        <option value="ALQUILADO">
+            Alquilado
+        </option>
+
+        <option value="EN_MANTENIMIENTO">
+            En Mantenimiento
+        </option>
+    </select>
+</td>
+                        </tr>
+                    ))
+                )}
+
+            </tbody>
+        </table>
+
+    </div>
+
+    <Button
+        variant="outline-dark"
+        size="sm"
+        onClick={() => {
+            setFiltroModelo('');
+            setFiltroTipo('');
+            setFiltroEstado('');
+        }}
+        style={{ marginTop: '16px' }}
+    >
+        Limpiar filtros
+    </Button>
+
+    </div>
       )}
 
       <div style={{ border: '1px solid var(--color-primary)', padding: '32px', backgroundColor: 'var(--white)', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '24px', textAlign: 'left', borderRadius: '8px', width: '100%', boxSizing: 'border-box', marginTop: '30px' }}>
