@@ -2,6 +2,7 @@ from django.db import models
 from django.core.exceptions import ValidationError
 from .estados import FabricaEstados
 
+
 class Mision(models.Model):
     class TipoMision(models.TextChoices):
         PERSONAL = 'PERSONAL', 'Uso Personal'
@@ -16,27 +17,27 @@ class Mision(models.Model):
         CANCELADA = 'CANCELADA', 'Cancelada'
 
     piloto = models.ForeignKey(
-        'usuarios.Piloto', 
-        on_delete=models.PROTECT, 
+        'usuarios.Piloto',
+        on_delete=models.PROTECT,
         related_name='misiones',
         null=True,
         blank=True
     )
-    
+
     producto = models.ForeignKey(
-        'catalogo.Producto', 
-        on_delete=models.SET_NULL, 
-        null=True, 
+        'catalogo.Producto',
+        on_delete=models.SET_NULL,
+        null=True,
         blank=True,
         related_name='misiones'
     )
-    
+
     tipo_mision = models.CharField(
-        max_length=20, 
-        choices=TipoMision.choices, 
+        max_length=20,
+        choices=TipoMision.choices,
         default=TipoMision.TERCEROS
     )
-    
+
     categoria = models.CharField(max_length=50, help_text="Ej: fotografia, fumigacion, monitoreo, etc.")
     cliente_nombre = models.CharField(max_length=200, blank=True, null=True)
     ubicacion = models.CharField(max_length=255)
@@ -66,8 +67,7 @@ class Mision(models.Model):
         if self.pk is not None:
             estado_anterior = type(self).objects.filter(pk=self.pk).values_list('estado', flat=True).first()
             if estado_anterior and estado_anterior != self.estado:
-                mision_anterior = type(self)(estado=estado_anterior)
-                if not mision_anterior.puede_cambiar_a(self.estado):
+                if not FabricaEstados.obtener(estado_anterior).puede_cambiar_a(self.estado):
                     raise ValidationError({'estado': 'La transición de estado no está permitida.'})
 
         estados_cerrados = [self.Estado.COMPLETADA, self.Estado.RECHAZADA, self.Estado.CANCELADA]

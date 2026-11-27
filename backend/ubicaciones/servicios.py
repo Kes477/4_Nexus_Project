@@ -5,10 +5,10 @@ from .models import Direccion
 
 @transaction.atomic
 def guardar_direccion(usuario, datos, direccion=None):
-    "Crea o edita una dirección del usuario y mantiene una sola principal."
-    quiere_principal = datos.pop('es_principal', False)
+    quiere_principal = datos.pop('es_principal', None)
+    es_nueva = direccion is None
 
-    if direccion is None:
+    if es_nueva:
         direccion = Direccion(usuario=usuario)
         if not usuario.direcciones.exists():
             quiere_principal = True
@@ -16,13 +16,25 @@ def guardar_direccion(usuario, datos, direccion=None):
     for campo, valor in datos.items():
         setattr(direccion, campo, valor)
 
-    if quiere_principal:
-        (usuario.direcciones
-            .select_for_update()
-            .filter(es_principal=True)
-            .exclude(pk=direccion.pk)
-            .update(es_principal=False))
+    list(usuario.direcciones.select_for_update().values_list('pk', flat=True))
+
+    if quiere_principal is True:
+        otrras = usuario.direcciones.filter(es_principal=True)
+        if direccion.pk is not None:
+            otrras = otrras.exclude(pk=direccion.pk)
+        otrras.update(es_principal=False)
         direccion.es_principal = True
+        direccion.save()
+        return direccion
+
+    if quiere_principal is False and not es_nueva and direccion.es_principal:
+        direccion.es_principal = False
+        direccion.save()
+        siguiente = usuario.direcciones.exclude(pk=direccion.pk).order_by('id').first()
+        if siguiente:
+            siguiente.es_principal = True
+            siguiente.save(update_fields=['es_principal'])
+        return direccion
 
     direccion.save()
     return direccion
@@ -30,7 +42,6 @@ def guardar_direccion(usuario, datos, direccion=None):
 
 @transaction.atomic
 def eliminar_direccion(direccion):
-    "Borra la dirección; si era la principal, la siguiente toma su lugar."
     usuario = direccion.usuario
     era_principal = direccion.es_principal
     direccion.delete()
