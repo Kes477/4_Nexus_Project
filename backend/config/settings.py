@@ -55,7 +55,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'django_filters',
     'storages',
-    
+
     # Aplicaciones del Proyecto
     'usuarios',
     'catalogo',
@@ -217,7 +217,7 @@ EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '4nexus.contact@gmail.com')
-EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '') 
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', '4 Nexus <4nexus.contact@gmail.com>')
 
 
@@ -245,6 +245,10 @@ SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
 }
+
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
+
+PASSWORD_RESET_TIMEOUT = 3600
 
 
 

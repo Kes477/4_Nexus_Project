@@ -4,11 +4,12 @@ import { render, screen, waitFor, act } from "@testing-library/react";
 import { useContext, useEffect } from "react";
 import { AuthProvider } from "./AuthProvider";
 import { AuthContext } from "./authContext";
-import { getPerfil, loginUser, logout, registerUser, updatePerfil } from "../api/authService";
+import { getPerfil, getMisPermisos, loginUser, logout, registerUser, updatePerfil } from "../api/authService";
 
 // Simular las funciones de la API
 vi.mock("../api/authService", () => ({
   getPerfil: vi.fn(),
+  getMisPermisos: vi.fn(),
   loginUser: vi.fn(),
   logout: vi.fn(),
   registerUser: vi.fn(),
@@ -51,7 +52,42 @@ function renderizar(){
 
 describe("AuthProvider", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
+
+    getMisPermisos.mockImplementation(async () => {
+      const llamadasLogin = loginUser.mock.results;
+      const llamadasPerfil = getPerfil.mock.results;
+
+      const resultado =
+        llamadasLogin[llamadasLogin.length - 1] ??
+        llamadasPerfil[llamadasPerfil.length - 1];
+
+      if (!resultado) {
+        throw new Error("No existe identidad simulada");
+      }
+
+      const usuario = await resultado.value;
+
+      const equivalencias = {
+        cliente: "Cliente",
+        admin: "Administrador",
+        piloto: "Piloto",
+        tecnico: "Tecnico",
+        vendedor: "Vendedor"
+      };
+
+      return {
+        id: usuario.id,
+        is_active: true,
+        estado_cuenta: "A",
+        is_superuser: usuario.is_superuser === true,
+        roles: [{
+          id: 1,
+          nombre: equivalencias[usuario.rol]
+        }],
+        permisos_efectivos: []
+      };
+    });
     localStorage.clear();
     contextoActual = null;
   });
@@ -69,9 +105,9 @@ describe("AuthProvider", () => {
     localStorage.setItem("access_token", "token-simulado");
 
     getPerfil.mockResolvedValue({
-      email: "cliente@test.com",
+      id: 1, email: "cliente@test.com",
       is_staff: false,
-      rol: 'cliente', 
+      rol: 'cliente',
     });
 
     renderizar();
@@ -89,7 +125,7 @@ describe("AuthProvider", () => {
 
   it("3. Inicia sesión correctamente", async () => {
     const usuario = {
-      email: "cliente@test.com",
+      id: 1, email: "cliente@test.com",
       is_staff: false,
       rol:'cliente',
     };
@@ -111,15 +147,26 @@ describe("AuthProvider", () => {
       "cliente@test.com",
       "password123"
     );
-   
-    expect(resultado).toEqual(usuario);
+
+    expect(resultado).toEqual({
+      ...usuario,
+      roles: ["Cliente"],
+      permisos_efectivos: [],
+      is_active: true,
+      estado_cuenta: "A",
+      is_superuser: false
+    });
+
+    expect(getMisPermisos).toHaveBeenCalledOnce();
+    expect(contextoActual.tieneRol("Cliente")).toBe(true);
+    expect(contextoActual.tieneRol("Administrador")).toBe(false);
     expect(screen.getByTestId("usuario")).toHaveTextContent("cliente@test.com");
     expect(screen.getByTestId("rol")).toHaveTextContent("cliente");
   });
 
-  it("4. Asigna el rol administrador a usuarios staff", async () => {
+  it("4. Reconoce el rol administrador devuelto por el backend", async () => {
     loginUser.mockResolvedValue({
-      email: "admin@test.com",
+      id: 2, email: "admin@test.com",
       is_staff: true,
       rol:'admin',
     });
@@ -135,7 +182,7 @@ describe("AuthProvider", () => {
 
   it("5. Cierra sesión y elimina el usuario del contexto", async () => {
     loginUser.mockResolvedValue({
-      email: "cliente@test.com",
+      id: 1, email: "cliente@test.com",
       is_staff: false,
       rol:'cliente',
     });
@@ -150,7 +197,7 @@ describe("AuthProvider", () => {
       contextoActual.cerrarSesion();
     });
 
-    expect(logout).toHaveBeenCalledOnce();
+    expect(logout).toHaveBeenCalledTimes(2);
     expect(screen.getByTestId("usuario")).toHaveTextContent("Sin usuario");
     expect(screen.getByTestId("rol")).toHaveTextContent("Sin rol");
   });
@@ -172,7 +219,7 @@ describe("AuthProvider", () => {
 
   it("7 un piloto recibe un rol desde el backend", async () => {
     loginUser.mockResolvedValue({
-      email: "piloto@test.com",
+      id: 3, email: "piloto@test.com",
       is_staff: false,
       rol:'piloto',
     });
@@ -201,8 +248,8 @@ describe("AuthProvider", () => {
   });
 
   it("9. Actualizar el perfil cambia el usuario del contexto", async () => {
-    loginUser.mockResolvedValue({ email: "cliente@test.com", rol: "cliente", first_name: "Ana" });
-    updatePerfil.mockResolvedValue({ email: "cliente@test.com", rol: "cliente", first_name: "Andrea" });
+    loginUser.mockResolvedValue({ id: 1, email: "cliente@test.com", rol: "cliente", first_name: "Ana" });
+    updatePerfil.mockResolvedValue({ id: 1, email: "cliente@test.com", rol: "cliente", first_name: "Andrea" });
 
     renderizar();
 
@@ -216,4 +263,101 @@ describe("AuthProvider", () => {
     expect(updatePerfil).toHaveBeenCalledWith({ first_name: "Andrea" });
     expect(contextoActual.usuario.first_name).toBe("Andrea");
   });
+
+  it("10. Reconoce multiples roles y permisos", async () => {
+    loginUser.mockResolvedValue({
+      id: 10,
+      email: "empleado@test.com",
+      rol: "tecnico"
+    });
+
+    getMisPermisos.mockResolvedValue({
+      id: 10,
+      is_active: true,
+      estado_cuenta: "A",
+      is_superuser: false,
+      roles: [
+        { id: 1, nombre: "Tecnico" },
+        { id: 2, nombre: "Piloto" }
+      ],
+      permisos_efectivos: [
+        "reparaciones.view_ordenservicio"
+      ]
+    });
+
+    renderizar();
+
+    await act(async () => {
+      await contextoActual.iniciarSesion(
+        "empleado@test.com", "password123"
+      );
+    });
+
+    expect(contextoActual.tieneRol("Tecnico")).toBe(true);
+    expect(contextoActual.tieneRol("Piloto")).toBe(true);
+    expect(contextoActual.tieneRol("Administrador")).toBe(false);
+
+    expect(contextoActual.tienePermiso(
+      "reparaciones.view_ordenservicio"
+    )).toBe(true);
+
+    expect(contextoActual.tienePermiso(
+      "reparaciones.change_ordenservicio"
+    )).toBe(false);
+  });
+
+  it("11. Rechaza una identidad incompatible", async () => {
+    loginUser.mockResolvedValue({
+      id: 10,
+      email: "empleado@test.com"
+    });
+
+    getMisPermisos.mockResolvedValue({
+      id: 99,
+      is_active: true,
+      roles: [],
+      permisos_efectivos: []
+    });
+
+    renderizar();
+
+    await act(async () => {
+      await expect(
+        contextoActual.iniciarSesion(
+          "empleado@test.com", "password123"
+        )
+      ).rejects.toThrow("Identidad de usuario incompatible");
+    });
+
+    expect(contextoActual.usuario).toBeNull();
+    expect(contextoActual.cargando).toBe(false);
+  });
+
+  it("12. Rechaza una cuenta inactiva", async () => {
+    loginUser.mockResolvedValue({
+      id: 10,
+      email: "empleado@test.com"
+    });
+
+    getMisPermisos.mockResolvedValue({
+      id: 10,
+      is_active: false,
+      roles: [],
+      permisos_efectivos: []
+    });
+
+    renderizar();
+
+    await act(async () => {
+      await expect(
+        contextoActual.iniciarSesion(
+          "empleado@test.com", "password123"
+        )
+      ).rejects.toThrow();
+    });
+
+    expect(contextoActual.usuario).toBeNull();
+    expect(contextoActual.cargando).toBe(false);
+  });
+
 });
