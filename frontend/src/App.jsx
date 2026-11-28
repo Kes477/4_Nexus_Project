@@ -3,10 +3,7 @@ import { Routes, Route } from 'react-router-dom';
 import RutaProtegida from './components/auth/RutaProtegida';
 import { useSesion } from './hooks/useSesion';
 
-import {
-    PERMISOS,
-    PERMISOS_PANEL_GESTION
-} from './config/permisos';
+import { PERMISOS, PERMISOS_PANEL_GESTION } from './config/permisos';
 
 // PÁGINAS PÚBLICAS
 import LandingPage from './pages/LandingPage';
@@ -64,7 +61,7 @@ import PilotoPerfil from './pages/piloto/PilotoPerfil';
 // PÁGINAS DEL TÉCNICO
 import TecnicoOrdenes from './pages/tecnico/TecnicoOrdenes';
 import TecnicoPerfil from './pages/tecnico/TecnicoPerfil';
-import TecnicoSoporte from './pages/tecnico/TecnicoSoporte'; 
+import TecnicoSoporte from './pages/tecnico/TecnicoSoporte';
 
 // COMPONENTE PRINCIPAL
 function App() {
@@ -79,14 +76,15 @@ function App() {
       <Route path="/catalog" element={<Catalog />} />
       <Route path="/suscription" element={<Suscription />} />
       <Route path="/formulario-contacto" element={<FormularioContacto />} />
-      
-      <Route 
-        path="/seleccionar-panel" 
+
+      {/* SELECCIÓN DE PANEL (PROTEGIDA) */}
+      <Route
+        path="/seleccionar-panel"
         element={
           <RutaProtegida>
             <SeleccionarPanel />
           </RutaProtegida>
-        } 
+        }
       />
 
       {/* RUTAS PRIVADAS DEL CLIENTE */}
@@ -109,7 +107,7 @@ function App() {
       </Route>
 
       {/* RUTAS PRIVADAS DEL ADMINISTRADOR */}
-      <Route 
+      <Route
         element={
           <RutaProtegida
             rol="admin"
@@ -119,110 +117,95 @@ function App() {
         }
       >
         <Route path="/admin" element={<AdminLayout />}>
-          
-          <Route 
-            index 
+          <Route
+            index
             element={
               <RutaProtegida rol="admin">
                 <AdminDashboard />
               </RutaProtegida>
-            } 
+            }
           />
-          
-          <Route 
-            path="roles" 
+          <Route
+            path="roles"
             element={
               <RutaProtegida permiso={PERMISOS.CONSULTAR_ROLES}>
                 <AdminRoles />
               </RutaProtegida>
-            } 
+            }
           />
-
-          <Route 
-            path="usuarios" 
+          <Route
+            path="usuarios"
             element={
               <RutaProtegida permiso={PERMISOS.CONSULTAR_USUARIOS}>
                 <AdminUsuarios />
               </RutaProtegida>
-            } 
+            }
           />
-
-          <Route 
-            path="precios" 
+          <Route
+            path="precios"
             element={
               <RutaProtegida rol="admin">
                 <AdminPrecios />
               </RutaProtegida>
-            } 
+            }
           />
-
-          <Route 
-            path="historial" 
+          <Route
+            path="historial"
             element={
               <RutaProtegida rol="admin">
                 <AdminHistorial />
               </RutaProtegida>
-            } 
+            }
           />
-
-          <Route 
-            path="soporte" 
+          <Route
+            path="soporte"
             element={
               <RutaProtegida rol="admin">
                 <AdminSoporte />
               </RutaProtegida>
-            } 
+            }
           />
-
           <Route path="perfil" element={<AdminPerfil onLogout={cerrarSesion} />} />
-
-          {/* OPERACIONES GLOBALES */}
-          <Route 
-            path="operaciones" 
+          <Route
+            path="operaciones"
             element={
               <RutaProtegida rol="admin">
                 <AdminOperaciones />
               </RutaProtegida>
-            } 
+            }
           />
-          
-          <Route 
-            path="operaciones/config-carga" 
+          <Route
+            path="operaciones/config-carga"
             element={
               <RutaProtegida rol="admin">
                 <AdminConfigCarga />
               </RutaProtegida>
-            } 
+            }
           />
-          
-          <Route 
-            path="operaciones/checkout" 
+          <Route
+            path="operaciones/checkout"
             element={
               <RutaProtegida rol="admin">
                 <AdminCheckout />
               </RutaProtegida>
-            } 
+            }
           />
-          
-          <Route 
-            path="operaciones/tracking" 
+          <Route
+            path="operaciones/tracking"
             element={
               <RutaProtegida rol="admin">
                 <AdminTracking />
               </RutaProtegida>
-            } 
+            }
           />
-
-          {/* GESTIÓN DE ÓRDENES DE SERVICIO */}
-          <Route 
-            path="reparaciones" 
+          <Route
+            path="reparaciones"
             element={
               <RutaProtegida permiso={PERMISOS.CONSULTAR_REPARACIONES}>
                 <AdminReparaciones />
               </RutaProtegida>
-            } 
+            }
           />
-
         </Route>
       </Route>
 
