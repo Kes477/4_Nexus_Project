@@ -2,10 +2,7 @@ import { Routes, Route } from 'react-router-dom';
 import RutaProtegida from './components/auth/RutaProtegida';
 import { useSesion } from './hooks/useSesion';
 
-// ======================================================
 // PÁGINAS PÚBLICAS
-// ======================================================
-
 import LandingPage from './pages/LandingPage';
 import Login from './pages/Login';
 import Catalog from './pages/Catalog';
@@ -13,21 +10,13 @@ import Suscription from './pages/Suscription';
 import FormularioContacto from './pages/FormularioContacto';
 import NotFound from './pages/NotFound';
 
-// ======================================================
 // LAYOUTS
-// ======================================================
-
 import { ClienteLayout } from './layouts/ClienteLayout';
 import AdminLayout from './layouts/AdminLayout';
 import { PilotoLayout } from './layouts/PilotoLayout';
 import TecnicoLayout from './layouts/TecnicoLayout';
 
-// Pendiente: Layout de vendedores.
-
-// ======================================================
 // PÁGINAS DEL CLIENTE
-// ======================================================
-
 import { ClienteDashboard } from './pages/cliente/ClienteDashboard';
 import { ClienteSuscripciones } from './pages/cliente/ClienteSuscripciones';
 import { ClienteDrones } from './pages/cliente/ClienteDrones';
@@ -42,10 +31,7 @@ import ClientePedidos from './pages/cliente/ClientePedidos';
 import ClienteReparaciones from './pages/cliente/ClienteReparaciones';
 import HistorialReparaciones from './pages/cliente/HistorialReparaciones';
 
-// ======================================================
 // PÁGINAS DEL ADMINISTRADOR
-// ======================================================
-
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminUsuarios from './pages/admin/AdminUsuarios';
 import AdminPrecios from './pages/admin/AdminPrecios';
@@ -58,10 +44,7 @@ import AdminConfigCarga from './pages/admin/AdminConfigCarga';
 import AdminCheckout from './pages/admin/AdminCheckout';
 import AdminTracking from './pages/admin/AdminTracking';
 
-// ======================================================
 // PÁGINAS DEL PILOTO
-// ======================================================
-
 import PilotoDashboard from './pages/piloto/PilotoDashboard';
 import PilotoMisiones from './pages/piloto/PilotoMisiones';
 import PilotoBitacora from './pages/piloto/PilotoBitacora';
@@ -70,47 +53,25 @@ import PilotoHistorial from './pages/piloto/PilotoHistorial';
 import PilotoSoporte from './pages/piloto/PilotoSoporte';
 import PilotoPerfil from './pages/piloto/PilotoPerfil';
 
-// ======================================================
 // PÁGINAS DEL TÉCNICO
-// ======================================================
-
 import TecnicoOrdenes from './pages/tecnico/TecnicoOrdenes';
 import TecnicoPerfil from './pages/tecnico/TecnicoPerfil';
-// NOTA: Asegúrate de mover tu archivo TecnicoSoporte.jsx a la carpeta src/pages/tecnico/
 import TecnicoSoporte from './pages/tecnico/TecnicoSoporte'; 
 
-// ======================================================
-// PÁGINAS DEL VENDEDOR
-// ======================================================
-
-// Pendiente de implementación.
-
-// ======================================================
 // COMPONENTE PRINCIPAL
-// ======================================================
-
 function App() {
-
   const { cerrarSesion } = useSesion();
 
   return (
-
     <Routes>
-
-      {/* ================================================= */}
-      {/* 1. RUTAS PÚBLICAS                                 */}
-      {/* ================================================= */}
-
+      {/* 1. RUTAS PÚBLICAS */}
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<Login />} />
       <Route path="/catalog" element={<Catalog />} />
       <Route path="/suscription" element={<Suscription />} />
       <Route path="/formulario-contacto" element={<FormularioContacto />} />
 
-      {/* ================================================= */}
-      {/* 2. RUTAS PRIVADAS DEL CLIENTE                     */}
-      {/* ================================================= */}
-
+      {/* 2. RUTAS PRIVADAS DEL CLIENTE */}
       <Route element={<RutaProtegida rol="cliente" />}>
         <Route path="/cliente" element={<ClienteLayout />}>
           <Route index element={<ClienteDashboard />} />
@@ -129,10 +90,7 @@ function App() {
         </Route>
       </Route>
 
-      {/* ================================================= */}
-      {/* 3. RUTAS PRIVADAS DEL ADMINISTRADOR               */}
-      {/* ================================================= */}
-
+      {/* 3. RUTAS PRIVADAS DEL ADMINISTRADOR */}
       <Route element={<RutaProtegida rol="admin" />}>
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminDashboard />} />
@@ -149,10 +107,7 @@ function App() {
         </Route>
       </Route>
 
-      {/* ================================================= */}
-      {/* 4. RUTAS PRIVADAS DEL PILOTO                      */}
-      {/* ================================================= */}
-
+      {/* 4. RUTAS PRIVADAS DEL PILOTO */}
       <Route element={<RutaProtegida rol="piloto" />}>
         <Route path="/piloto" element={<PilotoLayout />}>
           <Route index element={<PilotoDashboard />} />
@@ -165,35 +120,20 @@ function App() {
         </Route>
       </Route>
 
-      {/* ================================================= */}
-      {/* 5. RUTAS PRIVADAS DEL TÉCNICO                     */}
-      {/* ================================================= */}
-
+      {/* 5. RUTAS PRIVADAS DEL TÉCNICO */}
       <Route element={<RutaProtegida rol="tecnico" />}>
         <Route path="/tecnico" element={<TecnicoLayout />}>
           <Route index element={<TecnicoOrdenes />} />
           <Route path="ordenes" element={<TecnicoOrdenes />} />
-          
-          {/* RUTA DE SOPORTE CORREGIDA */}
           <Route path="soporte" element={<TecnicoSoporte />} />
-          
           <Route path="perfil" element={<TecnicoPerfil onLogout={cerrarSesion} />} />
         </Route>
       </Route>
 
-      {/* ================================================= */}
-      {/* 6. RUTAS PRIVADAS DEL VENDEDOR                    */}
-      {/* ================================================= */}
-
-      {/* Pendiente de implementación. */}
-
-      {/* 7. RUTA PARA ERRORES 404                          */}
+      {/* 6. RUTA PARA ERRORES 404 */}
       <Route path="*" element={<NotFound />} />
-
     </Routes>
-
   );
-
 }
 
 export default App;
