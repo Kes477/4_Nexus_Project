@@ -67,13 +67,31 @@ class UsuarioSerializer(serializers.ModelSerializer):
     )
     foto_perfil_url = serializers.SerializerMethodField() # <-- NUEVO CAMPO
 
+
+    roles = serializers.SerializerMethodField()
+
+    permisos_efectivos = serializers.SerializerMethodField()
+
+    is_superuser = serializers.BooleanField(read_only=True)
+
     class Meta:
         model = Usuario
-        fields = ['id', 'email', 'first_name', 'last_name', 'no_identificacion', 'telefono',
-                  'fecha_nacimiento', 'foto_perfil', 'foto_perfil_url', 'estado_cuenta', 'is_active', 'is_staff',
-                  'date_joined', 'rol', 'perfil_piloto', 'perfil_tecnico']
-        read_only_fields = ['id', 'email', 'no_identificacion', 'estado_cuenta',
-                            'is_active', 'is_staff', 'date_joined', 'rol']
+        fields = (
+            'id', 'email', 'first_name', 'last_name',
+            'no_identificacion', 'telefono',
+            'fecha_nacimiento', 'foto_perfil',
+            'foto_perfil_url', 'estado_cuenta',
+            'is_active', 'is_staff', 'date_joined',
+            'rol', 'perfil_piloto', 'perfil_tecnico',
+            'roles', 'permisos_efectivos', 'is_superuser',
+        )
+        read_only_fields = (
+            'id', 'email', 'no_identificacion',
+            'foto_perfil_url', 'estado_cuenta',
+            'is_active', 'is_staff', 'date_joined',
+            'rol', 'roles', 'permisos_efectivos',
+            'is_superuser',
+        )
 
     def get_foto_perfil_url(self, obj):
         if obj.foto_perfil:
@@ -96,6 +114,24 @@ class UsuarioSerializer(serializers.ModelSerializer):
         except Tecnico.DoesNotExist:
             return None
         return TecnicoSerializer(perfil).data
+
+
+    def get_roles(self, obj):
+
+        return list(
+            obj.groups.order_by("name")
+            .values_list("name", flat=True)
+        )
+
+    def get_permisos_efectivos(self, obj):
+
+        if not obj.is_active:
+            return []
+
+        return sorted(
+            obj.get_all_permissions()
+        )
+
 
 
 class CambiarPasswordSerializer(serializers.Serializer):
@@ -137,8 +173,46 @@ class CambiarPasswordSerializer(serializers.Serializer):
 
 class LoginSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
+
+        from rest_framework.exceptions import PermissionDenied
+
+        identificador = attrs.get(self.username_field)
+        password = attrs.get("password")
+
+        try:
+            usuario = Usuario._default_manager.get_by_natural_key(
+                identificador
+            )
+        except Usuario.DoesNotExist:
+            usuario = None
+
+        if usuario is not None and (
+            not usuario.is_active
+            or usuario.estado_cuenta != "A"
+        ):
+            if password and usuario.check_password(password):
+
+                if usuario.estado_cuenta == "B":
+                    raise PermissionDenied({
+                        "code": "cuenta_bloqueada",
+                        "detail": (
+                            "Tu cuenta ha sido bloqueada por el "
+                            "administrador. Contacta con soporte."
+                        )
+                    })
+
+                raise PermissionDenied({
+                    "code": "cuenta_inactiva",
+                    "detail": (
+                        "Tu cuenta se encuentra inactiva. "
+                        "Contacta con el administrador."
+                    )
+                })
+
         data = super().validate(attrs)
-        data['usuario'] = UsuarioSerializer(self.user, context=self.context).data
+
+        data["usuario"] = UsuarioSerializer(self.user, context=self.context).data
+
         return data
 
 

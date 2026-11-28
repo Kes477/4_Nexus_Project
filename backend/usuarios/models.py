@@ -29,6 +29,23 @@ class UsuarioManager(BaseUserManager):
 
 
 class Usuario(AbstractUser):
+
+    class Meta:
+        permissions = [
+            (
+                "gestionar_estado_usuario",
+                "Puede gestionar estados de cuenta"
+            ),
+            (
+                "configurar_permisos_rol",
+                "Puede configurar permisos de roles"
+            ),
+            (
+                "asignar_roles_usuario",
+                "Puede asignar roles a usuarios"
+            ),
+        ]
+
     class EstadoCuenta(models.TextChoices):
         ACTIVA = 'A', 'Activa'
         INACTIVA = 'I', 'Inactiva'

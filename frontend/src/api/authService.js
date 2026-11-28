@@ -45,3 +45,11 @@ export const changePassword = async (password_actual, password_nueva) => {
     });
     return data;
 };
+
+export const getMisPermisos = async () => {
+    const { data } = await axiosClient.get(
+        "/gestion/mis-permisos/"
+    );
+
+    return data;
+};

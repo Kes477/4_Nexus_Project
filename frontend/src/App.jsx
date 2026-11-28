@@ -1,10 +1,17 @@
+import ActivarCuenta from './pages/ActivarCuenta';
 import { Routes, Route } from 'react-router-dom';
 import RutaProtegida from './components/auth/RutaProtegida';
 import { useSesion } from './hooks/useSesion';
 
+import {
+    PERMISOS,
+    PERMISOS_PANEL_GESTION
+} from './config/permisos';
+
 // PÁGINAS PÚBLICAS
 import LandingPage from './pages/LandingPage';
 import Login from './pages/Login';
+import SeleccionarPanel from './pages/SeleccionarPanel';
 import Catalog from './pages/Catalog';
 import Suscription from './pages/Suscription';
 import FormularioContacto from './pages/FormularioContacto';
@@ -34,6 +41,7 @@ import HistorialReparaciones from './pages/cliente/HistorialReparaciones';
 // PÁGINAS DEL ADMINISTRADOR
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminUsuarios from './pages/admin/AdminUsuarios';
+import AdminRoles from './pages/admin/AdminRoles';
 import AdminPrecios from './pages/admin/AdminPrecios';
 import AdminOperaciones from './pages/admin/AdminOperaciones';
 import AdminReparaciones from './pages/admin/AdminReparaciones';
@@ -64,14 +72,24 @@ function App() {
 
   return (
     <Routes>
-      {/* 1. RUTAS PÚBLICAS */}
+      {/* RUTAS PÚBLICAS */}
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/activar-cuenta" element={<ActivarCuenta />} />
       <Route path="/catalog" element={<Catalog />} />
       <Route path="/suscription" element={<Suscription />} />
       <Route path="/formulario-contacto" element={<FormularioContacto />} />
+      
+      <Route 
+        path="/seleccionar-panel" 
+        element={
+          <RutaProtegida>
+            <SeleccionarPanel />
+          </RutaProtegida>
+        } 
+      />
 
-      {/* 2. RUTAS PRIVADAS DEL CLIENTE */}
+      {/* RUTAS PRIVADAS DEL CLIENTE */}
       <Route element={<RutaProtegida rol="cliente" />}>
         <Route path="/cliente" element={<ClienteLayout />}>
           <Route index element={<ClienteDashboard />} />
@@ -90,24 +108,125 @@ function App() {
         </Route>
       </Route>
 
-      {/* 3. RUTAS PRIVADAS DEL ADMINISTRADOR */}
-      <Route element={<RutaProtegida rol="admin" />}>
+      {/* RUTAS PRIVADAS DEL ADMINISTRADOR */}
+      <Route 
+        element={
+          <RutaProtegida
+            rol="admin"
+            permisos={PERMISOS_PANEL_GESTION}
+            rolOPermisos={true}
+          />
+        }
+      >
         <Route path="/admin" element={<AdminLayout />}>
-          <Route index element={<AdminDashboard />} />
-          <Route path="usuarios" element={<AdminUsuarios />} />
-          <Route path="precios" element={<AdminPrecios />} />
-          <Route path="historial" element={<AdminHistorial />} />
-          <Route path="soporte" element={<AdminSoporte />} />
+          
+          <Route 
+            index 
+            element={
+              <RutaProtegida rol="admin">
+                <AdminDashboard />
+              </RutaProtegida>
+            } 
+          />
+          
+          <Route 
+            path="roles" 
+            element={
+              <RutaProtegida permiso={PERMISOS.CONSULTAR_ROLES}>
+                <AdminRoles />
+              </RutaProtegida>
+            } 
+          />
+
+          <Route 
+            path="usuarios" 
+            element={
+              <RutaProtegida permiso={PERMISOS.CONSULTAR_USUARIOS}>
+                <AdminUsuarios />
+              </RutaProtegida>
+            } 
+          />
+
+          <Route 
+            path="precios" 
+            element={
+              <RutaProtegida rol="admin">
+                <AdminPrecios />
+              </RutaProtegida>
+            } 
+          />
+
+          <Route 
+            path="historial" 
+            element={
+              <RutaProtegida rol="admin">
+                <AdminHistorial />
+              </RutaProtegida>
+            } 
+          />
+
+          <Route 
+            path="soporte" 
+            element={
+              <RutaProtegida rol="admin">
+                <AdminSoporte />
+              </RutaProtegida>
+            } 
+          />
+
           <Route path="perfil" element={<AdminPerfil onLogout={cerrarSesion} />} />
-          <Route path="operaciones" element={<AdminOperaciones />} />
-          <Route path="operaciones/config-carga" element={<AdminConfigCarga />} />
-          <Route path="operaciones/checkout" element={<AdminCheckout />} />
-          <Route path="operaciones/tracking" element={<AdminTracking />} />
-          <Route path="reparaciones" element={<AdminReparaciones />} />
+
+          {/* OPERACIONES GLOBALES */}
+          <Route 
+            path="operaciones" 
+            element={
+              <RutaProtegida rol="admin">
+                <AdminOperaciones />
+              </RutaProtegida>
+            } 
+          />
+          
+          <Route 
+            path="operaciones/config-carga" 
+            element={
+              <RutaProtegida rol="admin">
+                <AdminConfigCarga />
+              </RutaProtegida>
+            } 
+          />
+          
+          <Route 
+            path="operaciones/checkout" 
+            element={
+              <RutaProtegida rol="admin">
+                <AdminCheckout />
+              </RutaProtegida>
+            } 
+          />
+          
+          <Route 
+            path="operaciones/tracking" 
+            element={
+              <RutaProtegida rol="admin">
+                <AdminTracking />
+              </RutaProtegida>
+            } 
+          />
+
+          {/* GESTIÓN DE ÓRDENES DE SERVICIO */}
+          <Route 
+            path="reparaciones" 
+            element={
+              <RutaProtegida permiso={PERMISOS.CONSULTAR_REPARACIONES}>
+                <AdminReparaciones />
+              </RutaProtegida>
+            } 
+          />
+
         </Route>
       </Route>
 
-      {/* 4. RUTAS PRIVADAS DEL PILOTO */}
+      {/* RUTAS PRIVADAS DEL PILOTO */}
       <Route element={<RutaProtegida rol="piloto" />}>
         <Route path="/piloto" element={<PilotoLayout />}>
           <Route index element={<PilotoDashboard />} />
@@ -120,7 +239,7 @@ function App() {
         </Route>
       </Route>
 
-      {/* 5. RUTAS PRIVADAS DEL TÉCNICO */}
+      {/* RUTAS PRIVADAS DEL TÉCNICO */}
       <Route element={<RutaProtegida rol="tecnico" />}>
         <Route path="/tecnico" element={<TecnicoLayout />}>
           <Route index element={<TecnicoOrdenes />} />
@@ -130,7 +249,7 @@ function App() {
         </Route>
       </Route>
 
-      {/* 6. RUTA PARA ERRORES 404 */}
+      {/* RUTA PARA ERRORES 404 */}
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

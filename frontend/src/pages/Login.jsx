@@ -4,14 +4,16 @@ import { Shield, ChevronLeft, ArrowRight, Check, Eye, EyeOff } from 'lucide-reac
 
 import { Input, Button, Alert, IconButton, Checkbox, Modal } from '../components/ui';
 import { useSesion } from '../hooks/useSesion';
+import { obtenerDestinoInicial } from '../config/paneles';
 import { useTheme } from '../context/useTheme';
 
+/* Configuracion anterior retirada.
 const PANEL_POR_ROL = {
     admin: '/admin',
     piloto: '/piloto',
     tecnico: '/tecnico',
     vendedor: '/vendedor',
-};
+}; */
 
 const REGEX = {
     email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
@@ -39,7 +41,7 @@ const Login = () => {
 
     const [step, setStep] = useState('login');
     const [regSubStep, setRegSubStep] = useState(1);
-    
+
     const [recoverSubStep, setRecoverSubStep] = useState(1);
     const [recoverEmail, setRecoverEmail] = useState('');
     const [recoverCode, setRecoverCode] = useState('');
@@ -91,7 +93,7 @@ const Login = () => {
 
     const validateField = (field, value) => {
         if (!value && field !== 'telefono') return 'Este campo es obligatorio.';
-        
+
         switch (field) {
             case 'email':
                 if (!REGEX.email.test(value)) return 'Ingresa un correo electrónico válido.';
@@ -123,7 +125,7 @@ const Login = () => {
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData({ ...formData, [name]: value });
-        
+
         if (errors[name]) {
             setErrors({ ...errors, [name]: '' });
         }
@@ -138,7 +140,7 @@ const Login = () => {
 
     const validateStep = (currentStep) => {
         const newErrors = {};
-        const fieldsToValidate = currentStep === 1 
+        const fieldsToValidate = currentStep === 1
             ? ['email', 'password', 'confirmPassword']
             : ['nombres', 'apellidos', 'telefono', 'identificacion'];
 
@@ -153,7 +155,12 @@ const Login = () => {
     };
 
     const irAlPanel = (usuario) => {
-        const destino = PANEL_POR_ROL[usuario.rol] ?? redirectTo;
+        const destinoInicial = obtenerDestinoInicial(usuario);
+        const destino =
+            destinoInicial === '/cliente' &&
+            /^\/cliente(?:\/|$)/.test(redirectTo)
+                ? redirectTo
+                : destinoInicial;
         navigate(destino, {
             replace: true,
             state: location.state?.selectedDrone ? { selectedDrone: location.state.selectedDrone } : undefined,
@@ -163,7 +170,7 @@ const Login = () => {
     const submitLogin = async (e) => {
         if (e) e.preventDefault();
         setErrorMsg(null);
-        
+
         if (!formData.email || !formData.password) {
             setErrorMsg("Por favor, ingresa tu correo y contraseña.");
             return;
@@ -175,10 +182,29 @@ const Login = () => {
             localStorage.setItem('user_email', usuario.email);
             irAlPanel(usuario);
         } catch (error) {
-            if (error.response?.status === 401) {
-                setErrorMsg('Correo o contraseña incorrectos.');
+            const respuesta = error.response?.data;
+            const codigo = respuesta?.code;
+
+            if (codigo === 'cuenta_bloqueada') {
+                setErrorMsg(
+                    'Tu cuenta ha sido bloqueada por el administrador. Contacta con soporte.'
+                );
+            } else if (codigo === 'cuenta_inactiva') {
+                setErrorMsg(
+                    'Tu cuenta se encuentra inactiva. Contacta con el administrador.'
+                );
+            } else if (error.response?.status === 401) {
+                setErrorMsg(
+                    'Correo o contrase\u00f1a incorrectos.'
+                );
+            } else if (error.response?.status === 429) {
+                setErrorMsg(
+                    'Demasiados intentos. Intenta nuevamente m\u00e1s tarde.'
+                );
             } else {
-                setErrorMsg('No se pudo conectar con el servidor. Intenta de nuevo.');
+                setErrorMsg(
+                    'No se pudo iniciar sesi\u00f3n. Intenta de nuevo.'
+                );
             }
         } finally {
             setIsLoading(false);
@@ -201,16 +227,16 @@ const Login = () => {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email: recoverEmail })
                 });
-                
+
                 const contentType = res.headers.get("content-type");
                 if (!contentType || !contentType.includes("application/json")) {
                     throw new Error(`Error del servidor (${res.status}). Verifica la ruta del backend.`);
                 }
-                
+
                 const data = await res.json();
-                
+
                 if (!res.ok) throw new Error(data.detail || 'Error al solicitar el código');
-                
+
                 setSuccessMsg(data.detail || 'Código enviado a tu correo.');
                 setRecoverSubStep(2);
             } catch (error) {
@@ -234,25 +260,25 @@ const Login = () => {
                 const res = await fetch(`${import.meta.env.VITE_API_URL}/auth/password-reset/confirm/`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
+                    body: JSON.stringify({
                         email: recoverEmail,
                         code: recoverCode,
                         new_password: recoverNewPassword
                     })
                 });
-                
+
                 const contentType = res.headers.get("content-type");
                 if (!contentType || !contentType.includes("application/json")) {
                     throw new Error(`Error del servidor (${res.status}). Verifica la ruta del backend.`);
                 }
 
                 const data = await res.json();
-                
+
                 if (!res.ok) {
                     const firstError = Object.values(data)[0];
                     throw new Error(Array.isArray(firstError) ? firstError[0] : firstError);
                 }
-                
+
                 setStep('success');
             } catch (error) {
                 setErrorMsg(error.message || 'Código incorrecto o expirado.');
@@ -264,7 +290,7 @@ const Login = () => {
 
     const handleNextStep = async () => {
         setErrorMsg(null);
-        
+
         if (step === 'register') {
             if (regSubStep === 1) {
                 if (validateStep(1)) setRegSubStep(2);
@@ -305,17 +331,17 @@ const Login = () => {
     };
 
     const labelStyle = { fontSize: '11px', fontWeight: '700', color: 'var(--text-light)', marginBottom: '6px', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' };
-    
-    const toggleEyeStyle = { 
-        position: 'absolute', 
-        right: '15px', 
-        top: '24px', 
-        transform: 'translateY(-50%)', 
-        background: 'none', 
-        border: 'none', 
-        cursor: 'pointer', 
-        color: 'var(--text-light)', 
-        zIndex: 10 
+
+    const toggleEyeStyle = {
+        position: 'absolute',
+        right: '15px',
+        top: '24px',
+        transform: 'translateY(-50%)',
+        background: 'none',
+        border: 'none',
+        cursor: 'pointer',
+        color: 'var(--text-light)',
+        zIndex: 10
     };
 
     return (
@@ -336,13 +362,13 @@ const Login = () => {
                     <div style={{ position: 'absolute', top: '-10%', left: '-10%', width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(4, 201, 166, 0.25) 0%, transparent 70%)' }} />
                     <div style={{ position: 'absolute', bottom: '-10%', right: '-10%', width: '400px', height: '400px', background: 'radial-gradient(circle, rgba(4, 201, 166, 0.15) 0%, transparent 70%)' }} />
                     <div style={{ zIndex: 10, marginTop: 'auto', marginBottom: 'auto' }}>
-                        
-                        <div style={{ 
-                            background: 'var(--color-primary)', 
-                            padding: '10px 20px', 
-                            borderRadius: '8px', 
-                            width: 'fit-content', 
-                            marginBottom: '24px', 
+
+                        <div style={{
+                            background: 'var(--color-primary)',
+                            padding: '10px 20px',
+                            borderRadius: '8px',
+                            width: 'fit-content',
+                            marginBottom: '24px',
                             boxShadow: '0 4px 15px rgba(4, 201, 166, 0.3)',
                             display: 'flex',
                             alignItems: 'center',
@@ -387,7 +413,7 @@ const Login = () => {
                         {loginMessage && step ==='login' && !errorMsg &&(
                             <div style={{ width: '100%', maxWidth: '360px', marginBottom: '16px' }} >
                                 <Alert type='info' title = 'Aviso' message={loginMessage}/>
-                            </div>    
+                            </div>
                         )}
                         {successMsg && step === 'recover' && !errorMsg && (
                             <div style={{ width: '100%', maxWidth: '360px', marginBottom: '16px' }}>
@@ -445,7 +471,7 @@ const Login = () => {
                                                     {mostrarPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                                                 </button>
                                             </div>
-                                            
+
                                             <div style={{ marginTop: '8px', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                                                 <CheckItem label="8+ caracteres" isValid={passChecks.length} />
                                                 <CheckItem label="Mayúscula" isValid={passChecks.upper} />
@@ -497,7 +523,7 @@ const Login = () => {
                                             </p>
                                         </div>
 
-                                        <div style={{ 
+                                        <div style={{
                                             display: 'flex', alignItems: 'flex-start', gap: '12px', marginTop: '12px', width: '100%', textAlign: 'left', background: 'var(--bg-color)', padding: '16px', borderRadius: '8px', border: '1px solid var(--light-gray)', boxSizing: 'border-box'
                                         }}>
                                             <div style={{ marginTop: '2px' }}>
@@ -531,11 +557,11 @@ const Login = () => {
                                             Ingresa el correo asociado a tu cuenta y te enviaremos un código de 6 dígitos para restablecer tu contraseña.
                                         </p>
                                         <label style={labelStyle}>Correo Electrónico</label>
-                                        <Input 
-                                            type="email" 
-                                            icon="fa-envelope" 
-                                            value={recoverEmail} 
-                                            onChange={(e) => setRecoverEmail(e.target.value)} 
+                                        <Input
+                                            type="email"
+                                            icon="fa-envelope"
+                                            value={recoverEmail}
+                                            onChange={(e) => setRecoverEmail(e.target.value)}
                                             placeholder="tu@correo.com"
                                         />
                                     </div>
@@ -546,14 +572,14 @@ const Login = () => {
                                         <p style={{ fontSize: '13px', color: 'var(--text-light)', margin: 0 }}>
                                             Revisa tu correo <strong>{recoverEmail}</strong>. El código expira en 3 minutos.
                                         </p>
-                                        
+
                                         <div>
                                             <label style={labelStyle}>Código de Verificación</label>
-                                            <Input 
-                                                type="text" 
-                                                icon="fa-key" 
-                                                value={recoverCode} 
-                                                onChange={(e) => setRecoverCode(e.target.value.replace(/\D/g, '').slice(0, 6))} 
+                                            <Input
+                                                type="text"
+                                                icon="fa-key"
+                                                value={recoverCode}
+                                                onChange={(e) => setRecoverCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                                                 placeholder="123456"
                                                 maxLength={6}
                                             />
@@ -642,9 +668,9 @@ const Login = () => {
                 </div>
             </div>
 
-            <Modal 
-                isOpen={isTermsModalOpen} 
-                onClose={() => setIsTermsModalOpen(false)} 
+            <Modal
+                isOpen={isTermsModalOpen}
+                onClose={() => setIsTermsModalOpen(false)}
                 title="Términos y Condiciones de Uso"
                 style={{ width: '1000px', maxWidth: '95vw' }}
             >

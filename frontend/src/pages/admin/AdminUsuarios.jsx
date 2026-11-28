@@ -1,208 +1,892 @@
-import React, { useState } from 'react';
-import { Users, ShieldCheck, Wrench, Eye, MapPin, Calendar, Mail, Phone } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 
-import { Button, SearchBar, Select, Badge, Modal, Tabs } from '../../components/ui';
+import {
+    Users,
+    UserCheck,
+    UserMinus,
+    ShieldAlert,
+    Eye,
+    RefreshCw
+} from 'lucide-react';
+
+import {
+    Button,
+    SearchBar,
+    Select,
+    Badge,
+    Modal,
+    Tabs
+} from '../../components/ui';
+
+import { listarUsuarios } from '../../api/usuariosService';
+import { useSesion } from '../../hooks/useSesion';
+import { PERMISOS } from '../../config/permisos';
+
+import FormularioEmpleado from '../../components/admin/FormularioEmpleado';
+import FormularioEdicionUsuario from '../../components/admin/FormularioEdicionUsuario';
+import FormularioEstadoUsuario from '../../components/admin/FormularioEstadoUsuario';
+import AsignacionRolesModal from '../../components/admin/AsignacionRolesModal';
+import PermisosUsuarioModal from '../../components/admin/PermisosUsuarioModal';
+import PerfilesUsuarioModal from '../../components/admin/PerfilesUsuarioModal';
+import ActivacionUsuarioModal from '../../components/admin/ActivacionUsuarioModal';
+
+
+const ESTADOS = {
+    A: 'Activo',
+    I: 'Inactivo',
+    S: 'Suspendido',
+    B: 'Bloqueado'
+};
+
+const COLORES = {
+    A: 'success',
+    I: 'warning',
+    S: 'warning',
+    B: 'warning'
+};
+
+const estiloTarjeta = {
+    padding: '20px',
+    backgroundColor: 'var(--white)',
+    border: '1px solid var(--light-gray)',
+    borderRadius: '8px'
+};
+
+const estiloCelda = {
+    padding: '16px',
+    textAlign: 'left',
+    borderBottom: '1px solid var(--light-gray)',
+    fontSize: '14px'
+};
+
+function Indicador({ titulo, cantidad, Icono }) {
+
+    return (
+        <div style={estiloTarjeta}>
+            <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                color: 'var(--text-light)'
+            }}>
+                <span>{titulo}</span>
+                <Icono size={20} />
+            </div>
+
+            <h2 style={{
+                margin: '12px 0 0',
+                fontSize: '30px',
+                fontWeight: '800',
+
+                color: 'var(--color-dark)'
+            }}>
+                {cantidad}
+            </h2>
+        </div>
+    );
+}
+
+function EstadoUsuario({ estado }) {
+
+    return (
+        <Badge
+            text={ESTADOS[estado] || estado}
+            color={COLORES[estado] || 'info'}
+        />
+    );
+}
 
 export default function AdminUsuarios() {
-  const [activeTab, setActiveTab] = useState(0); 
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("ALL");
-  const [selectedUser, setSelectedUser] = useState(null);
 
-  const tabNames = ["Clientes", "Pilotos", "Técnicos"];
+    const {
+        usuario: usuarioSesion,
+        tienePermiso
+    } = useSesion();
 
-  const [clients] = useState([
-    { id: "CL-101", init: "CV", name: "Comercializadora El Valle", companyOrDept: "Sector agrícola", loc: "Danlí, El Paraíso", email: "contacto@elvalle.hn", phone: "+504 9876-5432", status: "Activo", joinDate: "12/01/2024" },
-    { id: "CL-102", init: "FA", name: "Finca El Agualote", companyOrDept: "Producción cafetalera", loc: "San Esteban, Olancho", email: "finca_agualote@gmail.com", phone: "+504 8811-2233", status: "Activo", joinDate: "05/03/2024" },
-    { id: "CL-103", init: "AG", name: "Agropecuaria Yoro", companyOrDept: "Cultivos de palma", loc: "El Progreso, Yoro", email: "operaciones@agroyoro.hn", phone: "+504 3344-5566", status: "Inactivo", joinDate: "18/08/2023" },
-    { id: "CL-104", init: "HN", name: "Hacienda Nueva Esperanza", companyOrDept: "Ganadería y forraje", loc: "Juticalpa, Olancho", email: "admin@nesperanza.hn", phone: "+504 9900-1122", status: "Pendiente", joinDate: "20/07/2026" },
-  ]);
+    const [usuarios, setUsuarios] = useState([]);
+    const [cargando, setCargando] = useState(true);
+    const [error, setError] = useState('');
+    const [recarga, setRecarga] = useState(0);
 
-  const [pilots] = useState([
-    { id: "PL-201", init: "JR", name: "Javier Reyes", companyOrDept: "Licencia AHAC A-492", loc: "Catacamas, Olancho", email: "javier.reyes@4nexus.hn", phone: "+504 9788-4411", status: "Activo", joinDate: "10/02/2023" },
-    { id: "PL-202", init: "MG", name: "María Gómez", companyOrDept: "Licencia AHAC A-501", loc: "Comayagua", email: "maria.gomez@4nexus.hn", phone: "+504 8765-4321", status: "Activo", joinDate: "15/11/2023" },
-    { id: "PL-203", init: "HR", name: "Héctor Ramírez", companyOrDept: "Licencia AHAC A-388", loc: "Choluteca", email: "hector.ramirez@4nexus.hn", phone: "+504 9123-8899", status: "Inactivo", joinDate: "01/06/2022" },
-  ]);
+    const [activeTab, setActiveTab] = useState(0);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [statusFilter, setStatusFilter] = useState('ALL');
+    const [rolFilter, setRolFilter] = useState('ALL');
 
-  const [techs] = useState([
-    { id: "TC-301", init: "LN", name: "Luis Navarro", companyOrDept: "Sistemas eléctricos", loc: "Tegucigalpa", email: "luis.navarro@4nexus.hn", phone: "+504 9455-6677", status: "Activo", joinDate: "14/01/2022" },
-    { id: "TC-302", init: "RE", name: "Roberto Escalante", companyOrDept: "Mecánica estructural", loc: "San Pedro Sula", email: "roberto.e@4nexus.hn", phone: "+504 8899-0011", status: "Activo", joinDate: "09/05/2023" },
-  ]);
+    const [selectedUser, setSelectedUser] = useState(null);
 
-  const getFilteredData = (dataset) => {
-    return dataset.filter(item => {
-      const matchesText = (item.name && item.name.toLowerCase().includes(searchTerm.toLowerCase()));
-      const matchesStatus = statusFilter === "ALL" || item.status === statusFilter;
-      return matchesText && matchesStatus;
-    });
-  };
+    const [usuarioRoles, setUsuarioRoles] = useState(null);
 
-  const currentData = activeTab === 0 ? clients : activeTab === 1 ? pilots : techs;
+    const [usuarioPermisos, setUsuarioPermisos] = useState(null);
 
-  const tableHeaderStyle = {
-    backgroundColor: 'var(--bg-color)',
-    borderBottom: '2px solid var(--light-gray)',
-    padding: '16px',
-    fontSize: '13px',
-    fontWeight: 'bold',
-    color: 'var(--text-light)',
-    textTransform: 'uppercase',
-    letterSpacing: '0.5px',
-    textAlign: 'left'
-  };
+    const [usuarioPerfiles, setUsuarioPerfiles] = useState(null);
 
-  const tableCellStyle = {
-    padding: '16px',
-    fontSize: '14px',
-    borderBottom: '1px solid var(--light-gray)',
-    color: 'var(--color-dark)'
-  };
+    const [usuarioActivacion, setUsuarioActivacion] = useState(null);
 
-  return (
-    <div style={{ 
-      width: '100%', 
-      minHeight: '100vh', 
-      padding: '32px 48px', 
-      boxSizing: 'border-box',
-      backgroundColor: 'var(--bg-color)',
-      color: 'var(--color-dark)',
-      fontFamily: "'Roboto', sans-serif"
-    }}>
-      
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '32px', paddingBottom: '20px', borderBottom: '1px solid var(--light-gray)' }}>
-        <h1 style={{ margin: 0, fontSize: '28px', fontWeight: '900', color: 'var(--color-dark)' }}>Panel de Control e Inspección Operativa</h1>
-        <p style={{ margin: 0, fontSize: '15px', color: 'var(--text-light)', fontWeight: '500' }}>Valida cuentas de clientes, certificaciones de pilotos, técnicos y aprueba reservas.</p>
-      </div>
+    function perfilesActualizados() {
+        setUsuarioPerfiles(null);
+        setMensaje('Perfil actualizado correctamente.');
+        setRecarga(n => n + 1);
+    }
 
-      <div style={{ marginBottom: '24px' }}>
-        <Tabs 
-          tabs={[
-            `Clientes (${clients.length})`, 
-            `Pilotos (${pilots.length})`, 
-            `Técnicos (${techs.length})`
-          ]} 
-          activeTab={activeTab} 
-          onChange={setActiveTab} 
-        />
-      </div>
+    const puedeAsignarRoles = tienePermiso(
+        PERMISOS.ASIGNAR_ROLES
+    ) && tienePermiso(
+        PERMISOS.CONSULTAR_ROLES
+    );
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
-        <div style={{ flex: 1, minWidth: '250px', maxWidth: '400px' }}>
-          <SearchBar 
-            placeholder="Buscar por nombre o empresa..." 
-            value={searchTerm} 
-            onChange={(e) => setSearchTerm(e.target.value)} 
-          />
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <Select 
-            options={[
-              {value: "ALL", label: "Todos los estados"}, 
-              {value: "Activo", label: "Activos"}, 
-              {value: "Inactivo", label: "Inactivos"},
-              {value: "Pendiente", label: "Pendientes"}
-            ]} 
-            value={statusFilter} 
-            onChange={(e) => setStatusFilter(e.target.value)} 
-          />
-        </div>
-      </div>
+    function rolesActualizados(usuario) {
 
-      <div style={{ backgroundColor: 'var(--white)', border: '1px solid var(--light-gray)', borderRadius: '8px', overflow: 'hidden', width: '100%', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '800px' }}>
-            <thead>
-              <tr>
-                <th style={tableHeaderStyle}>Usuario o empresa</th>
-                <th style={tableHeaderStyle}>Sector / Licencia</th>
-                <th style={tableHeaderStyle}>Ubicación</th>
-                <th style={{ ...tableHeaderStyle, textAlign: 'center' }}>Estado</th>
-                <th style={{ ...tableHeaderStyle, textAlign: 'center' }}>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {getFilteredData(currentData).map(item => (
-                <tr key={item.id} style={{ transition: 'background-color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-color)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
-                  <td style={tableCellStyle}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <div style={{ 
-                        width: '36px', height: '36px', 
-                        borderRadius: '8px', 
-                        backgroundColor: 'rgba(4, 201, 166, 0.1)', 
-                        color: 'var(--color-primary)', 
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', 
-                        fontWeight: 'bold', fontSize: '14px', flexShrink: 0,
-                        border: '1px solid rgba(4, 201, 166, 0.2)'
-                      }}>
-                        {item.init}
-                      </div>
-                      <div>
-                        <span style={{ display: 'block', fontWeight: 'bold', color: 'var(--color-dark)' }}>{item.name}</span>
-                        <span style={{ fontSize: '12px', fontFamily: 'monospace', color: 'var(--text-light)' }}>{item.id}</span>
-                      </div>
+        setUsuarioRoles(null);
+        setSelectedUser(null);
+
+        setMensaje(
+            `Roles actualizados correctamente. ID: ${usuario.id}`
+        );
+
+        setRecarga(n => n + 1);
+    }
+
+    const [usuarioEdicion, setUsuarioEdicion] = useState(null);
+
+    const [usuarioEstado, setUsuarioEstado] = useState(null);
+
+    const puedeGestionarEstado = tienePermiso(
+        PERMISOS.GESTIONAR_ESTADOS
+    );
+
+    function estadoActualizado(usuario) {
+
+        setUsuarioEstado(null);
+        setSelectedUser(null);
+
+        setMensaje(
+            `Estado actualizado correctamente. ID: ${usuario.id}`
+        );
+
+        setRecarga(n => n + 1);
+    }
+
+
+    const puedeEditar = tienePermiso(
+        PERMISOS.EDITAR_USUARIOS
+    );
+
+    function usuarioActualizado(usuario) {
+
+        setUsuarioEdicion(null);
+        setSelectedUser(null);
+
+        setMensaje(
+            `Usuario actualizado correctamente. ID: ${usuario.id}`
+        );
+
+        setRecarga(n => n + 1);
+    }
+
+
+    const [mostrarRegistro, setMostrarRegistro] = useState(false);
+    const [mensaje, setMensaje] = useState('');
+
+    const puedeRegistrar = tienePermiso(
+        PERMISOS.REGISTRAR_USUARIOS
+    );
+
+    function empleadoRegistrado(empleado) {
+
+        setMostrarRegistro(false);
+
+        setMensaje(
+            `Empleado registrado correctamente. ID: ${empleado.id}`
+        );
+
+        setActiveTab(0);
+        setSearchTerm('');
+        setStatusFilter('ALL');
+        setRolFilter('ALL');
+        setRecarga(n => n + 1);
+    }
+
+
+    const puedeConsultar = tienePermiso(
+        PERMISOS.CONSULTAR_USUARIOS
+    );
+
+    useEffect(() => {
+
+        if (!puedeConsultar) {
+            setUsuarios([]);
+            setCargando(false);
+            return;
+        }
+
+        const controller = new AbortController();
+
+        async function cargarUsuarios() {
+
+            setCargando(true);
+            setError('');
+            setUsuarios([]);
+            setSelectedUser(null);
+
+            try {
+
+                const datos = await listarUsuarios(
+                    { ordering: '-id' },
+                    controller.signal
+                );
+
+                if (controller.signal.aborted) {
+                    return;
+                }
+
+                if (Array.isArray(datos)) {
+
+                    setUsuarios(datos);
+
+                } else if (
+                    Array.isArray(datos.results)
+                    && !datos.next
+                ) {
+
+                    setUsuarios(datos.results);
+
+                } else {
+
+                    throw new Error(
+                        'La respuesta requiere soporte de paginacion.'
+                    );
+                }
+
+            } catch (err) {
+
+                if (controller.signal.aborted) {
+                    return;
+                }
+
+                setError(
+                    err.response?.data?.detail
+                    || err.message
+                    || 'No fue posible cargar los usuarios.'
+                );
+
+            } finally {
+
+                if (!controller.signal.aborted) {
+                    setCargando(false);
+                }
+            }
+        }
+
+        cargarUsuarios();
+
+        return () => controller.abort();
+
+    }, [recarga, puedeConsultar]);
+
+    const esInterno = (usuario) => {
+
+        return (
+            usuario.perfiles?.includes('empleado')
+            || usuario.roles?.some(
+                rol => rol !== 'Cliente'
+            )
+        );
+    };
+
+    const esCliente = (usuario) => {
+
+        return (
+            usuario.roles?.includes('Cliente')
+            || usuario.perfiles?.includes('cliente')
+        );
+    };
+
+    const rolesDisponibles = useMemo(() => {
+
+        return [...new Set(
+            usuarios.flatMap(
+                usuario => usuario.roles || []
+            )
+        )].sort();
+
+    }, [usuarios]);
+
+    const filtrados = useMemo(() => {
+
+        const texto = searchTerm.trim().toLowerCase();
+
+        return usuarios.filter(usuario => {
+
+            if (activeTab === 1 && !esInterno(usuario)) {
+                return false;
+            }
+
+            if (activeTab === 2 && !esCliente(usuario)) {
+                return false;
+            }
+
+            if (
+                statusFilter !== 'ALL'
+                && usuario.estado_cuenta !== statusFilter
+            ) {
+                return false;
+            }
+
+            if (
+                rolFilter !== 'ALL'
+                && !usuario.roles?.includes(rolFilter)
+            ) {
+                return false;
+            }
+
+            const contenido = [
+                usuario.nombre_completo,
+                usuario.first_name,
+                usuario.last_name,
+                usuario.email,
+                usuario.no_identificacion
+            ].join(' ').toLowerCase();
+
+            return contenido.includes(texto);
+
+        });
+
+    }, [
+        usuarios,
+        activeTab,
+        searchTerm,
+        statusFilter,
+        rolFilter
+    ]);
+
+    const totalActivos = usuarios.filter(
+        u => u.estado_cuenta === 'A'
+    ).length;
+
+    const totalInactivos = usuarios.filter(
+        u => u.estado_cuenta === 'I'
+    ).length;
+
+    const totalRestringidos = usuarios.filter(
+        u => ['S', 'B'].includes(u.estado_cuenta)
+    ).length;
+
+    if (!puedeConsultar) {
+
+        return (
+            <div style={{ padding: '32px' }}>
+                No tienes permiso para consultar usuarios.
+            </div>
+        );
+    }
+
+    return (
+
+        <div style={{
+            padding: '32px',
+            width: '100%',
+            boxSizing: 'border-box',
+            color: 'var(--color-dark)',
+            backgroundColor: 'var(--bg-color)'
+        }}>
+
+            <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '16px',
+                marginBottom: '24px'
+            }}>
+
+                <div>
+                    <h1 style={{ margin: 0 }}>
+                        Gestión de usuarios
+                    </h1>
+
+                    <p style={{ color: 'var(--text-light)' }}>
+                        Administración de cuentas y accesos.
+                    </p>
+                </div>
+
+
+                <div style={{
+                    display: 'flex',
+                    gap: '12px',
+                    flexWrap: 'wrap'
+                }}>
+
+                    {puedeRegistrar && (
+                        <Button
+                            variant="primary"
+                            onClick={() => {
+                                setMensaje('');
+                                setMostrarRegistro(true);
+                            }}
+                        >
+                            + Registrar empleado
+                        </Button>
+                    )}
+
+                <Button
+                    variant="outline-dark"
+                    onClick={() => setRecarga(n => n + 1)}
+                    disabled={cargando}
+                >
+                    <RefreshCw size={16} />
+                    Actualizar
+                </Button>
+
+                </div>
+
+
+            </div>
+
+            <div style={{
+                display: 'grid',
+                gridTemplateColumns:
+                    'repeat(auto-fit, minmax(180px, 1fr))',
+                gap: '16px',
+                marginBottom: '28px'
+            }}>
+
+                <Indicador
+                    titulo="Usuarios registrados"
+                    cantidad={cargando || error ? '—' : usuarios.length}
+                    Icono={Users}
+                />
+
+                <Indicador
+                    titulo="Cuentas activas"
+                    cantidad={cargando || error ? '—' : totalActivos}
+                    Icono={UserCheck}
+                />
+
+                <Indicador
+                    titulo="Cuentas inactivas"
+                    cantidad={cargando || error ? '—' : totalInactivos}
+                    Icono={UserMinus}
+                />
+
+                <Indicador
+                    titulo="Suspendidas o bloqueadas"
+                    cantidad={cargando || error ? '—' : totalRestringidos}
+                    Icono={ShieldAlert}
+                />
+
+            </div>
+
+            <Tabs
+                tabs={[
+                    `Todos (${usuarios.length})`,
+                    `Usuarios internos (${usuarios.filter(esInterno).length})`,
+                    `Clientes (${usuarios.filter(esCliente).length})`
+                ]}
+                activeTab={activeTab}
+                onChange={setActiveTab}
+            />
+
+            <div style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: '16px',
+                margin: '24px 0'
+            }}>
+
+                <div style={{ flex: 1, minWidth: '220px' }}>
+                    <SearchBar
+                        placeholder="Nombre, correo o identificación..."
+                        value={searchTerm}
+                        onChange={e => setSearchTerm(e.target.value)}
+                    />
+                </div>
+
+                <Select
+                    value={statusFilter}
+                    onChange={e => setStatusFilter(e.target.value)}
+                    options={[
+                        { value: 'ALL', label: 'Todos los estados' },
+                        { value: 'A', label: 'Activos' },
+                        { value: 'I', label: 'Inactivos' },
+                        { value: 'S', label: 'Suspendidos' },
+                        { value: 'B', label: 'Bloqueados' }
+                    ]}
+                />
+
+                <Select
+                    value={rolFilter}
+                    onChange={e => setRolFilter(e.target.value)}
+                    options={[
+                        { value: 'ALL', label: 'Todos los roles' },
+                        ...rolesDisponibles.map(rol => ({
+                            value: rol,
+                            label: rol
+                        }))
+                    ]}
+                />
+
+            </div>
+
+            {mensaje && (
+                <p role="status" style={{
+                    color: 'var(--color-success)',
+                    padding: '12px'
+                }}>
+                    {mensaje}
+                </p>
+            )}
+
+            {error && (
+                <p role="alert" style={{ color: '#dc2626' }}>
+                    {error}
+                </p>
+            )}
+
+            <div style={{
+                ...estiloTarjeta,
+                padding: 0,
+                overflowX: 'auto'
+            }}>
+
+                <table style={{
+                    width: '100%',
+                    borderCollapse: 'collapse',
+                    minWidth: '750px'
+                }}>
+
+                    <thead style={{
+                        backgroundColor: 'var(--bg-color)'
+                    }}>
+
+                        <tr>
+                            {[
+                                'ID',
+                                'Usuario',
+                                'Correo electrónico',
+                                'Roles',
+                                'Estado',
+                                'Acciones'
+                            ].map(titulo => (
+                                <th key={titulo} style={estiloCelda}>
+                                    {titulo}
+                                </th>
+                            ))}
+                        </tr>
+
+                    </thead>
+
+                    <tbody>
+
+                        {cargando && (
+                            <tr>
+                                <td colSpan={6} style={estiloCelda}>
+                                    Cargando usuarios...
+                                </td>
+                            </tr>
+                        )}
+
+                        {!cargando && !error && filtrados.map(usuario => (
+
+                            <tr key={usuario.id}>
+
+                                <td style={estiloCelda}>
+                                    {usuario.id}
+                                </td>
+
+                                <td style={estiloCelda}>
+                                    <strong>
+                                        {usuario.nombre_completo
+                                            || `${usuario.first_name} ${usuario.last_name}`}
+                                    </strong>
+                                </td>
+
+                                <td style={estiloCelda}>
+                                    {usuario.email}
+                                </td>
+
+                                <td style={estiloCelda}>
+                                    {usuario.roles?.join(', ')
+                                        || 'Sin roles'}
+                                </td>
+
+                                <td style={estiloCelda}>
+                                    <EstadoUsuario
+                                        estado={usuario.estado_cuenta}
+                                    />
+                                </td>
+
+                                <td style={estiloCelda}>
+                                    <Button
+                                        variant="outline-dark"
+                                        size="sm"
+                                        onClick={() => setSelectedUser(usuario)}
+                                    >
+                                        <Eye size={15} /> Ver
+                                    </Button>
+                                </td>
+
+                            </tr>
+                        ))}
+
+                        {!cargando && !error && filtrados.length === 0 && (
+                            <tr>
+                                <td colSpan={6} style={estiloCelda}>
+                                    No se encontraron usuarios.
+                                </td>
+                            </tr>
+                        )}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+            {mostrarRegistro && puedeRegistrar && (
+                <FormularioEmpleado
+                    onClose={() => setMostrarRegistro(false)}
+                    onRegistrado={empleadoRegistrado}
+                />
+            )}
+
+            {usuarioEstado && puedeGestionarEstado && (
+                <FormularioEstadoUsuario
+                    usuario={usuarioEstado}
+                    onClose={() => setUsuarioEstado(null)}
+                    onActualizado={estadoActualizado}
+                />
+            )}
+
+            {usuarioEdicion && puedeEditar && (
+                <FormularioEdicionUsuario
+                    usuario={usuarioEdicion}
+                    onClose={() => setUsuarioEdicion(null)}
+                    onActualizado={usuarioActualizado}
+                />
+            )}
+
+            {usuarioActivacion && (
+                <ActivacionUsuarioModal
+                    usuario={usuarioActivacion}
+                    onClose={() => setUsuarioActivacion(null)}
+                />
+            )}
+
+            {usuarioPerfiles && (
+                <PerfilesUsuarioModal
+                    usuario={usuarioPerfiles}
+                    onClose={() => setUsuarioPerfiles(null)}
+                    onActualizado={perfilesActualizados}
+                />
+            )}
+
+            {usuarioPermisos && (
+                <PermisosUsuarioModal
+                    usuario={usuarioPermisos}
+                    onClose={() => setUsuarioPermisos(null)}
+                />
+            )}
+
+            {usuarioRoles && (
+                <AsignacionRolesModal
+                    usuario={usuarioRoles}
+                    onClose={() => setUsuarioRoles(null)}
+                    onActualizado={rolesActualizados}
+                />
+            )}
+
+            <Modal
+                isOpen={Boolean(selectedUser)}
+                onClose={() => setSelectedUser(null)}
+                title="Información del usuario"
+            >
+
+                {selectedUser && (
+
+                    <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '12px'
+                    }}>
+
+                        <h3>{selectedUser.nombre_completo}</h3>
+
+                        <EstadoUsuario
+                            estado={selectedUser.estado_cuenta}
+                        />
+
+                        <p><strong>ID:</strong> {selectedUser.id}</p>
+
+                        <p>
+                            <strong>Correo:</strong> {selectedUser.email}
+                        </p>
+
+                        <p>
+                            <strong>Identificación:</strong>{' '}
+                            {selectedUser.no_identificacion}
+                        </p>
+
+                        <p>
+                            <strong>Teléfono:</strong>{' '}
+                            {selectedUser.telefono || 'No registrado'}
+                        </p>
+
+                        <p>
+                            <strong>Fecha de nacimiento:</strong>{' '}
+                            {selectedUser.fecha_nacimiento || 'No registrada'}
+                        </p>
+
+                        <p>
+                            <strong>Roles:</strong>{' '}
+                            {selectedUser.roles?.join(', ') || 'Sin roles'}
+                        </p>
+
+                        <p>
+                            <strong>Perfiles:</strong>{' '}
+                            {selectedUser.perfiles?.join(', ') || 'Sin perfiles'}
+                        </p>
+
+                        <p>
+                            <strong>Fecha de registro:</strong>{' '}
+                            {selectedUser.date_joined
+                                ? new Date(selectedUser.date_joined)
+                                    .toLocaleDateString('es-HN')
+                                : 'No registrada'}
+                        </p>
+
+                        {selectedUser.perfil_empleado && (
+
+                            <section style={{
+                                padding: '16px',
+                                backgroundColor: 'var(--bg-color)',
+                                borderRadius: '6px'
+                            }}>
+
+                                <h3>Información laboral</h3>
+
+                                <p>
+                                    <strong>Código:</strong>{' '}
+                                    {selectedUser.perfil_empleado.codigo_empleado}
+                                </p>
+
+                                <p>
+                                    <strong>Cargo:</strong>{' '}
+                                    {selectedUser.perfil_empleado.cargo}
+                                </p>
+
+                                <p>
+                                    <strong>Fecha de ingreso:</strong>{' '}
+                                    {selectedUser.perfil_empleado.fecha_ingreso}
+                                </p>
+
+                            </section>
+                        )}
+
+                        {puedeEditar && (
+                            <Button
+                                variant="primary"
+                                onClick={() => {
+                                    setUsuarioEdicion(selectedUser);
+                                    setSelectedUser(null);
+                                }}
+                            >
+                                Editar información
+                            </Button>
+                        )}
+
+                        {puedeConsultar && (
+
+                            <Button
+                                variant="outline-dark"
+                                onClick={() => {
+                                    setUsuarioPermisos(selectedUser);
+                                    setSelectedUser(null);
+                                }}
+                            >
+                                Consultar permisos
+                            </Button>
+
+                        )}
+
+                        {usuarioSesion?.is_superuser === true && (
+
+                            <Button
+                                variant="outline-dark"
+                                onClick={() => {
+                                    setUsuarioPerfiles(selectedUser);
+                                    setSelectedUser(null);
+                                }}
+                            >
+                                Gestionar perfiles
+                            </Button>
+
+                        )}
+
+                        {usuarioSesion?.is_superuser === true
+                            && selectedUser.estado_cuenta === 'I'
+                            && selectedUser.roles?.length > 0
+                            && !selectedUser.roles.includes('Administrador')
+                            && selectedUser.id !== usuarioSesion?.id
+                            && (
+
+                            <Button
+                                variant="primary"
+                                onClick={() => {
+                                    setUsuarioActivacion(selectedUser);
+                                    setSelectedUser(null);
+                                }}
+                            >
+                                Generar enlace de activaci\u00f3n
+                            </Button>
+
+                        )}
+
+                        {puedeAsignarRoles
+                            && selectedUser.id !== usuarioSesion?.id
+                            && !selectedUser.roles?.includes('Administrador')
+                            && (
+
+                            <Button
+                                variant="outline-dark"
+                                onClick={() => {
+                                    setUsuarioRoles(selectedUser);
+                                    setSelectedUser(null);
+                                }}
+                            >
+                                Asignar roles
+                            </Button>
+
+                        )}
+
+                        {puedeGestionarEstado
+                            && selectedUser.id !== usuarioSesion?.id
+                            && (
+
+                            <Button
+                                variant="outline-dark"
+                                onClick={() => {
+                                    setUsuarioEstado(selectedUser);
+                                    setSelectedUser(null);
+                                }}
+                            >
+                                Gestionar estado
+                            </Button>
+
+                        )}
+
+                        <Button
+                            variant="outline-dark"
+                            onClick={() => setSelectedUser(null)}
+                        >
+                            Cerrar
+                        </Button>
+
                     </div>
-                  </td>
-                  <td style={{ ...tableCellStyle, fontWeight: '500' }}>{item.companyOrDept}</td>
-                  <td style={{ ...tableCellStyle, color: 'var(--text-light)' }}>{item.loc}</td>
-                  <td style={{ ...tableCellStyle, textAlign: 'center' }}>
-                    <Badge text={item.status} color={item.status === "Activo" ? "success" : item.status === "Pendiente" ? "info" : "warning"} />
-                  </td>
-                  <td style={{ ...tableCellStyle, textAlign: 'center' }}>
-                    <Button variant="outline-dark" size="sm" onClick={() => setSelectedUser(item)}>
-                      <Eye size={14} style={{ marginRight: '6px' }} /> Ver
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-              {getFilteredData(currentData).length === 0 && (
-                <tr>
-                  <td colSpan="5" style={{ padding: '32px', textAlign: 'center', color: 'var(--text-light)' }}>
-                    No se encontraron resultados.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                )}
+
+            </Modal>
+
         </div>
-      </div>
-
-      <Modal isOpen={!!selectedUser} onClose={() => setSelectedUser(null)} title="Ficha de Registro Operativo">
-        {selectedUser && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', fontSize: '14px' }}>
-            
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid var(--light-gray)', paddingBottom: '16px' }}>
-              <div>
-                <h4 style={{ margin: 0, fontSize: '18px', fontWeight: 'bold', color: 'var(--color-dark)' }}>{selectedUser.name}</h4>
-                <p style={{ margin: '4px 0 0 0', color: 'var(--text-light)' }}>{selectedUser.companyOrDept}</p>
-              </div>
-              <Badge text={selectedUser.status} color={selectedUser.status === "Activo" ? "success" : selectedUser.status === "Pendiente" ? "info" : "warning"} />
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', color: 'var(--color-dark)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <MapPin size={16} color="var(--color-primary)" />
-                <span>{selectedUser.loc}</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Calendar size={16} color="var(--color-primary)" />
-                <span>Registro: {selectedUser.joinDate}</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Mail size={16} color="var(--color-primary)" />
-                <span style={{ fontFamily: 'monospace' }}>{selectedUser.email}</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Phone size={16} color="var(--color-primary)" />
-                <span style={{ fontFamily: 'monospace' }}>{selectedUser.phone}</span>
-              </div>
-            </div>
-
-            <div style={{ paddingTop: '16px', borderTop: '1px solid var(--light-gray)', display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
-              <Button variant="primary" onClick={() => setSelectedUser(null)}>Cerrar ficha</Button>
-            </div>
-          </div>
-        )}
-      </Modal>
-    </div>
-  );
+    );
 }
