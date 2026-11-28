@@ -65,6 +65,7 @@ INSTALLED_APPS = [
     'ubicaciones',
     'ventas',
     'suscripciones',
+    'mensajeria',
 ]
 
 MIDDLEWARE = [
