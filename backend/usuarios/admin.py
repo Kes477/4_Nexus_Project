@@ -2,6 +2,7 @@ from django import forms
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.forms import ReadOnlyPasswordHashField
+from mensajeria.models import Message
 from .models import Usuario, PerfilCliente, Piloto, Tecnico, Vendedor
 
 
@@ -67,6 +68,14 @@ class VendedorInline(admin.StackedInline):
     max_num = 1
 
 
+class MensajeEnviadoInline(admin.TabularInline):
+    model = Message
+    fk_name = 'sender'
+    extra = 0
+    readonly_fields = ('room', 'content', 'timestamp', 'is_read')
+    can_delete = False
+
+
 @admin.register(Usuario)
 class UsuarioAdmin(UserAdmin):
     ordering = ('email',)
@@ -78,11 +87,16 @@ class UsuarioAdmin(UserAdmin):
     )
     list_filter = ('estado_cuenta', 'is_staff', 'groups')
     search_fields = ('email', 'first_name', 'last_name', 'no_identificacion')
-    inlines = [PerfilClienteInline, PilotoInline, TecnicoInline, VendedorInline]
+    inlines = [
+        PerfilClienteInline,
+        PilotoInline,
+        TecnicoInline,
+        VendedorInline,
+        MensajeEnviadoInline,
+    ]
 
     fieldsets = (
         (None, {'fields': ('email', 'password')}),
-        # Aquí eliminamos 'foto_perfil_url'
         ('Datos personales', {'fields': ('first_name', 'last_name', 'no_identificacion',
                                          'telefono', 'fecha_nacimiento')}),
         ('Estado y permisos', {'fields': ('estado_cuenta', 'is_staff', 'is_superuser',

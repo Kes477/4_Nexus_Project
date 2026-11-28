@@ -1,108 +1,317 @@
-import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Construction, ArrowLeft, Settings, Clock, ShieldCheck } from 'lucide-react';
-import { Button } from '../../components/ui';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Input, Modal, Alert, Loader, Button } from '../../components/ui';
+import ChatSidebar from '../../components/chat/ChatSidebar';
+import ChatWindow from '../../components/chat/ChatWindow';
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function PilotoSoporte() {
-  const location = useLocation();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeRoomId, setActiveRoomId] = useState(null);
+  const [activeTab, setActiveTab] = useState(0);
+  
+  const [requests, setRequests] = useState([]);
+  const [rooms, setRooms] = useState([]);
+  const [messages, setMessages] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState(null);
+  const [successMsg, setSuccessMsg] = useState(null);
+  const [warningMsg, setWarningMsg] = useState(null);
 
-  const getSectionName = () => {
-    const path = location.pathname.split('/').pop();
-    const names = {
-      'misiones': 'Misiones de Vuelo',
-      'bitacora': 'Bitácora de Vuelos',
-      'facturacion': 'Facturación y Ganancias',
-      'historial': 'Calificaciones y Reseñas',
-      'soporte': 'Soporte Técnico',
-      'perfil': 'Perfil del Piloto'
-    };
-    return names[path] || 'Panel del Piloto';
+  const [targetEmail, setTargetEmail] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+  const token = localStorage.getItem('access_token');
+  const currentUserEmail = localStorage.getItem('user_email') || '';
+
+  const fetchDatos = useCallback(async () => {
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const headers = { 'Authorization': `Bearer ${token}` };
+      
+      const [reqRes, roomsRes] = await Promise.all([
+        fetch(`${API_URL}/mensajeria/requests/`, { headers }),
+        fetch(`${API_URL}/mensajeria/rooms/`, { headers })
+      ]);
+
+      if (reqRes.ok) {
+        const data = await reqRes.json();
+        setRequests(Array.isArray(data) ? data : data.results || []);
+      }
+      if (roomsRes.ok) {
+        const data = await roomsRes.json();
+        const roomsList = Array.isArray(data) ? data : data.results || [];
+        setRooms(roomsList);
+      }
+    } catch {
+      setErrorMsg('Error al cargar los datos.');
+    } finally {
+      setLoading(false);
+    }
+  }, [API_URL, token]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchDatos();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [fetchDatos]);
+
+  const handleSetActiveRoom = (roomId) => {
+    setActiveRoomId(roomId);
+    if (roomId) {
+      setRooms(prevRooms => 
+        prevRooms.map(room => 
+          room.id === roomId ? { ...room, unread_count: 0 } : room
+        )
+      );
+    }
   };
 
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '70vh', fontFamily: "'Roboto', sans-serif" }}>
-      
-      <div style={{ 
-        width: '100%', 
-        maxWidth: '800px', 
-        backgroundColor: 'var(--white)', 
-        borderRadius: '16px', 
-        overflow: 'hidden', 
-        boxShadow: '0 10px 30px rgba(0,0,0,0.05)',
-        border: '1px solid var(--light-gray)',
-        display: 'flex',
-        flexDirection: 'column'
-      }}>
-        
-        {/* Banner superior */}
-        <div style={{ 
-          height: '120px', 
-          backgroundColor: 'var(--color-dark)', 
-          backgroundImage: 'linear-gradient(45deg, var(--color-dark) 25%, #3a4673 25%, #3a4673 50%, var(--color-dark) 50%, var(--color-dark) 75%, #3a4673 75%, #3a4673 100%)',
-          backgroundSize: '40px 40px',
-          position: 'relative',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}>
-          <div style={{
-            backgroundColor: 'var(--white)',
-            padding: '16px',
-            borderRadius: '50%',
-            boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
-            transform: 'translateY(30px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}>
-            <Construction size={40} color="var(--color-primary)" />
-          </div>
-        </div>
+  useEffect(() => {
+    if (!activeRoomId || !token) return;
 
-        {/* Contenido */}
-        <div style={{ padding: '60px 40px 40px 40px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
-          
-          <h1 style={{ margin: 0, fontSize: '28px', fontWeight: '900', color: 'var(--color-dark)', marginBottom: '16px' }}>
-            {getSectionName()}
-          </h1>
-          
-          <p style={{ margin: 0, fontSize: '16px', color: 'var(--text-light)', lineHeight: '1.6', marginBottom: '32px', maxWidth: '500px' }}>
-            Estamos trabajando arduamente para habilitar esta sección. Nuestro equipo está afinando los últimos detalles para brindarte la mejor experiencia en tus operaciones de vuelo.
-          </p>
+    const fetchMessages = async () => {
+      try {
+        const response = await fetch(`${API_URL}/mensajeria/messages/?room=${activeRoomId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setMessages(Array.isArray(data) ? data : data.results || []);
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    };
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '20px', width: '100%', marginBottom: '40px' }}>
-            <div style={{ padding: '20px', backgroundColor: 'var(--bg-color)', border: '1px solid var(--light-gray)', borderRadius: '10px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-              <Settings size={24} color="var(--color-primary)" />
-              <span style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--color-dark)' }}>En Desarrollo</span>
-              <span style={{ fontSize: '12px', color: 'var(--text-light)' }}>Módulo en optimización</span>
-            </div>
-            <div style={{ padding: '20px', backgroundColor: 'var(--bg-color)', border: '1px solid var(--light-gray)', borderRadius: '10px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-              <Clock size={24} color="var(--color-info)" />
-              <span style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--color-dark)' }}>Próximamente</span>
-              <span style={{ fontSize: '12px', color: 'var(--text-light)' }}>Disponible en la próxima actualización</span>
-            </div>
-            <div style={{ padding: '20px', backgroundColor: 'var(--bg-color)', border: '1px solid var(--light-gray)', borderRadius: '10px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-              <ShieldCheck size={24} color="var(--color-success)" />
-              <span style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--color-dark)' }}>Tus datos están seguros</span>
-              <span style={{ fontSize: '12px', color: 'var(--text-light)' }}>Sin afectaciones al sistema</span>
-            </div>
-          </div>
+    fetchMessages();
+    const interval = setInterval(fetchMessages, 3000);
+    return () => clearInterval(interval);
+  }, [activeRoomId, API_URL, token]);
 
-          <Link to="/piloto" style={{ textDecoration: 'none' }}>
-            <Button variant="primary" size="md" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 24px' }}>
-              <ArrowLeft size={18} />
-              Volver al Dashboard
-            </Button>
-          </Link>
-        </div>
+  const handleSendRequest = async (e) => {
+    e.preventDefault();
+    setErrorMsg(null);
+    setSuccessMsg(null);
+    setWarningMsg(null);
 
-        {/* Footer interno de la tarjeta */}
-        <div style={{ borderTop: '1px solid var(--light-gray)', padding: '16px 40px', backgroundColor: 'var(--bg-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-          <span style={{ fontSize: '12px', color: 'var(--text-light)', fontWeight: '500' }}>Sección en mantenimiento programado</span>
-          <span style={{ fontSize: '12px', color: 'var(--text-light)', fontWeight: 'bold', letterSpacing: '1px' }}>4 NEXUS SOLUTIONS</span>
-        </div>
+    if (!EMAIL_REGEX.test(targetEmail)) {
+      setErrorMsg('Por favor, ingresa un correo electrónico válido.');
+      return;
+    }
 
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch(`${API_URL}/mensajeria/requests/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ receiver_email: targetEmail })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.receiver_email ? data.receiver_email[0] : 'Error al enviar la solicitud.');
+      }
+
+      if (data.status === 'exists') {
+        setWarningMsg('Ya tienes un chat activo con este usuario.');
+        setIsModalOpen(false);
+        setTargetEmail('');
+        await fetchDatos();
+        if (data.room_id) handleSetActiveRoom(data.room_id);
+        return;
+      }
+
+      if (data.status === 'pending') {
+        setWarningMsg('Ya enviaste una solicitud pendiente a este usuario.');
+        setIsModalOpen(false);
+        setTargetEmail('');
+        return;
+      }
+
+      setSuccessMsg('Solicitud de chat enviada correctamente.');
+      setIsModalOpen(false);
+      setTargetEmail('');
+      fetchDatos();
+    } catch (err) {
+      setErrorMsg(err.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleRequestAction = async (id, action) => {
+    try {
+      const response = await fetch(`${API_URL}/mensajeria/requests/${id}/${action}/`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (!response.ok) throw new Error('Error al procesar la solicitud.');
+
+      setSuccessMsg(`Solicitud ${action === 'accept' ? 'aceptada' : 'rechazada'} correctamente.`);
+      await fetchDatos();
+    } catch (err) {
+      setErrorMsg(err.message);
+    }
+  };
+
+  const handleSendMessage = async (text) => {
+    if (!text.trim() || !activeRoomId) return;
+
+    try {
+      const response = await fetch(`${API_URL}/mensajeria/messages/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          room: activeRoomId,
+          content: text
+        })
+      });
+
+      if (response.ok) {
+        const res = await fetch(`${API_URL}/mensajeria/messages/?room=${activeRoomId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setMessages(Array.isArray(data) ? data : data.results || []);
+        }
+      }
+    } catch {
+      setErrorMsg('Error al enviar el mensaje.');
+    }
+  };
+
+  const handleEditMessage = async (messageId, newText) => {
+    try {
+      const response = await fetch(`${API_URL}/mensajeria/messages/${messageId}/`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ content: newText })
+      });
+
+      if (response.ok) {
+        setMessages(prev => prev.map(msg => 
+          msg.id === messageId ? { ...msg, content: newText, is_editable: true } : msg
+        ));
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  };
+
+  const activeRoom = rooms.find(r => r.id === activeRoomId);
+  const pendingRequests = requests.filter(r => r.status === 'PENDING' && r.sender_email !== currentUserEmail);
+
+  if (loading && rooms.length === 0) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: 'var(--bg-color)' }}>
+        <Loader text="Cargando mensajería..." />
       </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', width: '100%', height: 'calc(100vh - 100px)', backgroundColor: 'var(--bg-color)', fontFamily: "'Roboto', sans-serif", overflow: 'hidden', borderRadius: '12px', border: '1px solid var(--light-gray)', margin: '0 auto', maxWidth: '1400px', boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
+      
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 6px;
+          height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background-color: #cbd5e1;
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background-color: #94a3b8;
+        }
+        .custom-scrollbar {
+          scrollbar-width: thin;
+          scrollbar-color: #cbd5e1 transparent;
+        }
+      `}</style>
+
+      <ChatSidebar
+        rooms={rooms}
+        pendingRequests={pendingRequests}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        activeRoomId={activeRoomId}
+        setActiveRoomId={handleSetActiveRoom}
+        onNewChat={() => setIsModalOpen(true)}
+        onRequestAction={handleRequestAction}
+      />
+
+      <ChatWindow
+        activeRoom={activeRoom}
+        messages={messages}
+        currentUserEmail={currentUserEmail}
+        onSendMessage={handleSendMessage}
+        onEditMessage={handleEditMessage}
+      />
+
+      <Modal isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); setTargetEmail(''); setErrorMsg(null); setSuccessMsg(null); setWarningMsg(null); }} title="Nuevo Chat">
+        <form onSubmit={handleSendRequest} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {errorMsg && <Alert type="danger" message={errorMsg} onClose={() => setErrorMsg(null)} />}
+          
+          <div>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--text-light)', marginBottom: '6px', textTransform: 'uppercase' }}>Correo del Usuario</label>
+            <Input 
+              type="email" 
+              placeholder="ejemplo@correo.com" 
+              value={targetEmail}
+              onChange={(e) => setTargetEmail(e.target.value)}
+              required 
+            />
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', paddingTop: '16px', marginTop: '8px' }}>
+            <Button variant="outline-dark" size="sm" type="button" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
+            <Button variant="primary" size="sm" type="submit" disabled={isSubmitting || !targetEmail}>
+              {isSubmitting ? 'Enviando...' : 'Enviar Solicitud'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {successMsg && (
+        <div style={{ position: 'fixed', bottom: '24px', right: '24px', zIndex: 1000, width: '350px' }}>
+          <Alert type="success" title="Éxito" message={successMsg} onClose={() => setSuccessMsg(null)} />
+        </div>
+      )}
+
+      {warningMsg && (
+        <div style={{ position: 'fixed', bottom: '90px', right: '24px', zIndex: 1000, width: '350px' }}>
+          <Alert type="warning" title="Aviso" message={warningMsg} onClose={() => setWarningMsg(null)} />
+        </div>
+      )}
     </div>
   );
 }
