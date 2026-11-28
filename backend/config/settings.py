@@ -14,7 +14,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from datetime import timedelta
 from decimal import Decimal
-from google.oauth2 import service_account # <-- IMPORTACIÓN AGREGADA
+from google.oauth2 import service_account
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -150,31 +150,58 @@ STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # 2. Configuración de Google Cloud Storage (GCS)
-GS_BUCKET_NAME = 'cursopractica-imagenes-2026'
-GS_PROJECT_ID = 'cursopractica-512803'
-
-MEDIA_URL = f'https://storage.googleapis.com/{GS_BUCKET_NAME}/'
+GS_BUCKET_NAME = os.environ.get('GS_BUCKET_NAME', 'cursopractica-imagenes-2026')
+GS_PROJECT_ID = os.environ.get('GS_PROJECT_ID', 'cursopractica-512803')
 
 # 3. Autenticación con el archivo JSON descargado
-GS_CREDENTIALS = service_account.Credentials.from_service_account_file(
-    os.path.join(BASE_DIR, 'gcp-credentials.json')
-)
+GS_CREDENTIALS = None
+_GCP_JSON_ENV = os.environ.get('GCP_CREDENTIALS_JSON', '').strip()
+_GCP_FILE_PATH = os.path.join(BASE_DIR, 'gcp-credentials.json')
+
+if _GCP_JSON_ENV:
+    try:
+        import json
+        GS_CREDENTIALS = service_account.Credentials.from_service_account_info(
+            json.loads(_GCP_JSON_ENV)
+        )
+    except Exception:
+        GS_CREDENTIALS = None
+elif os.path.exists(_GCP_FILE_PATH):
+    try:
+        GS_CREDENTIALS = service_account.Credentials.from_service_account_file(
+            _GCP_FILE_PATH
+        )
+    except Exception:
+        GS_CREDENTIALS = None
 
 # 4. Configuración de Storages
-STORAGES = {
-    "default": {
-        "BACKEND": "storages.backends.gcloud.GoogleCloudStorage",
-        "OPTIONS": {
-            "bucket_name": GS_BUCKET_NAME,
-            "project_id": GS_PROJECT_ID,
-            "default_acl": "publicRead",
-            "credentials": GS_CREDENTIALS, # <-- SE PASA LA CREDENCIAL AQUÍ
+if GS_CREDENTIALS is not None and GS_BUCKET_NAME:
+    MEDIA_URL = f'https://storage.googleapis.com/{GS_BUCKET_NAME}/'
+    STORAGES = {
+        "default": {
+            "BACKEND": "storages.backends.gcloud.GoogleCloudStorage",
+            "OPTIONS": {
+                "bucket_name": GS_BUCKET_NAME,
+                "project_id": GS_PROJECT_ID,
+                "default_acl": "publicRead",
+                "credentials": GS_CREDENTIALS,
+            },
         },
-    },
-    "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
-    },
-}
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        },
+    }
+else:
+    MEDIA_URL = '/media/'
+    MEDIA_ROOT = BASE_DIR / 'media'
+    STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        },
+    }
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'usuarios.Usuario'
