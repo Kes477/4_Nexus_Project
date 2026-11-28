@@ -204,8 +204,31 @@ class OrdenServicio(models.Model):
         blank=True
     )
 
+    # Cotización: la pone el técnico al terminar el diagnóstico
+    costo = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True
+    )
+
+    # El pedido con el que el cliente paga la reparación
+    pedido = models.OneToOneField(
+        'ventas.Pedido',
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='orden_reparacion'
+    )
+
     class Meta:
         ordering = ['-fecha_recepcion']
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(costo__isnull=True) | models.Q(costo__gt=0),
+                name ='orden_costo_positivo',
+            ),
+        ]
 
     def puede_cambiar_a(self, nuevo_estado):
         """

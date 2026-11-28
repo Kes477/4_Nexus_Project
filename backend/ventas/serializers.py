@@ -117,6 +117,7 @@ class PedidoSerializer(serializers.ModelSerializer):
     transacciones = TransaccionPagoSerializer(many=True, read_only=True)
     puede_cancelar = serializers.SerializerMethodField()
     puede_pagar = serializers.SerializerMethodField()
+    factura_disponible = serializers.SerializerMethodField()
 
     class Meta:
         model = Pedido
@@ -124,7 +125,7 @@ class PedidoSerializer(serializers.ModelSerializer):
             'id', 'fecha_pedido', 'estado_pedido', 'estado_texto',
             'direccion', 'direccion_texto', 'cupon',
             'subtotal', 'total_descuento', 'costo_envio', 'total_impuestos', 'total_final',
-            'puede_cancelar', 'puede_pagar', 'detalles', 'transacciones',
+            'puede_cancelar', 'puede_pagar', 'factura_disponible','detalles', 'transacciones',
         ]
 
     def get_puede_cancelar(self, obj):
@@ -134,6 +135,9 @@ class PedidoSerializer(serializers.ModelSerializer):
         if obj.estado_pedido != Pedido.Estado.PENDIENTE:
             return False
         return not any(t.estado_pago in ('APROBADO', 'PENDIENTE') for t in obj.transacciones.all())
+    
+    def get_factura_disponible(self, obj):
+        return any(t.estado_pago == 'APROBADO' for t in obj.transacciones.all())
     
 
 

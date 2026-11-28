@@ -17,6 +17,7 @@ import {
 } from '../../api/reparacionesService';
 
 import ActualizarEstadoOrden from './ActualizarEstadoOrden';
+import CotizacionReparacion from '../../components/cliente/CotizacionReparacion';
 
 
 // ======================================================
@@ -1140,6 +1141,13 @@ export default function TecnicoOrdenes() {
 
                     </div>
 
+                    {/* COTIZACIÓN: genera el pedido que paga el cliente */}
+
+                    <CotizacionReparacion
+                        orden={detalle}
+                        modo="tecnico"
+                        onActualizada={actualizarOrden}
+                    />
 
                     {/* HU-015: ACTUALIZAR ESTADO */}
 

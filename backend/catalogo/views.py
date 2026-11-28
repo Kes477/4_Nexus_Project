@@ -1,4 +1,4 @@
-from django.db.models import Min, Exists, OuterRef
+from django.db.models import Min, Exists, OuterRef, Count,Q
 from rest_framework import permissions, viewsets, mixins
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -12,7 +12,15 @@ from .serializers import (
 LANDING_DEFAULT_LIMIT = 10
 
 class CategoriaViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Categoria.objects.all()
+    
+    queryset = (
+        Categoria.objects
+        .annotate(
+            total_productos=Count('productos'),
+            productos_activos=Count('productos', filter=Q(productos__activo=True)),
+        )
+        .exclude(total_productos__gt=0, productos_activos=0)
+    )
     serializer_class = CategoriaSerializer
     permission_classes = [permissions.AllowAny]
     authentication_classes = []

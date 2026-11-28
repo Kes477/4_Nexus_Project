@@ -1,5 +1,5 @@
 from rest_framework import serializers
-
+from decimal import Decimal
 from .models import EquipoCliente, OrdenServicio
 
 
@@ -68,6 +68,20 @@ class OrdenServicioSerializer(serializers.ModelSerializer):
         read_only=True
     )
 
+    pedido_estado = serializers.CharField(
+        source='pedido.estado_pedido',
+        read_only=True,
+        allow_null=True
+    )
+
+    total_a_pagar = serializers.DecimalField(
+        source='pedido.total_final',
+        max_digits=12,
+        decimal_places=2,
+        read_only=True,
+        allow_null=True
+    )
+
     class Meta:
         model = OrdenServicio
 
@@ -83,15 +97,22 @@ class OrdenServicioSerializer(serializers.ModelSerializer):
             'estado_nombre',
             'fecha_recepcion',
             'fecha_cierre',
-            'observaciones'
+            'observaciones',
+            'costo',
+            'pedido',
+            'pedido_estado',
+            'total_a_pagar'
         ]
 
         read_only_fields = [
-            'id',
+  'id',
             'tecnico',
             'estado',
             'fecha_recepcion',
-            'fecha_cierre'
+            'fecha_cierre',
+            'observaciones',
+            'costo',
+            'pedido'
         ]
 
     def validate_equipo(self, equipo):
@@ -133,7 +154,9 @@ class SolicitudReparacionSerializer(OrdenServicioSerializer):
             'estado',
             'fecha_recepcion',
             'fecha_cierre',
-            'observaciones'
+            'observaciones',
+            'costo',
+            'pedido'
         ]
 
 
@@ -165,4 +188,17 @@ class CambiarEstadoSerializer(serializers.Serializer):
         allow_blank=True,
         trim_whitespace=True,
         max_length=5000
+    )
+
+
+# ======================================================
+# COTIZACION DE LA REPARACION
+# ======================================================
+
+class CotizarSerializer(serializers.Serializer):
+
+    costo = serializers.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        min_value=Decimal('0.01')
     )
