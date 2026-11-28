@@ -13,6 +13,8 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 from datetime import timedelta
+from decimal import Decimal
+from google.oauth2 import service_account
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -27,7 +29,7 @@ SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-clave-local-12
 DEBUG = os.environ.get('DJANGO_DEBUG', 'False') == 'True'
 ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
-#Para acceder al administrador de Django
+# Para acceder al administrador de Django
 CSRF_TRUSTED_ORIGINS = [
     origin.strip()
     for origin in os.environ.get('CSRF_TRUSTED_ORIGINS', '').split(',')
@@ -36,9 +38,6 @@ CSRF_TRUSTED_ORIGINS = [
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
-
-
-# SECURITY WARNING: don't run with debug turned on in production!
 
 
 # Application definition
@@ -55,6 +54,8 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'corsheaders',
     'django_filters',
+    'storages',
+
     # Aplicaciones del Proyecto
     'usuarios',
     'catalogo',
@@ -63,6 +64,7 @@ INSTALLED_APPS = [
     'reparaciones',
     'ubicaciones',
     'ventas',
+    'suscripciones',
 ]
 
 MIDDLEWARE = [
@@ -100,7 +102,6 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
-# Variables para Django y Cloude Run, y credenciales locales  
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
@@ -141,24 +142,84 @@ USE_I18N = True
 USE_TZ = True
 
 
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/6.1/howto/static-files/
+# ---------------------------------------------------------
+# ARCHIVOS ESTÁTICOS, MULTIMEDIA Y ALMACENAMIENTO
+# ---------------------------------------------------------
 
-STATIC_URL = 'static/'
-MEDIA_URL = 'media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+# 1. Archivos estáticos (CSS, JS del admin, etc.)
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# 2. Configuración de Google Cloud Storage (GCS)
+GS_BUCKET_NAME = os.environ.get('GS_BUCKET_NAME', 'cursopractica-imagenes-2026')
+GS_PROJECT_ID = os.environ.get('GS_PROJECT_ID', 'cursopractica-512803')
+
+# 3. Autenticación con el archivo JSON descargado
+GS_CREDENTIALS = None
+_GCP_JSON_ENV = os.environ.get('GCP_CREDENTIALS_JSON', '').strip()
+_GCP_FILE_PATH = os.path.join(BASE_DIR, 'gcp-credentials.json')
+
+if _GCP_JSON_ENV:
+    try:
+        import json
+        GS_CREDENTIALS = service_account.Credentials.from_service_account_info(
+            json.loads(_GCP_JSON_ENV)
+        )
+    except Exception:
+        GS_CREDENTIALS = None
+elif os.path.exists(_GCP_FILE_PATH):
+    try:
+        GS_CREDENTIALS = service_account.Credentials.from_service_account_file(
+            _GCP_FILE_PATH
+        )
+    except Exception:
+        GS_CREDENTIALS = None
+
+# 4. Configuración de Storages
+if GS_CREDENTIALS is not None and GS_BUCKET_NAME:
+    MEDIA_URL = f'https://storage.googleapis.com/{GS_BUCKET_NAME}/'
+    STORAGES = {
+        "default": {
+            "BACKEND": "storages.backends.gcloud.GoogleCloudStorage",
+            "OPTIONS": {
+                "bucket_name": GS_BUCKET_NAME,
+                "project_id": GS_PROJECT_ID,
+                "default_acl": "publicRead",
+                "credentials": GS_CREDENTIALS,
+            },
+        },
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        },
+    }
+else:
+    MEDIA_URL = '/media/'
+    MEDIA_ROOT = BASE_DIR / 'media'
+    STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        },
+    }
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'usuarios.Usuario'
 
-# Email
-# https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
 
-MAILERS = {
-    'default': {
-        'BACKEND': 'django.core.mail.backends.console.EmailBackend',
-    },
-}
+# ---------------------------------------------------------
+# CONFIGURACIÓN DE CORREO (VARIABLES CLÁSICAS)
+# ---------------------------------------------------------
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '4nexus.contact@gmail.com')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', '4 Nexus <4nexus.contact@gmail.com>')
+
 
 CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ALLOWED_ORIGINS', 'http://localhost:5173').split(',')
 
@@ -179,34 +240,21 @@ REST_FRAMEWORK = {
     ),
 }
 
-STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-
-STORAGES = {
-    "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
-    },
-}
-
-
 # Tokens JWT
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
 }
 
-# NEXUS - Recuperacion de cuentas
-
-FRONTEND_URL = "http://localhost:5173"
-
-DEFAULT_FROM_EMAIL = "no-reply@nexus.example"
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
 
 PASSWORD_RESET_TIMEOUT = 3600
 
-if DEBUG:
-    MAILERS = {
-        **MAILERS,
-        "default": {
-            "BACKEND": "django.core.mail.backends.console.EmailBackend"
-        }
-    }
+
+
+# --- Ventas -----------------------------------------------------------------
+
+# ISV de Honduras (15 %) y tarifa fija de envío para pedidos con artículos
+
+VENTAS_TASA_ISV = Decimal(os.environ.get('VENTAS_TASA_ISV', '0.15'))
+VENTAS_COSTO_ENVIO = Decimal(os.environ.get('VENTAS_COSTO_ENVIO', '150.00'))

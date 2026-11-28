@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import Almacen, Inventario, MovimientoInventario
+from .models import EstadoDron
 
 class AlmacenSerializer(serializers.ModelSerializer):
     class Meta:
@@ -36,3 +37,20 @@ class EntradaSerializer(serializers.Serializer):
 class AjusteSerializer(serializers.Serializer):
     conteo_real = serializers.IntegerField(min_value =0)
     motivo = serializers.CharField(max_length= 255)
+
+class EstadoDronSerializer(serializers.ModelSerializer):
+
+    modelo = serializers.CharField(
+        source='inventario.variante.producto.articulo.modelo',
+        read_only=True
+    )
+
+    tipo_producto = serializers.CharField(
+        source='inventario.variante.producto.get_tipo_producto_display',
+        read_only=True
+    )
+
+    class Meta:
+        model = EstadoDron
+        fields = ['id', 'modelo', 'tipo_producto', 'estado']
+        read_only_fields = ['id', 'modelo', 'tipo_producto']

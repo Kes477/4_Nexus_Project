@@ -1,6 +1,9 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.utils import timezone
+from datetime import timedelta
 
 
 class UsuarioManager(BaseUserManager):
@@ -59,14 +62,26 @@ class Usuario(AbstractUser):
     estado_cuenta = models.CharField(
         max_length=1, choices=EstadoCuenta.choices, default=EstadoCuenta.ACTIVA
     )
-    foto_perfil_url = models.URLField(max_length=500, blank=True)
+    
+    foto_perfil = models.ImageField(upload_to='avatares/', null=True, blank=True)
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['no_identificacion', 'first_name', 'last_name']
 
     objects = UsuarioManager()
 
+    def clean(self):
+        super().clean()
+        if self.is_staff and self.pk is not None and hasattr(self, 'perfil_piloto'):
+            raise ValidationError(
+                {'is_staff': 'Un piloto no puede tener permisos de administrador.'}
+            )
+
     def save(self, *args, **kwargs):
+        if self.is_staff and self.pk is not None and hasattr(self, 'perfil_piloto'):
+            raise ValidationError(
+                {'is_staff': 'Un piloto no puede tener permisos de administrador.'}
+            )
         self.is_active = self.estado_cuenta == self.EstadoCuenta.ACTIVA
         super().save(*args, **kwargs)
 
@@ -93,12 +108,7 @@ class PerfilCliente(models.Model):
         related_name='perfil_cliente',
         primary_key=True
     )
-
-    nivel_fidelidad = models.CharField(
-        max_length=20,
-        blank=True
-    )
-
+    nivel_fidelidad = models.CharField(max_length=20, blank=True)
     saldo_puntos = models.PositiveIntegerField(default=0)
 
     def __str__(self):
@@ -111,14 +121,8 @@ class PerfilEmpleado(models.Model):
         on_delete=models.CASCADE,
         related_name='perfil_empleado'
     )
-
-    codigo_empleado = models.CharField(
-        max_length=20,
-        unique=True
-    )
-
+    codigo_empleado = models.CharField(max_length=20, unique=True)
     cargo = models.CharField(max_length=100)
-
     fecha_ingreso = models.DateField()
 
     def __str__(self):
@@ -132,16 +136,8 @@ class Tecnico(models.Model):
         related_name='perfil_tecnico',
         primary_key=True
     )
-
-    especialidad_tecnica = models.CharField(
-        max_length=100
-    )
-
-    certificacion_fabricante = models.CharField(
-        max_length=100,
-        blank=True
-    )
-
+    especialidad_tecnica = models.CharField(max_length=100)
+    certificacion_fabricante = models.CharField(max_length=100, blank=True)
     disponible = models.BooleanField(default=True)
 
     class Meta:
@@ -163,23 +159,9 @@ class Piloto(models.Model):
         related_name='perfil_piloto',
         primary_key=True
     )
-
-    numero_licencia_aeronautica = models.CharField(
-        max_length=50,
-        unique=True
-    )
-
-    horas_vuelo_acumuladas = models.DecimalField(
-        max_digits=8,
-        decimal_places=2,
-        default=0
-    )
-
-    tipo_certificacion = models.CharField(
-        max_length=100,
-        blank=True
-    )
-
+    numero_licencia_aeronautica = models.CharField(max_length=50, unique=True)
+    horas_vuelo_acumuladas = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+    tipo_certificacion = models.CharField(max_length=100, blank=True)
     disponible = models.BooleanField(default=True)
 
     class Meta:
@@ -189,6 +171,20 @@ class Piloto(models.Model):
                 name='piloto_horas_vuelo_no_negativas'
             )
         ]
+
+    def clean(self):
+        super().clean()
+        if self.usuario_id and Usuario.objects.filter(pk=self.usuario_id, is_staff=True).exists():
+            raise ValidationError(
+                {'usuario': 'Un piloto no puede tener permisos de administrador.'}
+            )
+
+    def save(self, *args, **kwargs):
+        if self.usuario_id and Usuario.objects.filter(pk=self.usuario_id, is_staff=True).exists():
+            raise ValidationError(
+                {'usuario': 'Un piloto no puede tener permisos de administrador.'}
+            )
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"Piloto: {self.usuario.email}"
@@ -201,37 +197,39 @@ class Vendedor(models.Model):
         related_name='perfil_vendedor',
         primary_key=True
     )
-
-    rtn_empresa = models.CharField(
-        max_length=20,
-        unique=True
-    )
-
-    nombre_comercial = models.CharField(
-        max_length=100
-    )
-
-    sitio_web = models.URLField(
-        max_length=255,
-        blank=True
-    )
-
-    comision_pactada = models.DecimalField(
-        max_digits=5,
-        decimal_places=2,
-        default=0
-    )
+    rtn_empresa = models.CharField(max_length=20, unique=True)
+    nombre_comercial = models.CharField(max_length=100)
+    sitio_web = models.URLField(max_length=255, blank=True)
+    comision_pactada = models.DecimalField(max_digits=5, decimal_places=2, default=0)
 
     class Meta:
         constraints = [
             models.CheckConstraint(
-                condition=models.Q(
-                    comision_pactada__gte=0,
-                    comision_pactada__lte=100
-                ),
+                condition=models.Q(comision_pactada__gte=0, comision_pactada__lte=100),
                 name='vendedor_comision_entre_0_y_100'
             )
         ]
 
     def __str__(self):
         return f"Vendedor: {self.usuario.email}"
+
+
+class PasswordResetCode(models.Model):
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='reset_codes'
+    )
+    code = models.CharField(max_length=6)
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_used = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['usuario', 'code']),
+        ]
+
+    def is_valid(self):
+        return not self.is_used and timezone.now() < self.created_at + timedelta(minutes=3)
+
+    def __str__(self):
+        return f"Reset {self.code} for {self.usuario.email}"

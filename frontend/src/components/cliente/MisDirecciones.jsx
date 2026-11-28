@@ -20,6 +20,11 @@ const TIPOS = [
 ];
 const ETIQUETA_TIPO = Object.fromEntries(TIPOS.map((t) => [t.value, t.label]));
 
+const REGEX = {
+  direccion: /^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s.,#-]{5,255}$/,
+  codigoPostal: /^\d{5}$/,
+};
+
 const FORM_VACIO = {
   departamento: '',
   ubicacion: '',
@@ -58,7 +63,9 @@ export default function MisDirecciones({ onPrincipalChange }) {
   const [errorForm, setErrorForm] = useState(null);
   const [guardando, setGuardando] = useState(false);
 
-  // Carga inicial de las direcciones del cliente
+  const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
+
   useEffect(() => {
     let activo = true;
 
@@ -91,11 +98,34 @@ export default function MisDirecciones({ onPrincipalChange }) {
     setMunicipios(departamentoId ? await obtenerUbicaciones({ padre: departamentoId }) : []);
   };
 
+  const validateField = (field, value) => {
+    if (field === 'linea_direccion1' && !value.trim()) return 'La dirección es obligatoria.';
+    if (field === 'linea_direccion1' && !REGEX.direccion.test(value)) return 'Ingresa una dirección válida (mín. 5 caracteres).';
+    if (field === 'codigo_postal' && value && !REGEX.codigoPostal.test(value)) return 'El código postal debe tener 5 dígitos.';
+    return '';
+  };
+
+  const handleBlur = (e) => {
+    const { name, value } = e.target;
+    setTouched({ ...touched, [name]: true });
+    setErrors({ ...errors, [name]: validateField(name, value) });
+  };
+
+  const cambiar = (campo) => (e) => {
+    const value = e.target.value;
+    setForm({ ...form, [campo]: value });
+    if (errors[campo]) {
+      setErrors({ ...errors, [campo]: validateField(campo, value) });
+    }
+  };
+
   const abrirNueva = async () => {
     setEditandoId(null);
     setForm(FORM_VACIO);
     setMunicipios([]);
     setErrorForm(null);
+    setErrors({});
+    setTouched({});
     setModalAbierto(true);
     try {
       await cargarDepartamentos();
@@ -107,20 +137,36 @@ export default function MisDirecciones({ onPrincipalChange }) {
   const abrirEditar = async (direccion) => {
     setEditandoId(direccion.id);
     setErrorForm(null);
+    setErrors({});
+    setTouched({});
     setModalAbierto(true);
     try {
       await cargarDepartamentos();
-      const municipio = await obtenerUbicacion(direccion.ubicacion);
-      setMunicipios(await obtenerUbicaciones({ padre: municipio.padre }));
-      setForm({
-        departamento: String(municipio.padre),
-        ubicacion: String(direccion.ubicacion),
-        linea_direccion1: direccion.linea_direccion1,
-        linea_direccion2: direccion.linea_direccion2,
-        codigo_postal: direccion.codigo_postal,
-        tipo_direccion: direccion.tipo_direccion,
-        es_principal: direccion.es_principal,
-      });
+      
+      if (direccion.ubicacion) {
+        const municipio = await obtenerUbicacion(direccion.ubicacion);
+        setMunicipios(await obtenerUbicaciones({ padre: municipio.padre }));
+        setForm({
+          departamento: String(municipio.padre),
+          ubicacion: String(direccion.ubicacion),
+          linea_direccion1: direccion.linea_direccion1,
+          linea_direccion2: direccion.linea_direccion2,
+          codigo_postal: direccion.codigo_postal,
+          tipo_direccion: direccion.tipo_direccion,
+          es_principal: direccion.es_principal,
+        });
+      } else {
+        setMunicipios([]);
+        setForm({
+          departamento: '',
+          ubicacion: '',
+          linea_direccion1: direccion.linea_direccion1,
+          linea_direccion2: direccion.linea_direccion2,
+          codigo_postal: direccion.codigo_postal,
+          tipo_direccion: direccion.tipo_direccion,
+          es_principal: direccion.es_principal,
+        });
+      }
     } catch {
       setErrorForm('No se pudo cargar la dirección.');
     }
@@ -129,19 +175,31 @@ export default function MisDirecciones({ onPrincipalChange }) {
   const cerrar = () => {
     setModalAbierto(false);
     setErrorForm(null);
+    setErrors({});
+    setTouched({});
   };
 
   const guardar = async (e) => {
     e.preventDefault();
     setErrorForm(null);
 
-    if (!form.ubicacion) {
-      setErrorForm('Elige el departamento y el municipio.');
+    const newErrors = {};
+    ['linea_direccion1', 'codigo_postal'].forEach(field => {
+      const error = validateField(field, form[field]);
+      if (error) newErrors[field] = error;
+      setTouched(prev => ({ ...prev, [field]: true }));
+    });
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
 
-    // "departamento" solo sirve para el select; el backend no lo recibe
     const { departamento: _departamento, ...datos } = form;
+
+    if (!datos.ubicacion) {
+      datos.ubicacion = null;
+    }
 
     setGuardando(true);
     try {
@@ -180,12 +238,10 @@ export default function MisDirecciones({ onPrincipalChange }) {
     }
   };
 
-  const cambiar = (campo) => (e) => setForm({ ...form, [campo]: e.target.value });
-
   return (
-    <section style={{ marginBottom: '32px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '10px' }}>
-        <SectionHeading eyebrow="Envíos y servicios" title="Mis Direcciones" />
+    <section id="mis-direcciones" style={{ marginBottom: '32px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '16px' }}>
+        <SectionHeading title="Mis Direcciones" />
         <Button variant="outline-dark" size="sm" onClick={abrirNueva}>
           <Plus size={14} style={{ marginRight: '6px' }} /> Agregar Dirección
         </Button>
@@ -218,7 +274,8 @@ export default function MisDirecciones({ onPrincipalChange }) {
 
             <strong style={{ color: 'var(--color-dark)' }}>{d.linea_direccion1}</strong>
             {d.linea_direccion2 && <span style={textoSuave}>{d.linea_direccion2}</span>}
-            <span style={textoSuave}>{d.ubicacion_texto}</span>
+            
+            {d.ubicacion_texto && <span style={textoSuave}>{d.ubicacion_texto}</span>}
 
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '8px' }}>
               {!d.es_principal && (
@@ -241,47 +298,73 @@ export default function MisDirecciones({ onPrincipalChange }) {
         <form onSubmit={guardar} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {errorForm && <Alert type="danger" title="Atención" message={errorForm} onClose={() => setErrorForm(null)} />}
 
-          <div>
-            <label style={labelStyle}>Departamento</label>
-            <select style={selectStyle} value={form.departamento} onChange={(e) => elegirDepartamento(e.target.value)}>
-              <option value="">Selecciona un departamento</option>
-              {departamentos.map((d) => <option key={d.id} value={d.id}>{d.nombre}</option>)}
-            </select>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div>
+              <label style={labelStyle}>Departamento</label>
+              <select style={selectStyle} value={form.departamento} onChange={(e) => elegirDepartamento(e.target.value)}>
+                <option value="">Opcional</option>
+                {departamentos.map((d) => <option key={d.id} value={d.id}>{d.nombre}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={labelStyle}>Municipio</label>
+              <select style={selectStyle} value={form.ubicacion} onChange={cambiar('ubicacion')} disabled={!form.departamento}>
+                <option value="">Opcional</option>
+                {municipios.map((m) => <option key={m.id} value={m.id}>{m.nombre}</option>)}
+              </select>
+            </div>
           </div>
 
           <div>
-            <label style={labelStyle}>Municipio</label>
-            <select style={selectStyle} value={form.ubicacion} onChange={cambiar('ubicacion')} disabled={!form.departamento}>
-              <option value="">Selecciona un municipio</option>
-              {municipios.map((m) => <option key={m.id} value={m.id}>{m.nombre}</option>)}
-            </select>
-          </div>
-
-          <div>
-            <label style={labelStyle}>Dirección</label>
-            <Input value={form.linea_direccion1} onChange={cambiar('linea_direccion1')} icon="fa-map-marker-alt" placeholder="Colonia, calle, número de casa" maxLength={255} />
+            <label style={labelStyle}>Dirección exacta</label>
+            <Input 
+              name="linea_direccion1"
+              value={form.linea_direccion1} 
+              onChange={cambiar('linea_direccion1')} 
+              onBlur={handleBlur}
+              error={touched.linea_direccion1 && errors.linea_direccion1}
+              icon="fa-map-marker-alt" 
+              placeholder="Colonia, calle, número de casa o referencia" 
+              maxLength={255} 
+            />
           </div>
 
           <div>
             <label style={labelStyle}>Referencia (opcional)</label>
-            <Input value={form.linea_direccion2} onChange={cambiar('linea_direccion2')} icon="fa-info-circle" placeholder="Frente a la pulpería, portón negro..." maxLength={255} />
+            <Input 
+              name="linea_direccion2"
+              value={form.linea_direccion2} 
+              onChange={cambiar('linea_direccion2')} 
+              icon="fa-info-circle" 
+              placeholder="Frente a la pulpería, portón negro..." 
+              maxLength={255} 
+            />
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <div>
-              <label style={labelStyle}>Tipo</label>
+              <label style={labelStyle}>Tipo de lugar</label>
               <select style={selectStyle} value={form.tipo_direccion} onChange={cambiar('tipo_direccion')}>
                 {TIPOS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
             </div>
             <div>
-              <label style={labelStyle}>Código postal (opcional)</label>
-              <Input value={form.codigo_postal} onChange={cambiar('codigo_postal')} icon="fa-envelope" maxLength={20} />
+              <label style={labelStyle}>Código postal</label>
+              <Input 
+                name="codigo_postal"
+                value={form.codigo_postal} 
+                onChange={cambiar('codigo_postal')} 
+                onBlur={handleBlur}
+                error={touched.codigo_postal && errors.codigo_postal}
+                icon="fa-envelope" 
+                placeholder="Opcional"
+                maxLength={5} 
+              />
             </div>
           </div>
 
           {!(editandoId && form.es_principal) && (
-            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', cursor: 'pointer' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', cursor: 'pointer', marginTop: '8px' }}>
               <input
                 type="checkbox"
                 checked={form.es_principal}

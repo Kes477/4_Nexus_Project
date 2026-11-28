@@ -5,6 +5,12 @@ from .edicion_serializers import PerfilEmpleadoEdicionSerializer
 
 class UsuarioAdminSerializer(serializers.ModelSerializer):
 
+    foto_perfil_url = serializers.ImageField(
+        source='foto_perfil',
+        read_only=True,
+        use_url=True
+    )
+
     nombre_completo = serializers.CharField(
         source="get_full_name",
         read_only=True

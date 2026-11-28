@@ -1,11 +1,16 @@
+from decimal import ROUND_HALF_UP, Decimal
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Sum
 
 from catalogo.models import Producto
 from inventario.models import Inventario
+from inventario.servicios import liberar_reserva, reservar_stock, confirmar_salida
+from suscripciones.servicios import activar_suscripciones
 
-from .models import Carrito, CarritoDetalle
+from .models import Carrito, CarritoDetalle, Cupon, DetallePedido, Pedido, ReservaPedido, TransaccionPago
+from .pagos import obtener_estrategia
 
 
 def obtener_carrito(usuario):
@@ -30,6 +35,9 @@ def _validar_cantidad(variante, cantidad):
 
     if not producto.activo:
         raise ValidationError('Este producto ya no está disponible.')
+
+    if producto.tipo_producto == Producto.Tipo.SUSCRIPCION and not hasattr(producto, 'suscripcion'):
+        raise ValidationError('Este plan todavía no está configurado.')
 
     # Regla de db.sql: servicios y suscripciones siempre con cantidad 1
     if producto.tipo_producto != Producto.Tipo.ARTICULO:
@@ -88,3 +96,299 @@ def vaciar_carrito(usuario):
     carrito = obtener_carrito(usuario)
     carrito.detalles.all().delete()
     _tocar(carrito)
+
+
+#######################################       PEDIDOS      #######################################################
+
+
+CENTAVOS = Decimal('0.01')
+
+
+def _redondear(valor):
+    return valor.quantize(CENTAVOS, rounding=ROUND_HALF_UP)
+
+
+def _es_articulo(variante):
+    return variante.producto.tipo_producto == Producto.Tipo.ARTICULO
+
+def requiere_direccion(lineas):
+    "True si alguna linea es un articulo fisico (necesita envío)"
+    return any(_es_articulo(variante) for variante, _ in lineas)
+
+def buscar_cupon(codigo):
+    "Devuelve el cupón vigente con ese código, o None si no se envió ninguno."
+    if not codigo or not codigo.strip():
+        return None
+    cupon = Cupon.objects.filter(codigo__iexact=codigo.strip()).first()
+    if cupon is None or not cupon.esta_vigente():
+        raise ValidationError('El cupón no existe o ya no está vigente.')
+    return cupon
+
+
+def calcular_totales(lineas, cupon=None):
+    """
+    lineas: lista de (variante, cantidad).
+    Devuelve los montos con los mismos nombres de las columnas de Pedido.
+    """
+    subtotal = sum((variante.precio * cantidad for variante, cantidad in lineas), Decimal('0'))
+    descuento = cupon.calcular_descuento(subtotal) if cupon else Decimal('0')
+    lleva_articulos = any(_es_articulo(variante) for variante, _ in lineas)
+    envio = settings.VENTAS_COSTO_ENVIO if lleva_articulos else Decimal('0')
+    impuestos = _redondear((subtotal - descuento) * settings.VENTAS_TASA_ISV)
+
+    return {
+        'subtotal': _redondear(subtotal),
+        'total_descuento': descuento,
+        'costo_envio': _redondear(envio),
+        'total_impuestos': impuestos,
+        'total_final': _redondear(subtotal - descuento + envio + impuestos),
+    }
+
+
+def _reservar_en_almacenes(detalle, usuario):
+    """Aparta las unidades de la línea, empezando por el almacén con más stock."""
+    pendiente = detalle.cantidad
+    inventarios = (Inventario.objects
+                   .select_for_update()
+                   .filter(variante=detalle.variante, almacen__activo=True, cantidad_disponible__gt=0)
+                   .order_by('-cantidad_disponible'))
+
+    for inventario in inventarios:
+        if pendiente == 0:
+            break
+        tomar = min(pendiente, inventario.cantidad_disponible)
+        reservar_stock(inventario, tomar, usuario=usuario, motivo=f'Pedido #{detalle.pedido_id}')
+        ReservaPedido.objects.create(detalle=detalle, inventario=inventario, cantidad=tomar)
+        pendiente -= tomar
+
+    if pendiente > 0:
+        raise ValidationError(f'Ya no hay suficiente stock de {detalle.variante}.')
+
+@transaction.atomic
+def crear_pedido(usuario, lineas, direccion=None, codigo_cupon=''):
+    """
+    Núcleo de la compra: crea un pedido PENDIENTE a partir de una lista de
+    (variante, cantidad), reserva el stock y devuelve el pedido.
+    Lo usan el carrito y "Comprar ahora".
+    """
+    if not lineas:
+        raise ValidationError('No hay productos para crear el pedido.')
+
+    # Se valida otra vez: el stock o el producto pudieron cambiar
+    for variante, cantidad in lineas:
+        _validar_cantidad(variante, cantidad)
+
+    # Regla de db.sql (FN_VALIDAR_DIRECCION_PEDIDO)
+    if requiere_direccion(lineas) and direccion is None:
+        raise ValidationError('Elige una dirección de envío.')
+    if direccion is not None and direccion.usuario_id != usuario.id:
+        raise ValidationError('La dirección elegida no es válida.')
+
+    cupon = buscar_cupon(codigo_cupon)
+    totales = calcular_totales(lineas, cupon)
+
+    pedido = Pedido.objects.create(usuario=usuario, direccion=direccion, cupon=cupon, **totales)
+
+    for variante, cantidad in lineas:
+        detalle = DetallePedido.objects.create(
+            pedido=pedido,
+            variante=variante,
+            tipo_producto=variante.producto.tipo_producto,
+            cantidad=cantidad,
+            precio_unitario=variante.precio,
+            subtotal_linea=variante.precio * cantidad,
+        )
+        if _es_articulo(variante):
+            _reservar_en_almacenes(detalle, usuario)
+
+    return pedido
+
+
+@transaction.atomic
+def confirmar_pedido(usuario, direccion=None, codigo_cupon=''):
+    """Convierte el carrito en un pedido y vacía el carrito."""
+    carrito = obtener_carrito(usuario)
+    detalles = list(
+        carrito.detalles
+        .select_related('variante__producto')
+        .select_for_update(of=('self',))
+    )
+    if not detalles:
+        raise ValidationError('El carrito está vacío.')
+
+    pedido = crear_pedido(
+        usuario,
+        [(detalle.variante, detalle.cantidad) for detalle in detalles],
+        direccion,
+        codigo_cupon,
+    )
+
+    carrito.detalles.all().delete()
+    _tocar(carrito)
+    return pedido
+
+
+@transaction.atomic
+def cancelar_pedido(pedido, usuario=None):
+    "Cancela un pedido pendiente y devuelve el stock apartado a cada almacén."
+    pedido = Pedido.objects.select_for_update().get(pk=pedido.pk)
+
+    if pedido.estado_pedido != Pedido.Estado.PENDIENTE:
+        raise ValidationError('Solo se pueden cancelar pedidos pendientes de pago.')
+
+    reservas = ReservaPedido.objects.filter(detalle__pedido=pedido).select_related('inventario')
+    for reserva in reservas:
+        liberar_reserva(
+            reserva.inventario, reserva.cantidad,
+            usuario=usuario, motivo=f'Cancelación del pedido #{pedido.pk}',
+        )
+
+     # Si había un pago esperando (transferencia o contra entrega), ya no aplica
+    pedido.transacciones.filter(
+        estado_pago=TransaccionPago.Estado.PENDIENTE
+    ).update(estado_pago=TransaccionPago.Estado.RECHAZADO)
+
+    pedido.estado_pedido = Pedido.Estado.CANCELADO
+    pedido.save(update_fields=['estado_pedido'])
+    return pedido
+
+
+###########################        PAGOS (contexto del patrón Strategy)        ###############################
+
+
+ESTADOS_QUE_BLOQUEAN = [TransaccionPago.Estado.APROBADO, TransaccionPago.Estado.PENDIENTE]
+
+
+@transaction.atomic
+def pagar_pedido(pedido, forma_pago, metodo_pago=None):
+    """
+    Contexto del patrón Strategy: elige la estrategia por su clave y la usa
+    sin saber qué forma de pago es. Devuelve (transaccion, resultado).
+    """
+    pedido = Pedido.objects.select_for_update().get(pk=pedido.pk)
+
+    if pedido.estado_pedido != Pedido.Estado.PENDIENTE:
+        raise ValidationError('Este pedido ya no está pendiente de pago.')
+    if pedido.transacciones.filter(estado_pago__in=ESTADOS_QUE_BLOQUEAN).exists():
+        raise ValidationError('Este pedido ya tiene un pago registrado.')
+    if pedido.total_final <= 0:
+        raise ValidationError('Este pedido no requiere pago.')
+
+    estrategia = obtener_estrategia(forma_pago)
+    datos = {'metodo_pago': metodo_pago}
+
+    estrategia.validar(pedido, datos)
+    resultado = estrategia.procesar(pedido, datos)
+
+    transaccion = TransaccionPago.objects.create(
+        pedido=pedido,
+        metodo_pago=metodo_pago if estrategia.clave == TransaccionPago.Forma.TARJETA else None,
+        forma_pago=estrategia.clave,
+        monto=pedido.total_final,
+        estado_pago=resultado.estado,
+        id_transaccion_externa=resultado.referencia,
+    )
+
+    if resultado.estado == TransaccionPago.Estado.APROBADO:
+        pedido.estado_pedido = Pedido.Estado.PAGADO
+        pedido.save(update_fields=['estado_pedido'])
+        activar_suscripciones(pedido)
+
+    return transaccion, resultado
+
+
+@transaction.atomic
+def confirmar_pago(transaccion):
+    "El admin confirma un pago pendiente (transferencia recibida o cobro contra entrega)."
+    transaccion = (TransaccionPago.objects
+                   .select_for_update()
+                   .select_related('pedido')
+                   .get(pk=transaccion.pk))
+
+    if transaccion.estado_pago != TransaccionPago.Estado.PENDIENTE:
+        raise ValidationError('Solo se pueden confirmar pagos pendientes.')
+    if transaccion.forma_pago == TransaccionPago.Forma.CONTRA_ENTREGA:
+        raise ValidationError('El pago contra entrega se confirma al marcar el pedido como entregado.')
+    if transaccion.pedido.estado_pedido != Pedido.Estado.PENDIENTE:
+        raise ValidationError('El pedido ya no está pendiente de pago.')   
+
+    transaccion.estado_pago = TransaccionPago.Estado.APROBADO
+    transaccion.save(update_fields=['estado_pago'])
+
+    pedido = transaccion.pedido
+    pedido.estado_pedido = Pedido.Estado.PAGADO
+    pedido.save(update_fields=['estado_pedido'])
+    activar_suscripciones(pedido)
+    return transaccion
+
+###########################        GESTIÓN DEL PEDIDO (después del pago)        ###############################
+
+
+def _bloquear_pedido(pedido):
+    return Pedido.objects.select_for_update().get(pk=pedido.pk)
+
+
+def _pago_contra_entrega(pedido):
+    "La transacción contra entrega que espera cobrarse, o None."
+    return pedido.transacciones.filter(
+        forma_pago=TransaccionPago.Forma.CONTRA_ENTREGA,
+        estado_pago=TransaccionPago.Estado.PENDIENTE,
+    ).first()
+
+
+def _cambiar_estado(pedido, estado):
+    pedido.estado_pedido = estado
+    pedido.save(update_fields=['estado_pedido'])
+    return pedido
+
+
+@transaction.atomic
+def procesar_pedido(pedido, usuario=None):
+    """
+    PAGADO (o contra entrega) → EN_PROCESO.
+    Las unidades reservadas salen del almacén: ya no se pueden liberar.
+    """
+    pedido = _bloquear_pedido(pedido)
+
+    pagado = pedido.estado_pedido == Pedido.Estado.PAGADO
+    contra_entrega = (pedido.estado_pedido == Pedido.Estado.PENDIENTE
+                      and _pago_contra_entrega(pedido) is not None)
+    if not (pagado or contra_entrega):
+        raise ValidationError('Solo se procesan pedidos pagados o con pago contra entrega.')
+
+    reservas = list(ReservaPedido.objects.filter(detalle__pedido=pedido).select_related('inventario'))
+    if not reservas:
+        raise ValidationError('Este pedido no tiene artículos que enviar.')
+
+    for reserva in reservas:
+        confirmar_salida(
+            reserva.inventario, reserva.cantidad,
+            usuario=usuario, motivo=f'Despacho del pedido #{pedido.pk}',
+        )
+
+    return _cambiar_estado(pedido, Pedido.Estado.EN_PROCESO)
+
+
+@transaction.atomic
+def marcar_enviado(pedido):
+    "EN_PROCESO → ENVIADO."
+    pedido = _bloquear_pedido(pedido)
+    if pedido.estado_pedido != Pedido.Estado.EN_PROCESO:
+        raise ValidationError('Solo se pueden enviar pedidos en proceso.')
+    return _cambiar_estado(pedido, Pedido.Estado.ENVIADO)
+
+
+@transaction.atomic
+def marcar_entregado(pedido):
+    "ENVIADO → ENTREGADO. Si era contra entrega, aquí se cobra."
+    pedido = _bloquear_pedido(pedido)
+    if pedido.estado_pedido != Pedido.Estado.ENVIADO:
+        raise ValidationError('Solo se pueden entregar pedidos enviados.')
+
+    pago = _pago_contra_entrega(pedido)
+    if pago is not None:
+        pago.estado_pago = TransaccionPago.Estado.APROBADO
+        pago.save(update_fields=['estado_pago'])
+        activar_suscripciones(pedido)
+
+    return _cambiar_estado(pedido, Pedido.Estado.ENTREGADO)

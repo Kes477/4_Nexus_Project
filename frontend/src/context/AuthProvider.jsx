@@ -43,7 +43,6 @@ export function AuthProvider({ children }) {
         () => Boolean(localStorage.getItem("access_token"))
     );
 
-    // Recuperar la sesión existente.
     useEffect(() => {
 
         if (!localStorage.getItem("access_token")) {
@@ -83,7 +82,6 @@ export function AuthProvider({ children }) {
     }, []);
 
 
-    // Iniciar sesión.
     async function iniciarSesion(email, password) {
 
         const version = ++versionSesion.current;
@@ -116,7 +114,6 @@ export function AuthProvider({ children }) {
     }
 
 
-    // Registrar un nuevo cliente.
     async function registrarse(datosRegistro) {
 
         const datos = await registerUser(datosRegistro);
@@ -126,7 +123,6 @@ export function AuthProvider({ children }) {
     }
 
 
-    // Editar los datos del perfil y actualizar el contexto.
     async function actualizarPerfil(cambios) {
 
         const datos = await updatePerfil(cambios);
@@ -136,13 +132,30 @@ export function AuthProvider({ children }) {
     }
 
 
-    // Cambiar la contraseña pidiendo la actual.
+    function actualizarUsuario(cambios) {
+
+        setUsuario((prev) => {
+
+            if (!prev) return prev;
+
+            const actualizado = { ...prev, ...cambios };
+
+            try {
+                localStorage.setItem("usuario", JSON.stringify(actualizado));
+            } catch (error) {
+                console.error(error);
+            }
+
+            return actualizado;
+        });
+    }
+
+
     function cambiarPassword(actual, nueva) {
         return changePassword(actual, nueva);
     }
 
 
-    // Cerrar sesión.
     function cerrarSesion() {
         versionSesion.current++;
         logout();
@@ -151,7 +164,6 @@ export function AuthProvider({ children }) {
     }
 
 
-    // Obtener el rol proporcionado por el backend.
     const rol = usuario?.rol ?? null;
 
     const roles = Array.isArray(usuario?.roles)
@@ -271,6 +283,7 @@ export function AuthProvider({ children }) {
                 iniciarSesion,
                 registrarse,
                 actualizarPerfil,
+                actualizarUsuario,
                 cambiarPassword,
                 cerrarSesion,
             }}

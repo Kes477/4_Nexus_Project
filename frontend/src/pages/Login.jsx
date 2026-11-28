@@ -5,6 +5,7 @@ import { Shield, ChevronLeft, ArrowRight, Check, Eye, EyeOff } from 'lucide-reac
 import { Input, Button, Alert, IconButton, Checkbox, Modal } from '../components/ui';
 import { useSesion } from '../hooks/useSesion';
 import { obtenerDestinoInicial } from '../config/paneles';
+import { useTheme } from '../context/useTheme';
 
 /* Configuracion anterior retirada.
 const PANEL_POR_ROL = {
@@ -32,13 +33,24 @@ const Login = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const { iniciarSesion, registrarse } = useSesion();
+    const { theme } = useTheme();
+    const isLight = theme === 'light';
 
     const redirectTo = location.state?.from || '/cliente';
     const loginMessage = location.state?.message;
+
     const [step, setStep] = useState('login');
     const [regSubStep, setRegSubStep] = useState(1);
+
+    const [recoverSubStep, setRecoverSubStep] = useState(1);
+    const [recoverEmail, setRecoverEmail] = useState('');
+    const [recoverCode, setRecoverCode] = useState('');
+    const [recoverNewPassword, setRecoverNewPassword] = useState('');
+    const [recoverConfirmPassword, setRecoverConfirmPassword] = useState('');
+
     const [isLoading, setIsLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState(null);
+    const [successMsg, setSuccessMsg] = useState(null);
     const [rememberMe, setRememberMe] = useState(false);
 
     const [termsAccepted, setTermsAccepted] = useState(false);
@@ -46,6 +58,9 @@ const Login = () => {
 
     const [mostrarPassword, setMostrarPassword] = useState(false);
     const [mostrarConfirmarPassword, setMostrarConfirmarPassword] = useState(false);
+
+    const [mostrarRecoverPass, setMostrarRecoverPass] = useState(false);
+    const [mostrarRecoverConfirm, setMostrarRecoverConfirm] = useState(false);
 
     const [formData, setFormData] = useState({
         email: '',
@@ -68,9 +83,17 @@ const Login = () => {
         special: /[!@#$%^&*(),.?":{}|<>]/.test(formData.password)
     };
 
+    const passChecksRecover = {
+        length: recoverNewPassword.length >= 8,
+        upper: /[A-Z]/.test(recoverNewPassword),
+        lower: /[a-z]/.test(recoverNewPassword),
+        number: /[0-9]/.test(recoverNewPassword),
+        special: /[!@#$%^&*(),.?":{}|<>]/.test(recoverNewPassword)
+    };
+
     const validateField = (field, value) => {
         if (!value && field !== 'telefono') return 'Este campo es obligatorio.';
-        
+
         switch (field) {
             case 'email':
                 if (!REGEX.email.test(value)) return 'Ingresa un correo electrónico válido.';
@@ -85,10 +108,11 @@ const Login = () => {
             case 'identificacion':
                 if (!REGEX.identificacion.test(value)) return 'Ingresa un DNI válido (13 dígitos).';
                 break;
-            case 'password':
+            case 'password': {
                 const isPassValid = Object.values(passChecks).every(Boolean);
                 if (!isPassValid) return 'La contraseña no cumple con los requisitos.';
                 break;
+            }
             case 'confirmPassword':
                 if (value !== formData.password) return 'Las contraseñas no coinciden.';
                 break;
@@ -101,7 +125,7 @@ const Login = () => {
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData({ ...formData, [name]: value });
-        
+
         if (errors[name]) {
             setErrors({ ...errors, [name]: '' });
         }
@@ -116,7 +140,7 @@ const Login = () => {
 
     const validateStep = (currentStep) => {
         const newErrors = {};
-        const fieldsToValidate = currentStep === 1 
+        const fieldsToValidate = currentStep === 1
             ? ['email', 'password', 'confirmPassword']
             : ['nombres', 'apellidos', 'telefono', 'identificacion'];
 
@@ -146,7 +170,7 @@ const Login = () => {
     const submitLogin = async (e) => {
         if (e) e.preventDefault();
         setErrorMsg(null);
-        
+
         if (!formData.email || !formData.password) {
             setErrorMsg("Por favor, ingresa tu correo y contraseña.");
             return;
@@ -186,9 +210,86 @@ const Login = () => {
         }
     };
 
+    const handleRecoverSubmit = async () => {
+        setErrorMsg(null);
+        setSuccessMsg(null);
+
+        if (recoverSubStep === 1) {
+            if (!REGEX.email.test(recoverEmail)) {
+                return setErrorMsg("Ingresa un correo electrónico válido.");
+            }
+
+            setIsLoading(true);
+            try {
+                const res = await fetch(`${import.meta.env.VITE_API_URL}/auth/password-reset/request/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: recoverEmail })
+                });
+
+                const contentType = res.headers.get("content-type");
+                if (!contentType || !contentType.includes("application/json")) {
+                    throw new Error(`Error del servidor (${res.status}). Verifica la ruta del backend.`);
+                }
+
+                const data = await res.json();
+
+                if (!res.ok) throw new Error(data.detail || 'Error al solicitar el código');
+
+                setSuccessMsg(data.detail || 'Código enviado a tu correo.');
+                setRecoverSubStep(2);
+            } catch (error) {
+                setErrorMsg(error.message || 'No se pudo enviar el código. Verifica tu correo.');
+            } finally {
+                setIsLoading(false);
+            }
+        } else {
+            if (recoverCode.length !== 6) {
+                return setErrorMsg("El código debe tener 6 dígitos.");
+            }
+            if (recoverNewPassword !== recoverConfirmPassword) {
+                return setErrorMsg("Las contraseñas no coinciden.");
+            }
+            if (!Object.values(passChecksRecover).every(Boolean)) {
+                return setErrorMsg("La nueva contraseña no cumple con los requisitos de seguridad.");
+            }
+
+            setIsLoading(true);
+            try {
+                const res = await fetch(`${import.meta.env.VITE_API_URL}/auth/password-reset/confirm/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: recoverEmail,
+                        code: recoverCode,
+                        new_password: recoverNewPassword
+                    })
+                });
+
+                const contentType = res.headers.get("content-type");
+                if (!contentType || !contentType.includes("application/json")) {
+                    throw new Error(`Error del servidor (${res.status}). Verifica la ruta del backend.`);
+                }
+
+                const data = await res.json();
+
+                if (!res.ok) {
+                    const firstError = Object.values(data)[0];
+                    throw new Error(Array.isArray(firstError) ? firstError[0] : firstError);
+                }
+
+                setStep('success');
+            } catch (error) {
+                setErrorMsg(error.message || 'Código incorrecto o expirado.');
+            } finally {
+                setIsLoading(false);
+            }
+        }
+    };
+
     const handleNextStep = async () => {
         setErrorMsg(null);
-        
+
         if (step === 'register') {
             if (regSubStep === 1) {
                 if (validateStep(1)) setRegSubStep(2);
@@ -223,22 +324,22 @@ const Login = () => {
                 }
             }
         } else if (step === 'recover') {
-            setStep('success');
+            handleRecoverSubmit();
         }
     };
 
     const labelStyle = { fontSize: '11px', fontWeight: '700', color: 'var(--text-light)', marginBottom: '6px', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' };
-    
-    const toggleEyeStyle = { 
-        position: 'absolute', 
-        right: '15px', 
-        top: '24px', 
-        transform: 'translateY(-50%)', 
-        background: 'none', 
-        border: 'none', 
-        cursor: 'pointer', 
-        color: 'var(--text-light)', 
-        zIndex: 10 
+
+    const toggleEyeStyle = {
+        position: 'absolute',
+        right: '15px',
+        top: '24px',
+        transform: 'translateY(-50%)',
+        background: 'none',
+        border: 'none',
+        cursor: 'pointer',
+        color: 'var(--text-light)',
+        zIndex: 10
     };
 
     return (
@@ -259,9 +360,27 @@ const Login = () => {
                     <div style={{ position: 'absolute', top: '-10%', left: '-10%', width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(4, 201, 166, 0.25) 0%, transparent 70%)' }} />
                     <div style={{ position: 'absolute', bottom: '-10%', right: '-10%', width: '400px', height: '400px', background: 'radial-gradient(circle, rgba(4, 201, 166, 0.15) 0%, transparent 70%)' }} />
                     <div style={{ zIndex: 10, marginTop: 'auto', marginBottom: 'auto' }}>
-                        <div style={{ background: 'var(--color-primary)', color: 'var(--white)', padding: '6px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '900', width: 'fit-content', marginBottom: '24px', letterSpacing: '1px', boxShadow: '0 4px 15px rgba(4, 201, 166, 0.3)' }}>
-                            4 NEXUS
+
+                        <div style={{
+                            background: 'var(--color-primary)',
+                            padding: '10px 20px',
+                            borderRadius: '8px',
+                            width: 'fit-content',
+                            marginBottom: '24px',
+                            boxShadow: '0 4px 15px rgba(4, 201, 166, 0.3)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                        }}>
+                            <img
+                                src={isLight
+                                    ? 'https://storage.googleapis.com/cursopractica-imagenes-2026/img-logos/Logo_modo_claro.png'
+                                    : 'https://storage.googleapis.com/cursopractica-imagenes-2026/img-logos/Logo_modo_oscuro.png'}
+                                alt="4 Nexus Logo"
+                                style={{ height: '40px', objectFit: 'contain' }}
+                            />
                         </div>
+
                         <h1 style={{ color: 'var(--white)', fontSize: '30px', fontWeight: '800', lineHeight: '1.2', marginBottom: '16px' }}>
                             Gestión e infraestructura de vuelo autónomo.
                         </h1>
@@ -292,7 +411,12 @@ const Login = () => {
                         {loginMessage && step ==='login' && !errorMsg &&(
                             <div style={{ width: '100%', maxWidth: '360px', marginBottom: '16px' }} >
                                 <Alert type='info' title = 'Aviso' message={loginMessage}/>
-                            </div>    
+                            </div>
+                        )}
+                        {successMsg && step === 'recover' && !errorMsg && (
+                            <div style={{ width: '100%', maxWidth: '360px', marginBottom: '16px' }}>
+                                <Alert type="success" title="¡Éxito!" message={successMsg} />
+                            </div>
                         )}
                         {errorMsg && (
                             <div style={{ width: '100%', maxWidth: '360px', marginBottom: '16px' }}>
@@ -317,7 +441,7 @@ const Login = () => {
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2px' }}>
                                     <Checkbox label="Recordarme" checked={rememberMe} onChange={() => setRememberMe(!rememberMe)} />
-                                    <button type="button" onClick={() => { setStep('recover'); setErrorMsg(null); }} style={{ background: 'none', border: 'none', color: 'var(--color-primary)', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}>¿Olvidaste tu contraseña?</button>
+                                    <button type="button" onClick={() => { setStep('recover'); setErrorMsg(null); setSuccessMsg(null); setRecoverSubStep(1); }} style={{ background: 'none', border: 'none', color: 'var(--color-primary)', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}>¿Olvidaste tu contraseña?</button>
                                 </div>
                             </form>
                         )}
@@ -345,7 +469,7 @@ const Login = () => {
                                                     {mostrarPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                                                 </button>
                                             </div>
-                                            
+
                                             <div style={{ marginTop: '8px', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                                                 <CheckItem label="8+ caracteres" isValid={passChecks.length} />
                                                 <CheckItem label="Mayúscula" isValid={passChecks.upper} />
@@ -397,44 +521,92 @@ const Login = () => {
                                             </p>
                                         </div>
 
-                                        <div style={{ 
-                                            display: 'flex', 
-                                            alignItems: 'flex-start', 
-                                            gap: '12px',
-                                            marginTop: '12px', 
-                                            width: '100%', 
-                                            textAlign: 'left', 
-                                            background: 'var(--bg-color)', 
-                                            padding: '16px', 
-                                            borderRadius: '8px', 
-                                            border: '1px solid var(--light-gray)',
-                                            boxSizing: 'border-box'
+                                        <div style={{
+                                            display: 'flex', alignItems: 'flex-start', gap: '12px', marginTop: '12px', width: '100%', textAlign: 'left', background: 'var(--bg-color)', padding: '16px', borderRadius: '8px', border: '1px solid var(--light-gray)', boxSizing: 'border-box'
                                         }}>
                                             <div style={{ marginTop: '2px' }}>
-                                                <Checkbox 
-                                                    checked={termsAccepted} 
-                                                    onChange={() => setTermsAccepted(!termsAccepted)}
-                                                />
+                                                <Checkbox checked={termsAccepted} onChange={() => setTermsAccepted(!termsAccepted)} />
                                             </div>
                                             <div style={{ flex: 1 }}>
                                                 <span style={{ fontSize: '13px', color: 'var(--color-dark)', lineHeight: '1.6', fontWeight: '500', display: 'inline-block' }}>
                                                     He leído y acepto los{' '}
-                                                    <button 
-                                                        type="button" 
-                                                        onClick={(e) => { e.preventDefault(); setIsTermsModalOpen(true); }}
-                                                        style={{ background: 'none', border: 'none', color: 'var(--color-primary)', padding: 0, fontSize: '13px', fontWeight: 'bold', cursor: 'pointer', textDecoration: 'underline' }}
-                                                    >
-                                                        Términos y Condiciones
-                                                    </button>{' '}
-                                                    y la{' '}
-                                                    <button 
-                                                        type="button" 
-                                                        onClick={(e) => { e.preventDefault(); setIsTermsModalOpen(true); }}
-                                                        style={{ background: 'none', border: 'none', color: 'var(--color-primary)', padding: 0, fontSize: '13px', fontWeight: 'bold', cursor: 'pointer', textDecoration: 'underline' }}
-                                                    >
-                                                        Política de Privacidad
-                                                    </button>.
+                                                    <button type="button" onClick={(e) => { e.preventDefault(); setIsTermsModalOpen(true); }} style={{ background: 'none', border: 'none', color: 'var(--color-primary)', padding: 0, fontSize: '13px', fontWeight: 'bold', cursor: 'pointer', textDecoration: 'underline' }}>Términos y Condiciones</button>{' '}y la{' '}
+                                                    <button type="button" onClick={(e) => { e.preventDefault(); setIsTermsModalOpen(true); }} style={{ background: 'none', border: 'none', color: 'var(--color-primary)', padding: 0, fontSize: '13px', fontWeight: 'bold', cursor: 'pointer', textDecoration: 'underline' }}>Política de Privacidad</button>.
                                                 </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {step === 'recover' && (
+                            <div style={{ width: '100%', maxWidth: '360px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--light-gray)', paddingBottom: '12px', marginBottom: '16px' }}>
+                                    <span style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--color-dark)' }}>
+                                        {recoverSubStep === 1 ? "Ingresa tu correo" : "Nuevo código y contraseña"}
+                                    </span>
+                                    <span style={{ fontSize: '10px', color: 'var(--color-primary)', fontWeight: 'bold', background: 'rgba(4, 201, 166, 0.1)', padding: '2px 8px', borderRadius: '20px' }}>Paso {recoverSubStep} de 2</span>
+                                </div>
+
+                                {recoverSubStep === 1 && (
+                                    <div>
+                                        <p style={{ fontSize: '13px', color: 'var(--text-light)', marginBottom: '16px', lineHeight: '1.5' }}>
+                                            Ingresa el correo asociado a tu cuenta y te enviaremos un código de 6 dígitos para restablecer tu contraseña.
+                                        </p>
+                                        <label style={labelStyle}>Correo Electrónico</label>
+                                        <Input
+                                            type="email"
+                                            icon="fa-envelope"
+                                            value={recoverEmail}
+                                            onChange={(e) => setRecoverEmail(e.target.value)}
+                                            placeholder="tu@correo.com"
+                                        />
+                                    </div>
+                                )}
+
+                                {recoverSubStep === 2 && (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                                        <p style={{ fontSize: '13px', color: 'var(--text-light)', margin: 0 }}>
+                                            Revisa tu correo <strong>{recoverEmail}</strong>. El código expira en 3 minutos.
+                                        </p>
+
+                                        <div>
+                                            <label style={labelStyle}>Código de Verificación</label>
+                                            <Input
+                                                type="text"
+                                                icon="fa-key"
+                                                value={recoverCode}
+                                                onChange={(e) => setRecoverCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                                placeholder="123456"
+                                                maxLength={6}
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label style={labelStyle}>Nueva Contraseña</label>
+                                            <div style={{ position: 'relative' }}>
+                                                <Input type={mostrarRecoverPass ? "text" : "password"} icon="fa-lock" value={recoverNewPassword} onChange={(e) => setRecoverNewPassword(e.target.value)} />
+                                                <button type="button" onClick={() => setMostrarRecoverPass(!mostrarRecoverPass)} style={toggleEyeStyle}>
+                                                    {mostrarRecoverPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                                                </button>
+                                            </div>
+                                            <div style={{ marginTop: '8px', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                                                <CheckItem label="8+ caracteres" isValid={passChecksRecover.length} />
+                                                <CheckItem label="Mayúscula" isValid={passChecksRecover.upper} />
+                                                <CheckItem label="Minúscula" isValid={passChecksRecover.lower} />
+                                                <CheckItem label="Número" isValid={passChecksRecover.number} />
+                                                <CheckItem label="Símbolo" isValid={passChecksRecover.special} />
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label style={labelStyle}>Confirmar Nueva Contraseña</label>
+                                            <div style={{ position: 'relative' }}>
+                                                <Input type={mostrarRecoverConfirm ? "text" : "password"} icon="fa-lock" value={recoverConfirmPassword} onChange={(e) => setRecoverConfirmPassword(e.target.value)} />
+                                                <button type="button" onClick={() => setMostrarRecoverConfirm(!mostrarRecoverConfirm)} style={toggleEyeStyle}>
+                                                    {mostrarRecoverConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
+                                                </button>
                                             </div>
                                         </div>
                                     </div>
@@ -446,10 +618,10 @@ const Login = () => {
                             <div style={{ width: '100%', maxWidth: '360px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
                                 <div style={{ background: 'rgba(4, 201, 166, 0.1)', padding: '12px', borderRadius: '50%', color: 'var(--color-primary)' }}><Check size={28} /></div>
                                 <div>
-                                    <h3 style={{ margin: '0 0 6px 0', fontSize: '20px', color: 'var(--color-primary)' }}>¡Registro Exitoso!</h3>
-                                    <p style={{ fontSize: '13px', color: 'var(--text-light)', margin: 0 }}>Tu cuenta ha sido creada. Ya puedes ingresar al sistema.</p>
+                                    <h3 style={{ margin: '0 0 6px 0', fontSize: '20px', color: 'var(--color-primary)' }}>¡Contraseña Restablecida!</h3>
+                                    <p style={{ fontSize: '13px', color: 'var(--text-light)', margin: 0 }}>Tu contraseña se ha actualizado correctamente. Ya puedes iniciar sesión con tu nueva clave.</p>
                                 </div>
-                                <Button variant="primary" size="sm" onClick={() => { setStep('login'); setRegSubStep(1); }} style={{ width: '100%', marginTop: '12px', padding: '10px' }}>Ir al inicio de sesión</Button>
+                                <Button variant="primary" size="sm" onClick={() => { setStep('login'); setFormData({ ...formData, email: '', password: '' }); }} style={{ width: '100%', marginTop: '12px', padding: '10px' }}>Ir al inicio de sesión</Button>
                             </div>
                         )}
                     </div>
@@ -459,14 +631,16 @@ const Login = () => {
                             <button
                                 onClick={() => {
                                     setErrorMsg(null);
+                                    setSuccessMsg(null);
                                     if (step === 'register' && regSubStep > 1) setRegSubStep(prev => prev - 1);
+                                    else if (step === 'recover' && recoverSubStep > 1) setRecoverSubStep(prev => prev - 1);
                                     else if (step === 'recover') setStep('login');
                                     else navigate(-1);
                                 }}
                                 style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-light)', fontSize: '12px', fontWeight: 'bold' }}
                             >
                                 <ChevronLeft size={16} />
-                                {step === 'register' && regSubStep > 1 ? "Anterior" : step === 'recover' ? "Regresar" : "Cancelar"}
+                                {step === 'register' && regSubStep > 1 ? "Anterior" : step === 'recover' && recoverSubStep > 1 ? "Volver" : step === 'recover' ? "Regresar" : "Cancelar"}
                             </button>
 
                             <Button
@@ -483,7 +657,7 @@ const Login = () => {
                                     <>
                                         {step === 'login' && "Ingresar al sistema"}
                                         {step === 'register' && (regSubStep < 3 ? <span style={{display:'flex', alignItems:'center', gap:'6px'}}>Siguiente <ArrowRight size={14}/></span> : "Finalizar Registro")}
-                                        {step === 'recover' && "Recuperar cuenta"}
+                                        {step === 'recover' && (recoverSubStep === 1 ? <span style={{display:'flex', alignItems:'center', gap:'6px'}}>Enviar código <ArrowRight size={14}/></span> : "Cambiar Contraseña")}
                                     </>
                                 )}
                             </Button>
@@ -492,78 +666,33 @@ const Login = () => {
                 </div>
             </div>
 
-            <Modal 
-                isOpen={isTermsModalOpen} 
-                onClose={() => setIsTermsModalOpen(false)} 
+            <Modal
+                isOpen={isTermsModalOpen}
+                onClose={() => setIsTermsModalOpen(false)}
                 title="Términos y Condiciones de Uso"
                 style={{ width: '1000px', maxWidth: '95vw' }}
             >
-                <div style={{ 
-                    height: '450px', 
-                    overflowY: 'auto', 
-                    paddingRight: '15px', 
-                    fontSize: '13px', 
-                    color: 'var(--text-light)', 
-                    lineHeight: '1.7' 
-                }}>
+                <div style={{ height: '450px', overflowY: 'auto', paddingRight: '15px', fontSize: '13px', color: 'var(--text-light)', lineHeight: '1.7' }}>
                     <h4 style={{ color: 'var(--color-dark)', marginBottom: '8px', fontSize: '15px' }}>1. Aceptación de los Términos</h4>
                     <p style={{ marginBottom: '16px' }}>
                         Al acceder y utilizar la plataforma 4 NEXUS, usted acepta estar sujeto a estos Términos y Condiciones, así como a todas las leyes y regulaciones aplicables. Si no está de acuerdo con alguno de estos términos, tiene prohibido usar o acceder a este sitio. Los materiales contenidos en este sitio web están protegidos por las leyes de derechos de autor y marcas registradas aplicables.
                     </p>
-
                     <h4 style={{ color: 'var(--color-dark)', marginBottom: '8px', fontSize: '15px' }}>2. Uso de la Plataforma y Servicios</h4>
                     <p style={{ marginBottom: '16px' }}>
                         Nuestra plataforma está diseñada para la gestión de vuelos autónomos, servicios de drones y operaciones relacionadas. Usted se compromete a utilizar los servicios de manera ética y de acuerdo con las regulaciones aeronáuticas vigentes en su país. Queda estrictamente prohibido el uso de la plataforma para actividades ilícitas, espionaje, o cualquier acción que viole la privacidad de terceros.
                     </p>
-
                     <h4 style={{ color: 'var(--color-dark)', marginBottom: '8px', fontSize: '15px' }}>3. Registro y Seguridad de la Cuenta</h4>
                     <p style={{ marginBottom: '16px' }}>
                         Para acceder a ciertas funciones, debe registrarse y crear una cuenta. Usted es responsable de mantener la confidencialidad de su contraseña y de todas las actividades que ocurran bajo su cuenta. Nos reservamos el derecho de suspender o cancelar cuentas que violen las normas de seguridad, presenten actividad sospechosa o incumplan estos términos. Usted acepta notificarnos inmediatamente cualquier uso no autorizado de su cuenta.
                     </p>
-
                     <h4 style={{ color: 'var(--color-dark)', marginBottom: '8px', fontSize: '15px' }}>4. Política de Privacidad y Datos Personales</h4>
                     <p style={{ marginBottom: '16px' }}>
                         Sus datos personales (nombre, correo electrónico, teléfono y documento de identidad) serán tratados de acuerdo con nuestra Política de Privacidad. Utilizamos esta información para la creación de su cuenta, la asignación de misiones, la facturación y la comunicación necesaria para el funcionamiento de la plataforma. No compartiremos su información con terceros sin su consentimiento, salvo que sea requerido por ley.
                     </p>
-
-                    <h4 style={{ color: 'var(--color-dark)', marginBottom: '8px', fontSize: '15px' }}>5. Uso de Cookies y Tecnologías de Rastreo</h4>
-                    <p style={{ marginBottom: '16px' }}>
-                        Utilizamos cookies y tecnologías similares para rastrear la actividad en nuestra plataforma y mantener cierta información. Las cookies son archivos con una pequeña cantidad de datos que pueden incluir un identificador único anónimo. Se envían a su navegador desde un sitio web y se almacenan en el almacenamiento local de su dispositivo. Usted puede instruir a su navegador para rechazar todas las cookies o para indicar cuándo se envía una cookie.
-                    </p>
-
-                    <h4 style={{ color: 'var(--color-dark)', marginBottom: '8px', fontSize: '15px' }}>6. Obligaciones del Usuario</h4>
-                    <p style={{ marginBottom: '16px' }}>
-                        Usted se compromete a no utilizar la plataforma para ningún propósito que sea ilegal o prohibido por estos Términos. No debe realizar ingeniería inversa, descompilar o desensamblar ningún aspecto del software de la plataforma. Tampoco debe intentar obtener acceso no autorizado a los servidores o bases de datos de 4 NEXUS.
-                    </p>
-
-                    <h4 style={{ color: 'var(--color-dark)', marginBottom: '8px', fontSize: '15px' }}>7. Propiedad Intelectual</h4>
-                    <p style={{ marginBottom: '16px' }}>
-                        Todo el contenido, características y funcionalidades (incluyendo, pero no limitado a, toda la información, software, texto, pantallas, imágenes, video y audio, y el diseño, selección y arreglo de los mismos), son propiedad exclusiva de 4 NEXUS o sus licenciantes u otros proveedores de dicho material y están protegidos por las leyes de propiedad intelectual de Honduras y tratados internacionales.
-                    </p>
-
-                    <h4 style={{ color: 'var(--color-dark)', marginBottom: '8px', fontSize: '15px' }}>8. Limitación de Responsabilidad</h4>
-                    <p style={{ marginBottom: '16px' }}>
-                        En ningún caso 4 NEXUS será responsable de daños directos, indirectos, incidentales, especiales o consecuentes que resulten del uso o la imposibilidad de usar la plataforma. Usted asume la responsabilidad total por el uso de los drones y equipos operados a través de nuestra red, incluyendo el cumplimiento de todas las normativas locales de aviación civil.
-                    </p>
-
-                    <h4 style={{ color: 'var(--color-dark)', marginBottom: '8px', fontSize: '15px' }}>9. Resolución de Disputas y Legislación Aplicable</h4>
-                    <p style={{ marginBottom: '16px' }}>
-                        Cualquier disputa que surja en relación con estos Términos se resolverá de conformidad con las leyes de la República de Honduras. Las partes acuerdan someterse a la jurisdicción exclusiva de los tribunales de Tegucigalpa, renunciando a cualquier otro fuero que pudiera corresponderles.
-                    </p>
-
-                    <h4 style={{ color: 'var(--color-dark)', marginBottom: '8px', fontSize: '15px' }}>10. Modificaciones de los Términos</h4>
-                    <p style={{ marginBottom: '16px' }}>
-                        Nos reservamos el derecho de modificar o reemplazar estos Términos en cualquier momento. Si una revisión es material, le proporcionaremos un aviso con al menos 30 días de anticipación antes de que los nuevos términos entren en vigencia. Lo que constituye un cambio material será determinado a nuestra entera discreción.
-                    </p>
                 </div>
-
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px', paddingTop: '15px', borderTop: '1px solid var(--light-gray)' }}>
-                    <Button variant="outline-dark" size="sm" onClick={() => setIsTermsModalOpen(false)}>
-                        Cerrar
-                    </Button>
-                    <Button variant="primary" size="sm" onClick={() => { setTermsAccepted(true); setIsTermsModalOpen(false); }}>
-                        Aceptar Términos
-                    </Button>
+                    <Button variant="outline-dark" size="sm" onClick={() => setIsTermsModalOpen(false)}>Cerrar</Button>
+                    <Button variant="primary" size="sm" onClick={() => { setTermsAccepted(true); setIsTermsModalOpen(false); }}>Aceptar Términos</Button>
                 </div>
             </Modal>
         </div>

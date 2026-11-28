@@ -2,6 +2,7 @@ from django.db import models
 from django.conf import settings
 from django.db.models import Q
 
+
 class TipoUbicacion(models.Model):
     nombre = models.CharField(max_length=100, unique=True)
     descripcion = models.TextField(blank=True)
@@ -14,6 +15,7 @@ class TipoUbicacion(models.Model):
     def __str__(self):
         return self.nombre
 
+
 class Ubicacion(models.Model):
     tipo = models.ForeignKey(TipoUbicacion, on_delete=models.PROTECT, related_name='ubicaciones')
     nombre = models.CharField(max_length=255)
@@ -25,28 +27,43 @@ class Ubicacion(models.Model):
         verbose_name = 'Ubicación'
         verbose_name_plural = 'Ubicaciones'
         ordering = ['nombre']
-        constraints = [models.UniqueConstraint(fields=['padre','nombre'], name = 'ubicacion_unica_por_padre'),]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['padre', 'nombre'],
+                condition=Q(padre__isnull=False),
+                name='ubicacion_unica_por_padre',
+            ),
+            models.UniqueConstraint(
+                fields=['nombre'],
+                condition=Q(padre__isnull=True),
+                name='ubicacion_raiz_unica_por_nombre',
+            ),
+        ]
 
     def __str__(self):
-        return f'{self.nombre}, {self.padre}' if self.padre else self.nombre
+        return f'{self.nombre}, {self.padre}' if self.padre_id else self.nombre
 
 
 class Direccion(models.Model):
     class Tipo(models.TextChoices):
         CASA = 'casa', 'Casa'
         TRABAJO = 'trabajo', 'Trabajo'
-        FINCA = 'finca', 'Finca / Terreno' 
+        FINCA = 'finca', 'Finca / Terreno'
         OTRO = 'otro', 'Otro'
 
     usuario = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete = models.CASCADE,
-        null=True,
-        blank=True,
+        on_delete=models.CASCADE,
         related_name='direcciones',
     )
 
-    ubicacion = models.ForeignKey(Ubicacion, on_delete=models.PROTECT, related_name='direcciones')
+    ubicacion = models.ForeignKey(
+        Ubicacion,
+        on_delete=models.PROTECT,
+        related_name='direcciones',
+        null=True,
+        blank=True,
+    )
     linea_direccion1 = models.CharField('dirección', max_length=255)
     linea_direccion2 = models.CharField('referencia', max_length=255, blank=True)
     codigo_postal = models.CharField(max_length=20, blank=True)
@@ -66,9 +83,6 @@ class Direccion(models.Model):
         ]
 
     def __str__(self):
-        return f'{self.linea_direccion1}, {self.ubicacion}'
-
-
-
-
-            
+        if self.ubicacion_id:
+            return f'{self.linea_direccion1}, {self.ubicacion}'
+        return self.linea_direccion1

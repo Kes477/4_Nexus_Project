@@ -1,13 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-    Wrench, Cpu, Plane, User, Shield, Zap, Drone,
-    ChevronLeft, ChevronRight, ArrowRight,
-} from 'lucide-react';
+import { Wrench, Cpu, Plane, User, Shield, Zap, Drone, ChevronLeft, ChevronRight, ArrowRight, } from 'lucide-react';
 import { Navbar, Footer } from '../components/layout';
 import { Button } from '../components/ui';
 import { ServiceCard, ProductCard } from '../components/domain/Card';
-import { getProductos } from '../api/droneService'; 
+import { getProductosLanding } from '../api/droneService';
 
 const DEFAULT_DRONE_IMG =
     'https://images.unsplash.com/photo-1508614589041-895b88991e3e?q=80&w=600&auto=format&fit=crop';
@@ -42,6 +39,7 @@ const adaptSuscripcionToService = (sub, idx) => {
     if (sub.suscripcion?.periodo_facturacion_dias === 365) period = '/año';
 
     return {
+        id: sub.id,
         number: String(idx + 1).padStart(2, '0'),
         icon: idx % 2 === 0 ? Shield : Zap,
         title: sub.nombre,
@@ -102,12 +100,12 @@ const HeroSection = ({ onSolicitar, onExplorarEquipos }) => {
                 </div>
 
                 <div style={{ flex: '1 1 500px', position: 'relative' }}>
-                    <div style={{ 
-                        width: '100%', 
-                        height: '450px', 
-                        borderRadius: '16px', 
-                        boxShadow: '0 20px 40px rgba(0,0,0,0.1)', 
-                        position: 'relative', 
+                    <div style={{
+                        width: '100%',
+                        height: '450px',
+                        borderRadius: '16px',
+                        boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
+                        position: 'relative',
                         overflow: 'hidden',
                         backgroundColor: 'var(--bg-color)'
                     }}>
@@ -280,12 +278,12 @@ const CatalogoSection = ({
     return (
         <section id="catalogo" style={{ ...paddingCatalog, background: 'var(--white)', ...scrollAnchorStyle }}>
             <div style={containerStyle}>
-                
+
                 <div style={{ maxWidth: '1100px', margin: '0 auto', position: 'relative' }}>
-                    
+
                     <div style={{ marginBottom: '30px' }}>
                         <h2 style={{ ...titleStyle, textAlign: 'center' }}>Nuestros Planes y Equipos</h2>
-                        
+
                         <div
                             style={{
                                 display: 'flex',
@@ -443,7 +441,7 @@ const ProcesoSection = () => (
 );
 
 const ContactoSection = ({ onContactar }) => (
-    <section id="contacto" style={{ ...paddingNormal, background: 'var(--white)', ...scrollAnchorStyle }}>
+    <section id="contacto" style={{ ...paddingNormal, background: 'var(--white)', ...scrollAnchorStyle, overflow: 'hidden' }}>
         <div style={{ ...containerStyle, display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '30px' }}>
             <div style={{ flex: '1 1 500px' }}>
                 <span style={{ color: 'var(--color-primary)', fontSize: '13px', letterSpacing: '1.5px', fontWeight: 'bold', display: 'block', marginBottom: '15px' }}>
@@ -458,10 +456,29 @@ const ContactoSection = ({ onContactar }) => (
                 </p>
                 <Button variant="primary" onClick={onContactar}>Contactar con 4 Nexus</Button>
             </div>
-            <div style={{ flex: '1 1 300px', display: 'flex', justifyContent: 'center' }}>
-                <div style={{ width: '200px', height: '200px', borderRadius: '50%', border: '2px solid var(--light-gray)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <div style={{ width: '120px', height: '120px', borderRadius: '50%', border: '2px solid var(--light-gray)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <Drone size={50} color="var(--color-primary)" style={{ opacity: 0.8 }} />
+            <div style={{ flex: '1 1 300px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                <div style={{ position: 'relative', width: '300px', height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {/* Círculos de vibración */}
+                    <div className="vibration-ring" style={{ animationDelay: '0s' }}></div>
+                    <div className="vibration-ring" style={{ animationDelay: '1s' }}></div>
+                    <div className="vibration-ring" style={{ animationDelay: '2s' }}></div>
+                    
+                    {/* Imagen central */}
+                    <div style={{ 
+                        width: '180px', 
+                        height: '180px', 
+                        borderRadius: '50%', 
+                        border: '4px solid var(--white)', 
+                        boxShadow: '0 10px 30px rgba(0,0,0,0.15)', 
+                        overflow: 'hidden', 
+                        zIndex: 2,
+                        position: 'relative'
+                    }}>
+                        <img 
+                            src="https://storage.googleapis.com/cursopractica-imagenes-2026/img_drones/imagen_circular.png" 
+                            alt="Imagen circular" 
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                        />
                     </div>
                 </div>
             </div>
@@ -492,8 +509,8 @@ const LandingPage = () => {
     useEffect(() => {
         const fetchProductos = async () => {
             try {
-                const data = await getProductos();
-                
+                const data = await getProductosLanding(10);
+
                 const listaProductos = Array.isArray(data) ? data : data.results || [];
 
                 setDrones(listaProductos.filter((item) => item.tipo_producto === 'ARTICULO'));
@@ -522,6 +539,21 @@ const LandingPage = () => {
                     .carrusel-scroll::-webkit-scrollbar { display: none; }
                     .carrusel-scroll { -ms-overflow-style: none; scrollbar-width: none; }
                     .nav-btn:hover { background: var(--bg-color) !important; transform: translateY(-50%) scale(1.05) !important; }
+                    
+                    @keyframes ripple {
+                        0% { transform: scale(1); opacity: 0.6; border-color: var(--color-primary); }
+                        100% { transform: scale(1.8); opacity: 0; border-color: var(--color-primary); }
+                    }
+                    
+                    .vibration-ring {
+                        position: absolute;
+                        width: 180px;
+                        height: 180px;
+                        border-radius: 50%;
+                        border: 2px solid var(--color-primary);
+                        animation: ripple 3s cubic-bezier(0.2, 0.8, 0.4, 1) infinite;
+                        z-index: 1;
+                    }
                 `}
             </style>
 

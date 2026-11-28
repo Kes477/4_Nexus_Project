@@ -45,6 +45,8 @@ import ClienteHistorial from './pages/cliente/ClienteHistorial';
 import ClienteSoporte from './pages/cliente/ClienteSoporte';
 import ClienteEquipos from './pages/cliente/ClienteEquipos';
 import ClienteCarrito from './pages/cliente/ClienteCarrito';
+import ClienteCheckout from './pages/cliente/ClienteCheckout';
+import ClientePedidos from './pages/cliente/ClientePedidos';
 import ClienteReparaciones from './pages/cliente/ClienteReparaciones';
 import HistorialReparaciones from './pages/cliente/HistorialReparaciones';
 
@@ -83,6 +85,7 @@ import PilotoPerfil from './pages/piloto/PilotoPerfil';
 // ======================================================
 
 import TecnicoOrdenes from './pages/tecnico/TecnicoOrdenes';
+import TecnicoPerfil from './pages/tecnico/TecnicoPerfil';
 
 // ======================================================
 // PÁGINAS DEL VENDEDOR
@@ -156,6 +159,10 @@ function App() {
 
           {/* COMPRAS */}
           <Route path="carrito" element={<ClienteCarrito />} />
+
+          <Route path="checkout" element={<ClienteCheckout />} />
+          
+          <Route path="pedidos" element={<ClientePedidos />} />
         </Route>
 
       </Route>
@@ -347,6 +354,13 @@ function App() {
             element={<TecnicoOrdenes />}
           />
 
+          <Route
+            path="perfil"
+            element={
+              <TecnicoPerfil onLogout={cerrarSesion} />
+            }
+          />
+
         </Route>
 
       </Route>
@@ -357,10 +371,7 @@ function App() {
 
       {/* Pendiente de implementación. */}
 
-      {/* ================================================= */}
       {/* 7. RUTA PARA ERRORES 404                          */}
-      {/* ================================================= */}
-
       <Route path="*" element={<NotFound />} />
 
     </Routes>

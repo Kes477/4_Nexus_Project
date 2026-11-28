@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import Mision
 
+
 class MisionSerializer(serializers.ModelSerializer):
     piloto_nombre = serializers.SerializerMethodField()
     esta_calificada = serializers.SerializerMethodField()
@@ -18,12 +19,14 @@ class MisionSerializer(serializers.ModelSerializer):
 
     def get_esta_calificada(self, obj):
         request = self.context.get('request')
-        if request and request.user.is_authenticated and obj.producto:
-            return obj.producto.resenias.filter(cliente=request.user).exists()
+        if request and request.user.is_authenticated:
+            return obj.resenias.filter(cliente=request.user).exists()
         return False
+
 
 class CambiarEstadoSerializer(serializers.Serializer):
     estado = serializers.ChoiceField(choices=Mision.Estado.choices)
+
 
 class HistorialMisionSerializer(serializers.ModelSerializer):
     calificacion = serializers.SerializerMethodField()
@@ -35,28 +38,36 @@ class HistorialMisionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Mision
         fields = [
-            'id', 
-            'fecha_programada', 
-            'cliente', 
-            'tipo_servicio', 
-            'duracion', 
-            'calificacion', 
+            'id',
+            'fecha_programada',
+            'cliente',
+            'tipo_servicio',
+            'duracion',
+            'calificacion',
             'comentario'
         ]
 
+    def _get_resenia_correspondiente(self, obj):
+        if hasattr(obj, '_resenia_cache'):
+            return obj._resenia_cache
+        resenias = list(obj.resenias.all())
+        resultado = max(resenias, key=lambda r: r.fecha_resenia) if resenias else None
+        obj._resenia_cache = resultado
+        return resultado
+
     def get_calificacion(self, obj):
-        if obj.producto:
-            resenia = obj.producto.resenias.first()
-            if resenia:
-                return float(resenia.calificacion)
-        return None
+        resenia = self._get_resenia_correspondiente(obj)
+        if resenia is None:
+            return None
+        try:
+            valor = float(resenia.calificacion)
+        except (TypeError, ValueError):
+            return None
+        return valor if valor > 0 else None
 
     def get_comentario(self, obj):
-        if obj.producto:
-            resenia = obj.producto.resenias.first()
-            if resenia:
-                return resenia.comentario
-        return None
+        resenia = self._get_resenia_correspondiente(obj)
+        return resenia.comentario if resenia else None
 
     def get_duracion(self, obj):
         if obj.fecha_cierre and obj.fecha_creacion:

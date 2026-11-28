@@ -156,11 +156,13 @@ export default function ClienteCarrito() {
               <strong style={{ color: 'var(--color-primary)' }}>{formatoLempiras(carrito.subtotal)}</strong>
             </div>
             <p style={{ fontSize: '12px', color: 'var(--text-light)', margin: 0 }}>
-              El impuesto (ISV) y el envío se calculan al confirmar el pedido.
+              El impuesto (ISV) y el envío se calculan en el siguiente paso.
             </p>
-            <Button variant="primary" disabled title="Disponible en la siguiente fase">
-              Continuar con la compra
-            </Button>
+            <Link to="/cliente/checkout">
+              <Button variant="primary" style={{ width: '100%' }} disabled={ocupado}>
+                Continuar con la compra
+              </Button>
+            </Link>
           </div>
         </div>
       )}
