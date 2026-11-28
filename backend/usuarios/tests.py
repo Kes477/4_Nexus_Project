@@ -185,9 +185,53 @@ class AutenticacionAPITests(APITestCase):
         self.usuario.estado_cuenta = "I"
         self.usuario.save()
 
-        respuesta = self.client.post(self.url_login, self.credenciales, format="json")
+        respuesta = self.client.post(
+            self.url_login, self.credenciales, format="json"
+        )
 
-        self.assertEqual(respuesta.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(
+            respuesta.status_code, status.HTTP_403_FORBIDDEN
+        )
+        self.assertEqual(respuesta.data["code"], "cuenta_inactiva")
+        self.assertNotIn("access", respuesta.data)
+        self.assertNotIn("refresh", respuesta.data)
+
+    def test_login_usuario_bloqueado(self):
+        self.usuario.estado_cuenta = "B"
+        self.usuario.save()
+
+        respuesta = self.client.post(
+            self.url_login, self.credenciales, format="json"
+        )
+
+        self.assertEqual(
+            respuesta.status_code, status.HTTP_403_FORBIDDEN
+        )
+        self.assertEqual(respuesta.data["code"], "cuenta_bloqueada")
+        self.assertNotIn("access", respuesta.data)
+        self.assertNotIn("refresh", respuesta.data)
+
+    def test_cuentas_restringidas_con_password_incorrecta(self):
+        for estado in ["I", "B"]:
+            with self.subTest(estado=estado):
+                self.usuario.estado_cuenta = estado
+                self.usuario.save()
+
+                respuesta = self.client.post(
+                    self.url_login,
+                    {
+                        "email": self.usuario.email,
+                        "password": "Incorrecta123!"
+                    },
+                    format="json"
+                )
+
+                self.assertEqual(
+                    respuesta.status_code,
+                    status.HTTP_401_UNAUTHORIZED
+                )
+                self.assertNotIn("access", respuesta.data)
+                self.assertNotIn("refresh", respuesta.data)
 
     def test_perfil_sin_autenticacion(self):
         respuesta = self.client.get(self.url_perfil)
@@ -239,8 +283,13 @@ class AutenticacionAPITests(APITestCase):
         self.assertEqual(login.status_code, status.HTTP_200_OK)
 
         datos_usuario = login.data["usuario"]
+        self.assertIs(datos_usuario["is_superuser"], False)
+        self.assertIsInstance(datos_usuario["roles"], list)
+        self.assertIsInstance(
+            datos_usuario["permisos_efectivos"], list
+        )
         campos_prohibidos = [
-            "password", "is_superuser", "user_permissions", "groups", "last_login"
+            "password", "user_permissions", "groups", "last_login"
         ]
 
         for campo in campos_prohibidos:
@@ -251,6 +300,12 @@ class AutenticacionAPITests(APITestCase):
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
         perfil = self.client.get(self.url_perfil)
         self.assertEqual(perfil.status_code, status.HTTP_200_OK)
+
+        self.assertIs(perfil.data["is_superuser"], False)
+        self.assertIsInstance(perfil.data["roles"], list)
+        self.assertIsInstance(
+            perfil.data["permisos_efectivos"], list
+        )
 
         for campo in campos_prohibidos:
             with self.subTest(campo=campo):
