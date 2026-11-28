@@ -1,5 +1,5 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import {
   MemoryRouter,
   Routes,
@@ -16,7 +16,10 @@ vi.mock('../../hooks/useSesion', () => ({
 
 // Simulación del Loader
 vi.mock('../ui', () => ({
-  Loader: ({ text }) => <div>{text}</div>
+  Loader: ({ text }) => <div>{text}</div>,
+  Button: ({ children, onClick }) => (
+    <button onClick={onClick}>{children}</button>
+  )
 }));
 
 function PaginaActual() {
@@ -30,14 +33,14 @@ function PaginaActual() {
   );
 }
 
-function renderRutaProtegida(rolRequerido = 'admin') {
+function renderRutaProtegida(rolRequerido = 'admin', opciones = {}) {
   return render(
     <MemoryRouter initialEntries={['/admin']}>
       <Routes>
         <Route path="/login" element={<PaginaActual />} />
         <Route path="/cliente" element={<PaginaActual />} />
         <Route path="/admin" element={
-          <RutaProtegida rol={rolRequerido} />
+          <RutaProtegida rol={rolRequerido} {...opciones} />
         }>
           <Route index element={<div>Panel autorizado</div>} />
         </Route>
@@ -78,27 +81,117 @@ describe('RutaProtegida', () => {
     expect(screen.getByText('Origen: /admin')).toBeTruthy();
   });
 
-  test('Redirige al cliente si intenta entrar a admin', () => {
-    useSesion.mockReturnValue({
-      usuario: { id: 1 },
-      rol: 'cliente',
-      cargando: false
-    });
+  function simularSesion(usuario, rol) {
+    const roles = usuario.roles ?? [];
+    const permisos = usuario.permisos_efectivos ?? [];
+
+    const tieneRol = nombre =>
+      usuario.is_active === true && roles.includes(nombre);
+
+    const tienePermiso = codigo =>
+      usuario.is_active === true && permisos.includes(codigo);
+
+    const sesion = {
+      usuario,
+      rol,
+      cargando: false,
+      tieneRol,
+      tienePermiso,
+      tieneAlgunPermiso: codigos => codigos.some(tienePermiso),
+      tieneTodosLosPermisos: codigos => codigos.every(tienePermiso),
+      cerrarSesion: vi.fn()
+    };
+
+    useSesion.mockReturnValue(sesion);
+    return sesion;
+  }
+
+  test('Restringe el acceso de un cliente a administracion', () => {
+    simularSesion({
+      id: 1,
+      is_active: true,
+      roles: ['Cliente'],
+      permisos_efectivos: []
+    }, 'cliente');
 
     renderRutaProtegida();
+
+    expect(screen.getByText('Acceso restringido')).toBeTruthy();
+    expect(screen.queryByText('Panel autorizado')).toBeNull();
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Volver a mis paneles' })
+    );
 
     expect(screen.getByText('Ruta: /cliente')).toBeTruthy();
   });
 
   test('Permite acceder al administrador autorizado', () => {
-    useSesion.mockReturnValue({
-      usuario: { id: 1 },
-      rol: 'admin',
-      cargando: false
-    });
+    simularSesion({
+      id: 2,
+      is_active: true,
+      roles: ['Administrador'],
+      permisos_efectivos: []
+    }, 'admin');
 
     renderRutaProtegida();
 
     expect(screen.getByText('Panel autorizado')).toBeTruthy();
+  });
+
+  test('Permite acceso mediante permiso delegado', () => {
+    simularSesion({
+      id: 3,
+      is_active: true,
+      roles: ['Tecnico'],
+      permisos_efectivos: [
+        'reparaciones.view_ordenservicio'
+      ]
+    }, 'tecnico');
+
+    renderRutaProtegida('admin', {
+      permiso: 'reparaciones.view_ordenservicio',
+      rolOPermisos: true
+    });
+
+    expect(screen.getByText('Panel autorizado')).toBeTruthy();
+  });
+
+  test('Rechaza acceso cuando falta el permiso requerido', () => {
+    simularSesion({
+      id: 3,
+      is_active: true,
+      roles: ['Tecnico'],
+      permisos_efectivos: [
+        'reparaciones.view_ordenservicio'
+      ]
+    }, 'tecnico');
+
+    renderRutaProtegida('admin', {
+      permiso: 'reparaciones.change_ordenservicio',
+      rolOPermisos: true
+    });
+
+    expect(screen.getByText('Acceso restringido')).toBeTruthy();
+    expect(screen.queryByText('Panel autorizado')).toBeNull();
+  });
+
+  test('Una cuenta inactiva no puede acceder aunque tenga rol admin', () => {
+    const sesion = simularSesion({
+      id: 4,
+      is_active: false,
+      roles: ['Administrador'],
+      permisos_efectivos: []
+    }, 'admin');
+
+    renderRutaProtegida();
+
+    expect(screen.getByText('Acceso restringido')).toBeTruthy();
+    expect(screen.queryByText('Panel autorizado')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button'));
+
+    expect(sesion.cerrarSesion).toHaveBeenCalledOnce();
+    expect(screen.getByText('Ruta: /login')).toBeTruthy();
   });
 });
