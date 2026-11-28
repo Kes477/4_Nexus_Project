@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ChevronDown, ChevronUp, Package } from 'lucide-react';
+import { ChevronDown, ChevronUp, FileDown, Package } from 'lucide-react';
 
 import { Alert, Badge, Button, SectionHeading } from '../../components/ui';
-import { cancelarPedido, obtenerPedidos } from '../../api/pedidoService';
+import { cancelarPedido, obtenerPedidos, descargarFactura } from '../../api/pedidoService';
 import { primerError } from '../../utils/errores';
 import PagarPedidoModal from '../../components/cliente/PagarPedidoModal';
 
@@ -33,7 +33,7 @@ export default function ClientePedidos() {
   const [pedidos, setPedidos] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
-  const [abierto, setAbierto] = useState(nuevoPedido);
+  const [abierto, setAbierto] = useState(location.state?.abrirPedido ?? nuevoPedido);
   const [ocupado, setOcupado] = useState(null);
   const [pedidoAPagar, setPedidoAPagar] =useState(null);
 
@@ -65,6 +65,19 @@ export default function ClientePedidos() {
   const actualizarPedido = (actualizado) => {
     setPedidos((lista) => lista.map((p) => (p.id === actualizado.id ? actualizado : p)));
   };
+
+  const factura = async (pedido) => {
+    setError(null);
+    setOcupado(pedido.id);
+    try {
+      await descargarFactura(pedido.id);
+    } catch {
+      setError('No se pudo descargar la factura. Intenta de nuevo.');
+    } finally {
+      setOcupado(null);
+    }
+  };
+
 
   return (
     <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '30px 20px' }}>
@@ -135,7 +148,7 @@ export default function ClientePedidos() {
                     </div>
                   </div>
 
-                                    {pedido.transacciones.length > 0 && (
+                   {pedido.transacciones.length > 0 && (
                     <div style={{ fontSize: '13px', color: 'var(--text-light)', marginTop: '8px' }}>
                       <strong style={{ color: 'var(--color-dark)' }}>Pagos</strong>
                       {pedido.transacciones.map((t) => (
@@ -147,7 +160,7 @@ export default function ClientePedidos() {
                     </div>
                   )}
 
-                  {(pedido.puede_pagar || pedido.puede_cancelar) && (
+                   {(pedido.puede_pagar || pedido.puede_cancelar || pedido.factura_disponible) && (
                     <div style={{ marginTop: '8px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                       {pedido.puede_pagar && (
                         <Button variant="primary" size="sm" onClick={() => setPedidoAPagar(pedido)}>
@@ -157,6 +170,11 @@ export default function ClientePedidos() {
                       {pedido.puede_cancelar && (
                         <Button variant="danger" size="sm" onClick={() => cancelar(pedido)} disabled={ocupado === pedido.id}>
                           {ocupado === pedido.id ? 'Cancelando...' : 'Cancelar pedido'}
+                        </Button>
+                      )}
+                      {pedido.factura_disponible && (
+                        <Button variant="outline-dark" size="sm" onClick={() => factura(pedido)} disabled={ocupado === pedido.id}>
+                          <FileDown size={14} /> Descargar factura
                         </Button>
                       )}
                     </div>

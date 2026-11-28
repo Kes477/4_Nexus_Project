@@ -1,5 +1,5 @@
 import { CheckCircle, X } from 'lucide-react';
-
+import CotizacionReparacion from '../../components/cliente/CotizacionReparacion';
 // ======================================================
 // ESTADOS DEL PROCESO DE REPARACIÓN
 // ======================================================
@@ -170,6 +170,8 @@ export default function DetalleReparacion({
             </header>
 
             <ProgresoReparacion estado={orden.estado} />
+            <CotizacionReparacion orden={orden} modo="cliente" />
+
 
             <div
                 style={{

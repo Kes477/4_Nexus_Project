@@ -122,3 +122,17 @@ export const cambiarEstadoOrden = async (
 
     return data;
 };
+
+// ======================================================
+// COTIZACION (genera el pedido que paga el cliente)
+// ======================================================
+
+export const cotizarOrden = async (ordenId, costo) => {
+
+    const { data } = await axiosClient.post(
+        `/reparaciones/ordenes/${ordenId}/cotizar/`,
+        { costo }
+    );
+
+    return data;
+};
