@@ -194,3 +194,19 @@ SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
 }
+
+# NEXUS - Recuperacion de cuentas
+
+FRONTEND_URL = "http://localhost:5173"
+
+DEFAULT_FROM_EMAIL = "no-reply@nexus.example"
+
+PASSWORD_RESET_TIMEOUT = 3600
+
+if DEBUG:
+    MAILERS = {
+        **MAILERS,
+        "default": {
+            "BACKEND": "django.core.mail.backends.console.EmailBackend"
+        }
+    }

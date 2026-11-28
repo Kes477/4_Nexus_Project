@@ -4,13 +4,15 @@ import { Shield, ChevronLeft, ArrowRight, Check, Eye, EyeOff } from 'lucide-reac
 
 import { Input, Button, Alert, IconButton, Checkbox, Modal } from '../components/ui';
 import { useSesion } from '../hooks/useSesion';
+import { obtenerDestinoInicial } from '../config/paneles';
 
+/* Configuracion anterior retirada.
 const PANEL_POR_ROL = {
     admin: '/admin',
     piloto: '/piloto',
     tecnico: '/tecnico',
     vendedor: '/vendedor',
-};
+}; */
 
 const REGEX = {
     email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
@@ -129,7 +131,12 @@ const Login = () => {
     };
 
     const irAlPanel = (usuario) => {
-        const destino = PANEL_POR_ROL[usuario.rol] ?? redirectTo;
+        const destinoInicial = obtenerDestinoInicial(usuario);
+        const destino =
+            destinoInicial === '/cliente' &&
+            /^\/cliente(?:\/|$)/.test(redirectTo)
+                ? redirectTo
+                : destinoInicial;
         navigate(destino, {
             replace: true,
             state: location.state?.selectedDrone ? { selectedDrone: location.state.selectedDrone } : undefined,
@@ -150,10 +157,29 @@ const Login = () => {
             const usuario = await iniciarSesion(formData.email, formData.password);
             irAlPanel(usuario);
         } catch (error) {
-            if (error.response?.status === 401) {
-                setErrorMsg('Correo o contraseña incorrectos.');
+            const respuesta = error.response?.data;
+            const codigo = respuesta?.code;
+
+            if (codigo === 'cuenta_bloqueada') {
+                setErrorMsg(
+                    'Tu cuenta ha sido bloqueada por el administrador. Contacta con soporte.'
+                );
+            } else if (codigo === 'cuenta_inactiva') {
+                setErrorMsg(
+                    'Tu cuenta se encuentra inactiva. Contacta con el administrador.'
+                );
+            } else if (error.response?.status === 401) {
+                setErrorMsg(
+                    'Correo o contrase\u00f1a incorrectos.'
+                );
+            } else if (error.response?.status === 429) {
+                setErrorMsg(
+                    'Demasiados intentos. Intenta nuevamente m\u00e1s tarde.'
+                );
             } else {
-                setErrorMsg('No se pudo conectar con el servidor. Intenta de nuevo.');
+                setErrorMsg(
+                    'No se pudo iniciar sesi\u00f3n. Intenta de nuevo.'
+                );
             }
         } finally {
             setIsLoading(false);

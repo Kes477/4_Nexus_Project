@@ -28,6 +28,13 @@ import {
 
 import { Button } from '../ui';
 import { useSesion } from '../../hooks/useSesion';
+import { obtenerPaneles } from '../../config/paneles';
+
+import {
+    PERMISOS_PANEL_GESTION,
+    PERMISOS_MENU_ADMIN
+} from '../../config/permisos';
+
 import { useCarrito } from '../../hooks/useCarrito';
 import { useTheme } from '../../context/useTheme';
 
@@ -119,6 +126,11 @@ const menusPorRol = {
         icono: Shield,
       },
       {
+        ruta: 'roles',
+        nombre: 'Roles y permisos',
+        icono: Shield,
+      },
+      {
         ruta: 'operaciones',
         nombre: 'Operaciones Globales',
         icono: Navigation,
@@ -205,7 +217,44 @@ const Navbar = () => {
   // ====================================================
 
   const [isServicesOpen, setIsServicesOpen] = useState(false);
+  const servicesMenuRef = useRef(null);
   const [isUserOpen, setIsUserOpen] = useState(false);
+  const userMenuRef = useRef(null);
+
+  useEffect(() => {
+    if (!isUserOpen) return;
+
+    const manejarClickExterno = (evento) => {
+      if (
+        userMenuRef.current &&
+        !userMenuRef.current.contains(evento.target)
+      ) {
+        setIsUserOpen(false);
+        setHoveredPath(null);
+      }
+    };
+
+    const manejarTeclado = (evento) => {
+      if (evento.key === 'Escape') {
+        setIsUserOpen(false);
+        setHoveredPath(null);
+      }
+    };
+
+    document.addEventListener('pointerdown', manejarClickExterno);
+    document.addEventListener('keydown', manejarTeclado);
+
+    return () => {
+      document.removeEventListener('pointerdown', manejarClickExterno);
+      document.removeEventListener('keydown', manejarTeclado);
+    };
+  }, [isUserOpen]);
+
+  useEffect(() => {
+    setIsUserOpen(false);
+    setHoveredPath(null);
+  }, [location.key]);
+
   const [hoveredPath, setHoveredPath] = useState(null);
   const [isThemeHovered, setIsThemeHovered] = useState(false);
 
@@ -229,6 +278,9 @@ const Navbar = () => {
     usuario,
     rol,
     cerrarSesion,
+    tieneRol,
+    tienePermiso,
+    tieneAlgunPermiso,
   } = useSesion();
 
   const { cantidadArticulos } = useCarrito();
@@ -237,12 +289,61 @@ const Navbar = () => {
   // DETERMINAR ROL Y RUTA BASE
   // ====================================================
 
-  const userRole = rol || 'cliente';
+  const panelesDisponibles = obtenerPaneles(usuario);
 
-  const configuracionMenu =
-    menusPorRol[userRole] || menusPorRol.cliente;
+  const panelActual = panelesDisponibles.find(panel =>
+    location.pathname === panel.base ||
+    location.pathname.startsWith(panel.base + '/')
+  );
+
+  const userRole =
+    panelActual?.id ||
+    panelesDisponibles[0]?.id ||
+    rol ||
+    'cliente';
+
+  const esAdministrador =
+    tieneRol('Administrador')
+    || usuario?.is_superuser === true;
+
+  const puedeGestionar =
+    esAdministrador
+    || tieneAlgunPermiso(PERMISOS_PANEL_GESTION);
+
+  const mostrarGestion =
+    puedeGestionar
+    && (
+      location.pathname.startsWith('/admin')
+      || userRole === 'admin'
+    );
+
+  const menuOriginal = mostrarGestion
+    ? menusPorRol.admin
+    : (menusPorRol[userRole] || menusPorRol.cliente);
+
+  const configuracionMenu = mostrarGestion
+    ? {
+        ...menuOriginal,
+        opciones: menuOriginal.opciones.filter(opcion => {
+
+          const permiso =
+            PERMISOS_MENU_ADMIN[opcion.ruta];
+
+          if (permiso) {
+            return tienePermiso(permiso);
+          }
+
+          return esAdministrador;
+        }),
+      }
+    : menuOriginal;
 
   const basePath = configuracionMenu.rutaBase;
+
+  const inicioPanel =
+    panelActual?.ruta ||
+    panelesDisponibles.find(p => p.id === userRole)?.ruta ||
+    '/seleccionar-panel';
 
   const isDashboard =
     location.pathname.startsWith('/cliente') ||
@@ -512,6 +613,40 @@ const Navbar = () => {
   // CONTROL DE MENUS
   // ====================================================
 
+  useEffect(() => {
+    setIsServicesOpen(false);
+    setHoveredPath(null);
+  }, [location.key]);
+
+  useEffect(() => {
+    if (!isServicesOpen) return;
+
+    const manejarClickExterno = (evento) => {
+      if (
+        servicesMenuRef.current &&
+        !servicesMenuRef.current.contains(evento.target)
+      ) {
+        setIsServicesOpen(false);
+        setHoveredPath(null);
+      }
+    };
+
+    const manejarTeclado = (evento) => {
+      if (evento.key === 'Escape') {
+        setIsServicesOpen(false);
+        setHoveredPath(null);
+      }
+    };
+
+    document.addEventListener('pointerdown', manejarClickExterno);
+    document.addEventListener('keydown', manejarTeclado);
+
+    return () => {
+      document.removeEventListener('pointerdown', manejarClickExterno);
+      document.removeEventListener('keydown', manejarTeclado);
+    };
+  }, [isServicesOpen]);
+
   const toggleServicesMenu = () => {
 
     setIsServicesOpen(anterior => !anterior);
@@ -676,7 +811,7 @@ const Navbar = () => {
       {/* ============================================== */}
 
       <Link
-        to={isDashboard ? basePath : '/'}
+        to={isDashboard ? inicioPanel : '/'}
         onClick={cerrarMenus}
         style={{
           display: 'flex',
@@ -748,7 +883,7 @@ const Navbar = () => {
             {/* DASHBOARD */}
 
             <Link
-              to={basePath}
+              to={inicioPanel}
               style={linkStyle(basePath)}
               onClick={cerrarMenus}
               onMouseEnter={() =>
@@ -767,7 +902,7 @@ const Navbar = () => {
 
             {/* MENU DESPLEGABLE SEGUN EL ROL */}
 
-            <div style={{ position: 'relative' }}>
+            <div ref={servicesMenuRef} style={{ position: 'relative' }}>
 
               <button
                 type="button"
@@ -813,7 +948,8 @@ const Navbar = () => {
 
             {/* SOPORTE */}
 
-            <Link
+            {userRole !== 'tecnico' && (!mostrarGestion || esAdministrador) && (
+<Link
               to={`${basePath}/soporte`}
               style={linkStyle(`${basePath}/soporte`)}
               onClick={cerrarMenus}
@@ -830,6 +966,7 @@ const Navbar = () => {
               Soporte
 
             </Link>
+)}
 
           </>
 
@@ -1041,7 +1178,7 @@ const Navbar = () => {
 
         ) : (
 
-          <div style={{ position: 'relative' }}>
+          <div ref={userMenuRef} style={{ position: 'relative' }}>
 
             {/* BOTON DEL USUARIO */}
 
@@ -1151,9 +1288,41 @@ const Navbar = () => {
                 }}
               >
 
+                {panelesDisponibles.length > 1 && (
+                  <>
+                    <span style={{
+                        padding: '8px 16px',
+                        fontSize: '12px',
+                        color: 'var(--text-light)'
+                    }}>
+                        Cambiar panel de trabajo
+                    </span>
+
+                    {panelesDisponibles.map(panel => (
+                        <Link
+                            key={panel.id}
+                            to={panel.ruta}
+                            onClick={cerrarMenus}
+                            style={linkStyle(panel.ruta)}
+                        >
+                            {panel.id === userRole
+                                ? <Check size={16} />
+                                : <LayoutDashboard size={16} />}
+                            {panel.nombre}
+                        </Link>
+                    ))}
+
+                    <hr style={{
+                        border: 'none',
+                        borderTop: '1px solid var(--light-gray)'
+                    }} />
+                  </>
+                )}
+
                 {/* PERFIL */}
 
-                <Link
+                {userRole !== 'tecnico' && (
+<Link
                   to={`${basePath}/perfil`}
                   style={linkStyle(`${basePath}/perfil`)}
                   onClick={cerrarMenus}
@@ -1170,6 +1339,7 @@ const Navbar = () => {
                   Mi Perfil
 
                 </Link>
+)}
 
                                         <button
                                             onClick={(e) => { e.stopPropagation(); toggleTheme(); }}
