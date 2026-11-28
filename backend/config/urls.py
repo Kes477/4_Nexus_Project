@@ -27,8 +27,10 @@ urlpatterns = [
     path('api/pilotos/', include('pilotos.urls')),
     path('api/reparaciones/', include('reparaciones.urls')),
     path('api/ubicaciones/', include('ubicaciones.urls')),
-    path('api/ventas/', include('ventas.urls')),
+    path('api/ventas/',include('ventas.urls')),
+    path('api/suscripciones/', include('suscripciones.urls')),
     path('api-auth/', include('rest_framework.urls')),
+
 ]
 
 if settings.DEBUG:

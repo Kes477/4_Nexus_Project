@@ -6,7 +6,8 @@ from django.db.models import Sum
 
 from catalogo.models import Producto
 from inventario.models import Inventario
-from inventario.servicios import liberar_reserva, reservar_stock
+from inventario.servicios import liberar_reserva, reservar_stock, confirmar_salida
+from suscripciones.servicios import activar_suscripciones
 
 from .models import Carrito, CarritoDetalle, Cupon, DetallePedido, Pedido, ReservaPedido, TransaccionPago
 from .pagos import obtener_estrategia
@@ -34,6 +35,9 @@ def _validar_cantidad(variante, cantidad):
 
     if not producto.activo:
         raise ValidationError('Este producto ya no está disponible.')
+
+    if producto.tipo_producto == Producto.Tipo.SUSCRIPCION and not hasattr(producto, 'suscripcion'):
+        raise ValidationError('Este plan todavía no está configurado.')
 
     # Regla de db.sql: servicios y suscripciones siempre con cantidad 1
     if producto.tipo_producto != Producto.Tipo.ARTICULO:
@@ -288,6 +292,7 @@ def pagar_pedido(pedido, forma_pago, metodo_pago=None):
     if resultado.estado == TransaccionPago.Estado.APROBADO:
         pedido.estado_pedido = Pedido.Estado.PAGADO
         pedido.save(update_fields=['estado_pedido'])
+        activar_suscripciones(pedido)
 
     return transaccion, resultado
 
@@ -302,8 +307,10 @@ def confirmar_pago(transaccion):
 
     if transaccion.estado_pago != TransaccionPago.Estado.PENDIENTE:
         raise ValidationError('Solo se pueden confirmar pagos pendientes.')
+    if transaccion.forma_pago == TransaccionPago.Forma.CONTRA_ENTREGA:
+        raise ValidationError('El pago contra entrega se confirma al marcar el pedido como entregado.')
     if transaccion.pedido.estado_pedido != Pedido.Estado.PENDIENTE:
-        raise ValidationError('El pedido ya no está pendiente de pago.')
+        raise ValidationError('El pedido ya no está pendiente de pago.')   
 
     transaccion.estado_pago = TransaccionPago.Estado.APROBADO
     transaccion.save(update_fields=['estado_pago'])
@@ -311,4 +318,77 @@ def confirmar_pago(transaccion):
     pedido = transaccion.pedido
     pedido.estado_pedido = Pedido.Estado.PAGADO
     pedido.save(update_fields=['estado_pedido'])
+    activar_suscripciones(pedido)
     return transaccion
+
+###########################        GESTIÓN DEL PEDIDO (después del pago)        ###############################
+
+
+def _bloquear_pedido(pedido):
+    return Pedido.objects.select_for_update().get(pk=pedido.pk)
+
+
+def _pago_contra_entrega(pedido):
+    "La transacción contra entrega que espera cobrarse, o None."
+    return pedido.transacciones.filter(
+        forma_pago=TransaccionPago.Forma.CONTRA_ENTREGA,
+        estado_pago=TransaccionPago.Estado.PENDIENTE,
+    ).first()
+
+
+def _cambiar_estado(pedido, estado):
+    pedido.estado_pedido = estado
+    pedido.save(update_fields=['estado_pedido'])
+    return pedido
+
+
+@transaction.atomic
+def procesar_pedido(pedido, usuario=None):
+    """
+    PAGADO (o contra entrega) → EN_PROCESO.
+    Las unidades reservadas salen del almacén: ya no se pueden liberar.
+    """
+    pedido = _bloquear_pedido(pedido)
+
+    pagado = pedido.estado_pedido == Pedido.Estado.PAGADO
+    contra_entrega = (pedido.estado_pedido == Pedido.Estado.PENDIENTE
+                      and _pago_contra_entrega(pedido) is not None)
+    if not (pagado or contra_entrega):
+        raise ValidationError('Solo se procesan pedidos pagados o con pago contra entrega.')
+
+    reservas = list(ReservaPedido.objects.filter(detalle__pedido=pedido).select_related('inventario'))
+    if not reservas:
+        raise ValidationError('Este pedido no tiene artículos que enviar.')
+
+    for reserva in reservas:
+        confirmar_salida(
+            reserva.inventario, reserva.cantidad,
+            usuario=usuario, motivo=f'Despacho del pedido #{pedido.pk}',
+        )
+
+    return _cambiar_estado(pedido, Pedido.Estado.EN_PROCESO)
+
+
+@transaction.atomic
+def marcar_enviado(pedido):
+    "EN_PROCESO → ENVIADO."
+    pedido = _bloquear_pedido(pedido)
+    if pedido.estado_pedido != Pedido.Estado.EN_PROCESO:
+        raise ValidationError('Solo se pueden enviar pedidos en proceso.')
+    return _cambiar_estado(pedido, Pedido.Estado.ENVIADO)
+
+
+@transaction.atomic
+def marcar_entregado(pedido):
+    "ENVIADO → ENTREGADO. Si era contra entrega, aquí se cobra."
+    pedido = _bloquear_pedido(pedido)
+    if pedido.estado_pedido != Pedido.Estado.ENVIADO:
+        raise ValidationError('Solo se pueden entregar pedidos enviados.')
+
+    pago = _pago_contra_entrega(pedido)
+    if pago is not None:
+        pago.estado_pago = TransaccionPago.Estado.APROBADO
+        pago.save(update_fields=['estado_pago'])
+        activar_suscripciones(pedido)
+
+    return _cambiar_estado(pedido, Pedido.Estado.ENTREGADO)

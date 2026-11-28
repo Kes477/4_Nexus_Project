@@ -21,7 +21,7 @@ const TIPOS = [
 const ETIQUETA_TIPO = Object.fromEntries(TIPOS.map((t) => [t.value, t.label]));
 
 const REGEX = {
-  direccion: /^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s.,#\-]{5,255}$/,
+  direccion: /^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s.,#-]{5,255}$/,
   codigoPostal: /^\d{5}$/,
 };
 
