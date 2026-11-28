@@ -5,7 +5,8 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
 from django.utils import timezone
 
-from .models import Usuario, PerfilCliente, Piloto, PasswordResetCode
+from .models import Usuario, PerfilCliente, Piloto, Tecnico, PasswordResetCode
+
 
 class PilotoSerializer(serializers.ModelSerializer):
     class Meta:
@@ -13,10 +14,12 @@ class PilotoSerializer(serializers.ModelSerializer):
         fields = ['numero_licencia_aeronautica', 'tipo_certificacion', 'horas_vuelo_acumuladas', 'disponible']
         read_only_fields = ['numero_licencia_aeronautica', 'tipo_certificacion', 'horas_vuelo_acumuladas', 'disponible']
 
+
 class ActualizarPilotoSerializer(serializers.ModelSerializer):
     numero_licencia_aeronautica = serializers.CharField(
         required=False, allow_blank=False, max_length=50,
-        error_messages={'blank': 'El número de licencia aeronáutica no puede estar vacío.', 'required': 'El número de licencia aeronáutica es obligatorio.'},
+        error_messages={'blank': 'El número de licencia aeronáutica no puede estar vacío.',
+                        'required': 'El número de licencia aeronáutica es obligatorio.'},
     )
     tipo_certificacion = serializers.CharField(required=False, allow_blank=True, max_length=100)
     disponible = serializers.BooleanField(required=False)
@@ -39,15 +42,37 @@ class ActualizarPilotoSerializer(serializers.ModelSerializer):
     def validate_tipo_certificacion(self, value):
         return (value or '').strip()
 
+
+class TecnicoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Tecnico
+        fields = ['especialidad_tecnica', 'certificacion_fabricante', 'disponible']
+        read_only_fields = ['especialidad_tecnica', 'certificacion_fabricante', 'disponible']
+
+
+class ActualizarTecnicoSerializer(serializers.ModelSerializer):
+    disponible = serializers.BooleanField(required=False)
+
+    class Meta:
+        model = Tecnico
+        fields = ['disponible']
+
+
 class UsuarioSerializer(serializers.ModelSerializer):
     rol = serializers.CharField(read_only=True)
     perfil_piloto = serializers.SerializerMethodField()
-    fecha_nacimiento = serializers.DateField(required=False, allow_null=True, input_formats=['%d-%m-%Y', '%Y-%m-%d'])
+    perfil_tecnico = serializers.SerializerMethodField()
+    fecha_nacimiento = serializers.DateField(
+        required=False, allow_null=True, input_formats=['%d-%m-%Y', '%Y-%m-%d']
+    )
 
     class Meta:
         model = Usuario
-        fields = ['id', 'email', 'first_name', 'last_name', 'no_identificacion', 'telefono', 'fecha_nacimiento', 'foto_perfil_url', 'estado_cuenta', 'is_active', 'is_staff', 'date_joined', 'rol', 'perfil_piloto']
-        read_only_fields = ['id', 'email', 'no_identificacion', 'foto_perfil_url', 'estado_cuenta', 'is_active', 'is_staff', 'date_joined', 'rol']
+        fields = ['id', 'email', 'first_name', 'last_name', 'no_identificacion', 'telefono',
+                  'fecha_nacimiento', 'foto_perfil', 'estado_cuenta', 'is_active', 'is_staff',
+                  'date_joined', 'rol', 'perfil_piloto', 'perfil_tecnico']
+        read_only_fields = ['id', 'email', 'no_identificacion', 'estado_cuenta',
+                            'is_active', 'is_staff', 'date_joined', 'rol']
 
     def get_perfil_piloto(self, obj):
         try:
@@ -56,9 +81,23 @@ class UsuarioSerializer(serializers.ModelSerializer):
             return None
         return PilotoSerializer(perfil).data
 
+    def get_perfil_tecnico(self, obj):
+        try:
+            perfil = obj.perfil_tecnico
+        except Tecnico.DoesNotExist:
+            return None
+        return TecnicoSerializer(perfil).data
+
+
 class CambiarPasswordSerializer(serializers.Serializer):
-    password_actual = serializers.CharField(write_only=True, style={'input_type': 'password'}, error_messages={'required': 'Debes indicar tu contraseña actual.'})
-    password_nueva = serializers.CharField(write_only=True, style={'input_type': 'password'}, error_messages={'required': 'Debes indicar la nueva contraseña.'})
+    password_actual = serializers.CharField(
+        write_only=True, style={'input_type': 'password'},
+        error_messages={'required': 'Debes indicar tu contraseña actual.'},
+    )
+    password_nueva = serializers.CharField(
+        write_only=True, style={'input_type': 'password'},
+        error_messages={'required': 'Debes indicar la nueva contraseña.'},
+    )
 
     def validate_password_actual(self, value):
         usuario = self.context['request'].user
@@ -70,7 +109,9 @@ class CambiarPasswordSerializer(serializers.Serializer):
         nueva = attrs.get('password_nueva')
         actual = attrs.get('password_actual')
         if nueva == actual:
-            raise serializers.ValidationError({'password_nueva': 'La nueva contraseña debe ser diferente a la actual.'})
+            raise serializers.ValidationError(
+                {'password_nueva': 'La nueva contraseña debe ser diferente a la actual.'}
+            )
         usuario = self.context['request'].user
         try:
             validate_password(nueva, user=usuario)
@@ -84,11 +125,13 @@ class CambiarPasswordSerializer(serializers.Serializer):
         usuario.save(update_fields=['password'])
         return usuario
 
+
 class LoginSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
         data = super().validate(attrs)
         data['usuario'] = UsuarioSerializer(self.user).data
         return data
+
 
 class RegistroSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, style={'input_type': 'password'})
@@ -111,9 +154,10 @@ class RegistroSerializer(serializers.ModelSerializer):
         PerfilCliente.objects.create(usuario=usuario)
         return usuario
 
-# NUEVOS SERIALIZERS PARA RECUPERACIÓN DE LA CUENTA
+
 class PasswordResetRequestSerializer(serializers.Serializer):
     email = serializers.EmailField()
+
 
 class PasswordResetConfirmSerializer(serializers.Serializer):
     email = serializers.EmailField()
@@ -130,12 +174,10 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
         except Usuario.DoesNotExist:
             raise serializers.ValidationError({'email': 'El usuario no existe.'})
 
-        # Validar el código
-        reset_code = PasswordResetCode.objects.filter(usuario=usuario, code=code).last()
+        reset_code = PasswordResetCode.objects.filter(usuario=usuario, code=code).first()
         if not reset_code or not reset_code.is_valid():
             raise serializers.ValidationError({'code': 'El código es inválido o ha expirado.'})
 
-        # Validar la nueva contraseña
         try:
             validate_password(new_password, user=usuario)
         except DjangoValidationError as error:
@@ -145,14 +187,13 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
         attrs['reset_code'] = reset_code
         return attrs
 
+    @transaction.atomic
     def save(self):
         usuario = self.validated_data['usuario']
-        reset_code = self.validated_data['reset_code']
         nueva_password = self.validated_data['new_password']
 
         usuario.set_password(nueva_password)
         usuario.save()
 
-        reset_code.is_used = True
-        reset_code.save()
+        PasswordResetCode.objects.filter(usuario=usuario, is_used=False).update(is_used=True)
         return usuario

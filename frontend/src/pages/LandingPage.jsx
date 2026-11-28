@@ -1,9 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-    Wrench, Cpu, Plane, User, Shield, Zap, Drone,
-    ChevronLeft, ChevronRight, ArrowRight,
-} from 'lucide-react';
+import { Wrench, Cpu, Plane, User, Shield, Zap, Drone, ChevronLeft, ChevronRight, ArrowRight, } from 'lucide-react';
 import { Navbar, Footer } from '../components/layout';
 import { Button } from '../components/ui';
 import { ServiceCard, ProductCard } from '../components/domain/Card';
@@ -444,7 +441,7 @@ const ProcesoSection = () => (
 );
 
 const ContactoSection = ({ onContactar }) => (
-    <section id="contacto" style={{ ...paddingNormal, background: 'var(--white)', ...scrollAnchorStyle }}>
+    <section id="contacto" style={{ ...paddingNormal, background: 'var(--white)', ...scrollAnchorStyle, overflow: 'hidden' }}>
         <div style={{ ...containerStyle, display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '30px' }}>
             <div style={{ flex: '1 1 500px' }}>
                 <span style={{ color: 'var(--color-primary)', fontSize: '13px', letterSpacing: '1.5px', fontWeight: 'bold', display: 'block', marginBottom: '15px' }}>
@@ -459,10 +456,29 @@ const ContactoSection = ({ onContactar }) => (
                 </p>
                 <Button variant="primary" onClick={onContactar}>Contactar con 4 Nexus</Button>
             </div>
-            <div style={{ flex: '1 1 300px', display: 'flex', justifyContent: 'center' }}>
-                <div style={{ width: '200px', height: '200px', borderRadius: '50%', border: '2px solid var(--light-gray)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <div style={{ width: '120px', height: '120px', borderRadius: '50%', border: '2px solid var(--light-gray)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <Drone size={50} color="var(--color-primary)" style={{ opacity: 0.8 }} />
+            <div style={{ flex: '1 1 300px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                <div style={{ position: 'relative', width: '300px', height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {/* Círculos de vibración */}
+                    <div className="vibration-ring" style={{ animationDelay: '0s' }}></div>
+                    <div className="vibration-ring" style={{ animationDelay: '1s' }}></div>
+                    <div className="vibration-ring" style={{ animationDelay: '2s' }}></div>
+                    
+                    {/* Imagen central */}
+                    <div style={{ 
+                        width: '180px', 
+                        height: '180px', 
+                        borderRadius: '50%', 
+                        border: '4px solid var(--white)', 
+                        boxShadow: '0 10px 30px rgba(0,0,0,0.15)', 
+                        overflow: 'hidden', 
+                        zIndex: 2,
+                        position: 'relative'
+                    }}>
+                        <img 
+                            src="https://storage.googleapis.com/cursopractica-imagenes-2026/img_drones/imagen_circular.png" 
+                            alt="Imagen circular" 
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                        />
                     </div>
                 </div>
             </div>
@@ -523,6 +539,21 @@ const LandingPage = () => {
                     .carrusel-scroll::-webkit-scrollbar { display: none; }
                     .carrusel-scroll { -ms-overflow-style: none; scrollbar-width: none; }
                     .nav-btn:hover { background: var(--bg-color) !important; transform: translateY(-50%) scale(1.05) !important; }
+                    
+                    @keyframes ripple {
+                        0% { transform: scale(1); opacity: 0.6; border-color: var(--color-primary); }
+                        100% { transform: scale(1.8); opacity: 0; border-color: var(--color-primary); }
+                    }
+                    
+                    .vibration-ring {
+                        position: absolute;
+                        width: 180px;
+                        height: 180px;
+                        border-radius: 50%;
+                        border: 2px solid var(--color-primary);
+                        animation: ripple 3s cubic-bezier(0.2, 0.8, 0.4, 1) infinite;
+                        z-index: 1;
+                    }
                 `}
             </style>
 

@@ -8,7 +8,7 @@ class ServicioMisionPiloto:
     @staticmethod
     def cambiar_estado(mision, nuevo_estado):
         if not mision.puede_cambiar_a(nuevo_estado):
-            raise ValueError("La trasición solicitada no está permitida desde elestado actual.")
+            raise ValueError("La transición solicitada no está permitida desde el estado actual.")
 
         mision.estado = nuevo_estado
 
