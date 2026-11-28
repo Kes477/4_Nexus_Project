@@ -76,6 +76,7 @@ import PilotoPerfil from './pages/piloto/PilotoPerfil';
 // ======================================================
 
 import TecnicoOrdenes from './pages/tecnico/TecnicoOrdenes';
+import TecnicoPerfil from './pages/tecnico/TecnicoPerfil';
 
 // ======================================================
 // PÁGINAS DEL VENDEDOR
@@ -276,6 +277,13 @@ function App() {
           <Route
             path="ordenes"
             element={<TecnicoOrdenes />}
+          />
+
+          <Route
+            path="perfil"
+            element={
+              <TecnicoPerfil onLogout={cerrarSesion} />
+            }
           />
 
         </Route>

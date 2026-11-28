@@ -77,12 +77,10 @@ def _fmt_categoria(cat):
         return '—'
     if cat == 'TODAS':
         return 'Todos los servicios'
-    # Reemplaza guiones bajos por espacios y pone cada palabra en mayúscula (igual que el frontend)
     return cat.replace('_', ' ').title()
 
 
 def _get_cliente(m):
-    """Extrae el nombre del cliente o devuelve 'Uso Personal' si está vacío."""
     nombre = getattr(m, 'cliente_nombre', None) or getattr(m, 'cliente', None)
     if not nombre or str(nombre).strip() == '' or str(nombre).lower() == 'uso personal':
         return 'Uso Personal'
@@ -90,18 +88,10 @@ def _get_cliente(m):
 
 
 def _calcular_duracion(m):
-    """Calcula la duración real usando las fechas, igual que en el frontend."""
-    if getattr(m, 'duracion_horas', None) is not None:
-        return m.duracion_horas
-    
-    if getattr(m, 'horas_vuelo', None) is not None:
-        return m.horas_vuelo
-
     if getattr(m, 'fecha_creacion', None) and getattr(m, 'fecha_cierre', None):
         diff = m.fecha_cierre - m.fecha_creacion
         horas = diff.total_seconds() / 3600
         return horas if horas > 0 else None
-        
     return None
 
 
@@ -156,7 +146,6 @@ def generar_pdf_bitacora(piloto, misiones, filtro='todos', busqueda=''):
     ))
     story.append(Spacer(1, 8))
 
-    # Columnas actualizadas para coincidir con el frontend
     encabezados = [
         Paragraph('Código', celda_head),
         Paragraph('Fecha', celda_head),
@@ -184,7 +173,6 @@ def generar_pdf_bitacora(piloto, misiones, filtro='todos', busqueda=''):
             Paragraph(ESTADO_LABEL.get(m.estado, m.estado), celda),
         ])
 
-    # Ajustamos los anchos de columna para que quepan los 8 campos
     tabla = Table(
         filas,
         repeatRows=1,

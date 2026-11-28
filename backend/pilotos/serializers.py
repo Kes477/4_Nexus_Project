@@ -48,10 +48,12 @@ class HistorialMisionSerializer(serializers.ModelSerializer):
         ]
 
     def _get_resenia_correspondiente(self, obj):
-        resenias = obj.resenias.all()
-        if not resenias.exists():
-            return None
-        return resenias.order_by('-fecha_resenia').first()
+        if hasattr(obj, '_resenia_cache'):
+            return obj._resenia_cache
+        resenias = list(obj.resenias.all())
+        resultado = max(resenias, key=lambda r: r.fecha_resenia) if resenias else None
+        obj._resenia_cache = resultado
+        return resultado
 
     def get_calificacion(self, obj):
         resenia = self._get_resenia_correspondiente(obj)

@@ -1,8 +1,10 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.utils import timezone
 from datetime import timedelta
+
 
 class UsuarioManager(BaseUserManager):
     use_in_migrations = True
@@ -43,14 +45,27 @@ class Usuario(AbstractUser):
     estado_cuenta = models.CharField(
         max_length=1, choices=EstadoCuenta.choices, default=EstadoCuenta.ACTIVA
     )
-    foto_perfil_url = models.URLField(max_length=500, blank=True)
+    
+    # Campo modificado para subir archivos
+    foto_perfil = models.ImageField(upload_to='avatares/', null=True, blank=True)
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['no_identificacion', 'first_name', 'last_name']
 
     objects = UsuarioManager()
 
+    def clean(self):
+        super().clean()
+        if self.is_staff and self.pk is not None and hasattr(self, 'perfil_piloto'):
+            raise ValidationError(
+                {'is_staff': 'Un piloto no puede tener permisos de administrador.'}
+            )
+
     def save(self, *args, **kwargs):
+        if self.is_staff and self.pk is not None and hasattr(self, 'perfil_piloto'):
+            raise ValidationError(
+                {'is_staff': 'Un piloto no puede tener permisos de administrador.'}
+            )
         self.is_active = self.estado_cuenta == self.EstadoCuenta.ACTIVA
         super().save(*args, **kwargs)
 
@@ -141,6 +156,20 @@ class Piloto(models.Model):
             )
         ]
 
+    def clean(self):
+        super().clean()
+        if self.usuario_id and Usuario.objects.filter(pk=self.usuario_id, is_staff=True).exists():
+            raise ValidationError(
+                {'usuario': 'Un piloto no puede tener permisos de administrador.'}
+            )
+
+    def save(self, *args, **kwargs):
+        if self.usuario_id and Usuario.objects.filter(pk=self.usuario_id, is_staff=True).exists():
+            raise ValidationError(
+                {'usuario': 'Un piloto no puede tener permisos de administrador.'}
+            )
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"Piloto: {self.usuario.email}"
 
@@ -169,15 +198,21 @@ class Vendedor(models.Model):
         return f"Vendedor: {self.usuario.email}"
 
 
-# NUEVO MODELO PARA EL CÓDIGO DE RECUPERACIÓN DE LA CUENTA
 class PasswordResetCode(models.Model):
-    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='reset_codes')
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='reset_codes'
+    )
     code = models.CharField(max_length=6)
     created_at = models.DateTimeField(auto_now_add=True)
     is_used = models.BooleanField(default=False)
 
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['usuario', 'code']),
+        ]
+
     def is_valid(self):
-        # El código expira a los 3 minutos
         return not self.is_used and timezone.now() < self.created_at + timedelta(minutes=3)
 
     def __str__(self):

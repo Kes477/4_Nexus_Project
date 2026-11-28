@@ -139,14 +139,11 @@ def poblar_misiones():
         fecha_creacion = _aware(m["fecha_programada"], 8)
         fecha_cierre = _aware(m["fecha_programada"], 12) if m["estado"] == "COMPLETADA" else None
 
-        mision = Mision(piloto=piloto, **m)
+        mision = Mision(piloto=piloto, fecha_cierre=fecha_cierre, **m)
         mision.save()
 
         if fecha_cierre:
-            Mision.objects.filter(pk=mision.pk).update(
-                fecha_creacion=fecha_creacion,
-                fecha_cierre=fecha_cierre,
-            )
+            Mision.objects.filter(pk=mision.pk).update(fecha_creacion=fecha_creacion)
 
     print(f"¡Éxito! Se han creado {len(personales) + len(terceros)} misiones de prueba.")
 

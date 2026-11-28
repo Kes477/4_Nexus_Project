@@ -1,11 +1,15 @@
+import re
+
 from django.contrib.auth import get_user_model
+from django.core import mail
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import IntegrityError, transaction
 from django.test import TestCase
 from django.urls import reverse
 
 from rest_framework import status
 from rest_framework.test import APITestCase
-from usuarios.models import PerfilCliente, Tecnico, Piloto, Vendedor
+from usuarios.models import PerfilCliente, Tecnico, Piloto, Vendedor, PasswordResetCode
 
 
 Usuario = get_user_model()
@@ -105,10 +109,7 @@ class UsuarioModelTests(TestCase):
             no_identificacion="0801199900023"
         )
 
-        self.assertEqual(
-            usuario.email,
-            "usuario@example.com"
-        )
+        self.assertEqual(usuario.email, "usuario@example.com")
 
     def test_cambio_estado_cuenta(self):
         usuario = Usuario.objects.create_user(
@@ -153,196 +154,93 @@ class AutenticacionAPITests(APITestCase):
         }
 
     def test_login_correcto(self):
-        respuesta = self.client.post(
-            self.url_login,
-            self.credenciales,
-            format="json"
-        )
+        respuesta = self.client.post(self.url_login, self.credenciales, format="json")
 
-        self.assertEqual(
-            respuesta.status_code,
-            status.HTTP_200_OK
-        )
-
+        self.assertEqual(respuesta.status_code, status.HTTP_200_OK)
         self.assertIn("access", respuesta.data)
         self.assertIn("refresh", respuesta.data)
         self.assertIn("usuario", respuesta.data)
-
-        self.assertEqual(
-            respuesta.data["usuario"]["email"],
-            "pruebas@example.com"
-        )
-
-        self.assertNotIn(
-            "password",
-            respuesta.data["usuario"]
-        )
+        self.assertEqual(respuesta.data["usuario"]["email"], "pruebas@example.com")
+        self.assertNotIn("password", respuesta.data["usuario"])
 
     def test_login_contrasena_incorrecta(self):
         respuesta = self.client.post(
             self.url_login,
-            {
-                "email": "pruebas@example.com",
-                "password": "Incorrecta123!"
-            },
+            {"email": "pruebas@example.com", "password": "Incorrecta123!"},
             format="json"
         )
 
-        self.assertEqual(
-            respuesta.status_code,
-            status.HTTP_401_UNAUTHORIZED
-        )
+        self.assertEqual(respuesta.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_login_correo_inexistente(self):
         respuesta = self.client.post(
             self.url_login,
-            {
-                "email": "noexiste@example.com",
-                "password": "ClavePrueba123!"
-            },
+            {"email": "noexiste@example.com", "password": "ClavePrueba123!"},
             format="json"
         )
 
-        self.assertEqual(
-            respuesta.status_code,
-            status.HTTP_401_UNAUTHORIZED
-        )
+        self.assertEqual(respuesta.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_login_usuario_inactivo(self):
         self.usuario.estado_cuenta = "I"
         self.usuario.save()
 
-        respuesta = self.client.post(
-            self.url_login,
-            self.credenciales,
-            format="json"
-        )
+        respuesta = self.client.post(self.url_login, self.credenciales, format="json")
 
-        self.assertEqual(
-            respuesta.status_code,
-            status.HTTP_401_UNAUTHORIZED
-        )
+        self.assertEqual(respuesta.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_perfil_sin_autenticacion(self):
         respuesta = self.client.get(self.url_perfil)
 
         self.assertIn(
             respuesta.status_code,
-            [
-                status.HTTP_401_UNAUTHORIZED,
-                status.HTTP_403_FORBIDDEN
-            ]
+            [status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN]
         )
 
     def test_perfil_con_token_valido(self):
-        login = self.client.post(
-            self.url_login,
-            self.credenciales,
-            format="json"
-        )
-
-        self.assertEqual(
-            login.status_code,
-            status.HTTP_200_OK
-        )
+        login = self.client.post(self.url_login, self.credenciales, format="json")
+        self.assertEqual(login.status_code, status.HTTP_200_OK)
 
         token = login.data["access"]
-
-        self.client.credentials(
-            HTTP_AUTHORIZATION=f"Bearer {token}"
-        )
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
 
         respuesta = self.client.get(self.url_perfil)
 
-        self.assertEqual(
-            respuesta.status_code,
-            status.HTTP_200_OK
-        )
-
-        self.assertEqual(
-            respuesta.data["email"],
-            "pruebas@example.com"
-        )
-
+        self.assertEqual(respuesta.status_code, status.HTTP_200_OK)
+        self.assertEqual(respuesta.data["email"], "pruebas@example.com")
         self.assertNotIn("password", respuesta.data)
 
     def test_refrescar_token(self):
-        login = self.client.post(
-            self.url_login,
-            self.credenciales,
-            format="json"
-        )
-
-        self.assertEqual(
-            login.status_code,
-            status.HTTP_200_OK
-        )
+        login = self.client.post(self.url_login, self.credenciales, format="json")
+        self.assertEqual(login.status_code, status.HTTP_200_OK)
 
         refresh = login.data["refresh"]
+        respuesta = self.client.post(self.url_refrescar, {"refresh": refresh}, format="json")
 
-        respuesta = self.client.post(
-            self.url_refrescar,
-            {"refresh": refresh},
-            format="json"
-        )
-
-        self.assertEqual(
-            respuesta.status_code,
-            status.HTTP_200_OK
-        )
-
+        self.assertEqual(respuesta.status_code, status.HTTP_200_OK)
         self.assertIn("access", respuesta.data)
 
-    # --------------------------------------------------------
-    # PRUEBAS ADICIONALES DE SEGURIDAD
-    # --------------------------------------------------------
-
     def test_perfil_con_token_invalido(self):
-        self.client.credentials(
-            HTTP_AUTHORIZATION="Bearer token_invalido"
-        )
-
+        self.client.credentials(HTTP_AUTHORIZATION="Bearer token_invalido")
         respuesta = self.client.get(self.url_perfil)
 
-        self.assertEqual(
-            respuesta.status_code,
-            status.HTTP_401_UNAUTHORIZED
-        )
+        self.assertEqual(respuesta.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_refrescar_token_invalido(self):
         respuesta = self.client.post(
-            self.url_refrescar,
-            {"refresh": "token_invalido"},
-            format="json"
+            self.url_refrescar, {"refresh": "token_invalido"}, format="json"
         )
 
-        self.assertEqual(
-            respuesta.status_code,
-            status.HTTP_401_UNAUTHORIZED
-        )
-
+        self.assertEqual(respuesta.status_code, status.HTTP_401_UNAUTHORIZED)
         self.assertNotIn("access", respuesta.data)
 
     def test_proteccion_datos_sensibles(self):
-        login = self.client.post(
-            self.url_login,
-            self.credenciales,
-            format="json"
-        )
-
-        self.assertEqual(
-            login.status_code,
-            status.HTTP_200_OK
-        )
+        login = self.client.post(self.url_login, self.credenciales, format="json")
+        self.assertEqual(login.status_code, status.HTTP_200_OK)
 
         datos_usuario = login.data["usuario"]
-
         campos_prohibidos = [
-            "password",
-            "is_superuser",
-            "user_permissions",
-            "groups",
-            "last_login"
+            "password", "is_superuser", "user_permissions", "groups", "last_login"
         ]
 
         for campo in campos_prohibidos:
@@ -350,17 +248,9 @@ class AutenticacionAPITests(APITestCase):
                 self.assertNotIn(campo, datos_usuario)
 
         token = login.data["access"]
-
-        self.client.credentials(
-            HTTP_AUTHORIZATION=f"Bearer {token}"
-        )
-
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
         perfil = self.client.get(self.url_perfil)
-
-        self.assertEqual(
-            perfil.status_code,
-            status.HTTP_200_OK
-        )
+        self.assertEqual(perfil.status_code, status.HTTP_200_OK)
 
         for campo in campos_prohibidos:
             with self.subTest(campo=campo):
@@ -387,10 +277,7 @@ class PerfilesModelTests(TestCase):
 
         with self.assertRaises(IntegrityError):
             with transaction.atomic():
-                PerfilCliente.objects.create(
-                    usuario=usuario,
-                    saldo_puntos=-10
-                )
+                PerfilCliente.objects.create(usuario=usuario, saldo_puntos=-10)
 
     def test_piloto_no_permite_horas_negativas(self):
         usuario = self.crear_usuario(2)
@@ -420,23 +307,17 @@ class PerfilesModelTests(TestCase):
 
         with self.assertRaises(IntegrityError):
             with transaction.atomic():
-                Tecnico.objects.create(
-                    usuario=usuario,
-                    especialidad_tecnica=""
-                )
+                Tecnico.objects.create(usuario=usuario, especialidad_tecnica="")
 
     def test_cliente_permite_puntos_validos(self):
         usuario = self.crear_usuario(5)
-
-        cliente = PerfilCliente.objects.create(
-            usuario=usuario,
-            saldo_puntos=100
-        )
-
+        cliente = PerfilCliente.objects.create(usuario=usuario, saldo_puntos=100)
         self.assertEqual(cliente.saldo_puntos, 100)
 
 
-################    PRUEBAS DEL REGISTRO PÚBLICO   ####################
+# ============================================================
+# 4. PRUEBAS DEL REGISTRO PÚBLICO
+# ============================================================
 
 class RegistroAPITest(APITestCase):
 
@@ -535,8 +416,9 @@ class RegistroAPITest(APITestCase):
         self.assertEqual(respuesta.status_code, status.HTTP_201_CREATED)
 
 
-
-##################    PRUEBAS DEL ROL CALCULADO   #################
+# ============================================================
+# 5. PRUEBAS DEL ROL CALCULADO
+# ============================================================
 
 class RolUsuarioTests(APITestCase):
 
@@ -592,7 +474,10 @@ class RolUsuarioTests(APITestCase):
         self.assertEqual(respuesta.status_code, status.HTTP_200_OK)
         self.assertEqual(respuesta.data['usuario']['rol'], 'piloto')
 
-#################     PRUEBAS DE EDICIÓN DEL PERFIL   ####################
+
+# ============================================================
+# 6. PRUEBAS DE EDICIÓN DEL PERFIL
+# ============================================================
 
 class PerfilAPITest(APITestCase):
     def setUp(self):
@@ -674,9 +559,9 @@ class PerfilAPITest(APITestCase):
         self.assertEqual(respuesta.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
 
 
-
-################  PRUEBAS DE CAMBIO DE CONTRASEÑA  ###################
-
+# ============================================================
+# 7. PRUEBAS DE CAMBIO DE CONTRASEÑA
+# ============================================================
 
 class CambiarPasswordAPITests(APITestCase):
 
@@ -743,3 +628,134 @@ class CambiarPasswordAPITests(APITestCase):
             format='json',
         )
         self.assertEqual(login.status_code, status.HTTP_200_OK)
+
+
+# ============================================================
+# 8. PRUEBAS DE RECUPERACIÓN DE CONTRASEÑA
+# ============================================================
+
+class PasswordResetAPITests(APITestCase):
+
+    def setUp(self):
+        self.usuario = Usuario.objects.create_user(
+            email='reset@nexus.com',
+            password='Drones-2026!',
+            no_identificacion='0801199900700',
+            first_name='Reset',
+            last_name='User',
+        )
+        self.url_request = reverse('password_reset_request')
+        self.url_confirm = reverse('password_reset_confirm')
+
+    def _obtener_codigo(self):
+        return re.search(r'(\d{6})', mail.outbox[-1].body).group(1)
+
+    def test_request_envia_correo_con_codigo(self):
+        respuesta = self.client.post(
+            self.url_request, {'email': 'reset@nexus.com'}, format='json'
+        )
+        self.assertEqual(respuesta.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertRegex(mail.outbox[0].body, r'\d{6}')
+        self.assertTrue(PasswordResetCode.objects.filter(usuario=self.usuario).exists())
+
+    def test_request_email_inexistente_no_revela(self):
+        respuesta = self.client.post(
+            self.url_request, {'email': 'nadie@x.com'}, format='json'
+        )
+        self.assertEqual(respuesta.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(mail.outbox), 0)
+        self.assertFalse(PasswordResetCode.objects.exists())
+
+    def test_request_invalida_codigos_previos(self):
+        self.client.post(self.url_request, {'email': 'reset@nexus.com'}, format='json')
+        self.client.post(self.url_request, {'email': 'reset@nexus.com'}, format='json')
+
+        activos = PasswordResetCode.objects.filter(usuario=self.usuario, is_used=False)
+        self.assertEqual(activos.count(), 1)
+
+    def test_confirm_cambia_password(self):
+        self.client.post(self.url_request, {'email': 'reset@nexus.com'}, format='json')
+        codigo = self._obtener_codigo()
+
+        respuesta = self.client.post(self.url_confirm, {
+            'email': 'reset@nexus.com',
+            'code': codigo,
+            'new_password': 'Helices-2027!',
+        }, format='json')
+
+        self.assertEqual(respuesta.status_code, status.HTTP_200_OK)
+        self.usuario.refresh_from_db()
+        self.assertTrue(self.usuario.check_password('Helices-2027!'))
+
+    def test_confirm_marca_todos_los_codigos_como_usados(self):
+        self.client.post(self.url_request, {'email': 'reset@nexus.com'}, format='json')
+        codigo = self._obtener_codigo()
+
+        self.client.post(self.url_confirm, {
+            'email': 'reset@nexus.com',
+            'code': codigo,
+            'new_password': 'Helices-2027!',
+        }, format='json')
+
+        self.assertFalse(
+            PasswordResetCode.objects.filter(usuario=self.usuario, is_used=False).exists()
+        )
+
+    def test_confirm_codigo_invalido(self):
+        self.client.post(self.url_request, {'email': 'reset@nexus.com'}, format='json')
+        respuesta = self.client.post(self.url_confirm, {
+            'email': 'reset@nexus.com',
+            'code': '000000',
+            'new_password': 'Helices-2027!',
+        }, format='json')
+        self.assertEqual(respuesta.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('code', respuesta.data)
+
+
+# ============================================================
+# 9. PRUEBAS DE REGLA PILOTO ≠ ADMIN
+# ============================================================
+
+class PilotoAdminTests(TestCase):
+
+    def setUp(self):
+        self.usuario_staff = Usuario.objects.create_superuser(
+            email='admin@x.com', password='Clave-2026!', no_identificacion='ADMIN-01',
+            first_name='Admin', last_name='X',
+        )
+        self.usuario_piloto = Usuario.objects.create_user(
+            email='pilot@x.com', password='Clave-2026!', no_identificacion='PILOT-01',
+            first_name='Pilot', last_name='Y',
+        )
+
+    def test_piloto_no_puede_crearse_para_admin(self):
+        with self.assertRaises(DjangoValidationError):
+            Piloto.objects.create(
+                usuario=self.usuario_staff, numero_licencia_aeronautica='LIC-ADMIN'
+            )
+
+    def test_admin_no_puede_obtener_perfil_piloto(self):
+        Piloto.objects.create(
+            usuario=self.usuario_piloto, numero_licencia_aeronautica='LIC-PILOT'
+        )
+        self.usuario_piloto.is_staff = True
+        with self.assertRaises(DjangoValidationError):
+            self.usuario_piloto.save()
+
+    def test_piloto_sin_staff_funciona(self):
+        piloto = Piloto.objects.create(
+            usuario=self.usuario_piloto, numero_licencia_aeronautica='LIC-OK'
+        )
+        self.assertEqual(piloto.usuario.rol, 'piloto')
+
+    def test_admin_sin_perfil_piloto_funciona(self):
+        self.assertEqual(self.usuario_staff.rol, 'admin')
+
+    def test_piloto_clean_detecta_staff(self):
+        Usuario.objects.filter(pk=self.usuario_piloto.pk).update(is_staff=True)
+        piloto = Piloto(
+            usuario_id=self.usuario_piloto.pk, numero_licencia_aeronautica='LIC-CLEAN'
+        )
+        with self.assertRaises(DjangoValidationError):
+            piloto.clean()

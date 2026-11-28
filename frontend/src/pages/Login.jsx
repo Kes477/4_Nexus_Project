@@ -4,6 +4,7 @@ import { Shield, ChevronLeft, ArrowRight, Check, Eye, EyeOff } from 'lucide-reac
 
 import { Input, Button, Alert, IconButton, Checkbox, Modal } from '../components/ui';
 import { useSesion } from '../hooks/useSesion';
+import { useTheme } from '../context/useTheme';
 
 const PANEL_POR_ROL = {
     admin: '/admin',
@@ -30,6 +31,8 @@ const Login = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const { iniciarSesion, registrarse } = useSesion();
+    const { theme } = useTheme();
+    const isLight = theme === 'light';
 
     const redirectTo = location.state?.from || '/cliente';
     const loginMessage = location.state?.message;
@@ -331,9 +334,27 @@ const Login = () => {
                     <div style={{ position: 'absolute', top: '-10%', left: '-10%', width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(4, 201, 166, 0.25) 0%, transparent 70%)' }} />
                     <div style={{ position: 'absolute', bottom: '-10%', right: '-10%', width: '400px', height: '400px', background: 'radial-gradient(circle, rgba(4, 201, 166, 0.15) 0%, transparent 70%)' }} />
                     <div style={{ zIndex: 10, marginTop: 'auto', marginBottom: 'auto' }}>
-                        <div style={{ background: 'var(--color-primary)', color: 'var(--white)', padding: '6px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '900', width: 'fit-content', marginBottom: '24px', letterSpacing: '1px', boxShadow: '0 4px 15px rgba(4, 201, 166, 0.3)' }}>
-                            4 NEXUS
+                        
+                        <div style={{ 
+                            background: 'var(--color-primary)', 
+                            padding: '10px 20px', 
+                            borderRadius: '8px', 
+                            width: 'fit-content', 
+                            marginBottom: '24px', 
+                            boxShadow: '0 4px 15px rgba(4, 201, 166, 0.3)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                        }}>
+                            <img
+                                src={isLight
+                                    ? 'https://storage.googleapis.com/cursopractica-imagenes-2026/img-logos/Logo_modo_claro.png'
+                                    : 'https://storage.googleapis.com/cursopractica-imagenes-2026/img-logos/Logo_modo_oscuro.png'}
+                                alt="4 Nexus Logo"
+                                style={{ height: '40px', objectFit: 'contain' }}
+                            />
                         </div>
+
                         <h1 style={{ color: 'var(--white)', fontSize: '30px', fontWeight: '800', lineHeight: '1.2', marginBottom: '16px' }}>
                             Gestión e infraestructura de vuelo autónomo.
                         </h1>

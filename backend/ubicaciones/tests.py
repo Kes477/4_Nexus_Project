@@ -4,11 +4,11 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from .models import Direccion, Ubicacion
+from .models import Direccion, TipoUbicacion, Ubicacion
 
 Usuario = get_user_model()
 
-################# UBICACIONES (Datos de migración 0002)  ###################
+
 class UbicacionAPITests(APITestCase):
 
     def setUp(self):
@@ -44,8 +44,19 @@ class UbicacionAPITests(APITestCase):
         respuesta = self.client.post(self.url, {'nombre': 'Marte'}, format='json')
         self.assertEqual(respuesta.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
 
+    def test_no_se_puede_duplicar_la_raiz(self):
+        pais = TipoUbicacion.objects.get(nombre='País')
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            Ubicacion.objects.create(tipo=pais, nombre='Honduras', padre=None)
 
-################# DIRECCIÓN DEL CLIENTE #####################
+    def test_no_se_puede_duplicar_hijo_bajo_el_mismo_padre(self):
+        morazan = Ubicacion.objects.get(nombre='Francisco Morazán')
+        municipio = TipoUbicacion.objects.get(nombre='Municipio')
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            Ubicacion.objects.create(
+                tipo=municipio, nombre='Distrito Central', padre=morazan
+            )
+
 
 class DireccionAPITests(APITestCase):
 
@@ -75,8 +86,6 @@ class DireccionAPITests(APITestCase):
     def detalle(self, direccion_id):
         return reverse('direccion-detail', args=[direccion_id])
 
-    # --- Creación ---
-
     def test_requiere_sesion(self):
         self.client.force_authenticate(user=None)
         self.assertEqual(self.crear().status_code, status.HTTP_401_UNAUTHORIZED)
@@ -93,6 +102,18 @@ class DireccionAPITests(APITestCase):
         respuesta = self.crear(linea_direccion1='Res. Las Uvas')
 
         self.assertFalse(respuesta.data['es_principal'])
+
+    def test_ubicacion_es_opcional(self):
+        respuesta = self.client.post(
+            self.url,
+            {'linea_direccion1': 'Referencia sin municipio', 'tipo_direccion': 'otro'},
+            format='json',
+        )
+
+        self.assertEqual(respuesta.status_code, status.HTTP_201_CREATED)
+        self.assertIsNone(respuesta.data['ubicacion'])
+        self.assertIsNone(respuesta.data['ubicacion_texto'])
+        self.assertTrue(respuesta.data['es_principal'])
 
     def test_no_se_puede_crear_para_otro_usuario(self):
         respuesta = self.crear(usuario=self.luis.id)
@@ -112,10 +133,8 @@ class DireccionAPITests(APITestCase):
         respuesta = self.client.post(self.url, {}, format='json')
 
         self.assertEqual(respuesta.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('ubicacion', respuesta.data)
         self.assertIn('linea_direccion1', respuesta.data)
-
-    # --- Dirección principal ---
+        self.assertNotIn('ubicacion', respuesta.data)
 
     def test_marcar_otra_como_principal_desmarca_la_anterior(self):
         primera = self.crear().data['id']
@@ -135,6 +154,25 @@ class DireccionAPITests(APITestCase):
         self.assertTrue(Direccion.objects.get(pk=segunda).es_principal)
         self.assertFalse(Direccion.objects.get(pk=primera).es_principal)
 
+    def test_quitar_principal_promueve_la_siguiente(self):
+        primera = self.crear().data['id']
+        segunda = self.crear(ubicacion=self.sps.id).data['id']
+
+        respuesta = self.client.patch(self.detalle(primera), {'es_principal': False}, format='json')
+
+        self.assertEqual(respuesta.status_code, status.HTTP_200_OK)
+        self.assertFalse(Direccion.objects.get(pk=primera).es_principal)
+        self.assertTrue(Direccion.objects.get(pk=segunda).es_principal)
+
+    def test_no_se_puede_quitar_principal_si_es_la_unica(self):
+        primera = self.crear().data['id']
+
+        respuesta = self.client.patch(self.detalle(primera), {'es_principal': False}, format='json')
+
+        self.assertEqual(respuesta.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('es_principal', respuesta.data)
+        self.assertTrue(Direccion.objects.get(pk=primera).es_principal)
+
     def test_borrar_principal_pasa_a_la_siguiente(self):
         primera = self.crear().data['id']
         segunda = self.crear(ubicacion=self.sps.id).data['id']
@@ -152,8 +190,6 @@ class DireccionAPITests(APITestCase):
             Direccion.objects.create(
                 usuario=self.ana, ubicacion=self.sps, linea_direccion1='B', es_principal=True
             )
-
-    # --- Privacidad entre clientes ---
 
     def test_solo_ve_sus_direcciones(self):
         self.crear()

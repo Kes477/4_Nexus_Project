@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Check, Send, Phone, Mail, MapPin, Clock, MessageSquare } from 'lucide-react';
 import { Input, Button, Alert, Checkbox, IconButton } from '../components/ui';
-import emailjs from '@emailjs/browser';
+import emailjs from '@emailjs/browser'; 
+import { useTheme } from '../context/useTheme';
 
 const TIPOS_CONSULTA = [
     { value: '', label: 'Selecciona un tipo de consulta' },
@@ -21,6 +22,8 @@ const REGEX = {
 
 const FormularioContacto = () => {
     const navigate = useNavigate();
+    const { theme } = useTheme();
+    const isLight = theme === 'light';
 
     const [step, setStep] = useState(1);
     const [isLoading, setIsLoading] = useState(false);
@@ -236,13 +239,26 @@ const FormularioContacto = () => {
                     <div style={{ position: 'absolute', bottom: '-10%', right: '-10%', width: '400px', height: '400px', background: 'radial-gradient(circle, rgba(4, 201, 166, 0.15) 0%, transparent 70%)' }} />
 
                     <div style={{ zIndex: 10, marginTop: 'auto', marginBottom: 'auto' }}>
+                        
+                        {/* ETIQUETA VERDE CON LOGO */}
                         <div style={{
-                            background: 'var(--color-primary)', color: 'var(--white)',
-                            padding: '6px 14px', borderRadius: '8px', fontSize: '13px',
-                            fontWeight: '900', width: 'fit-content', marginBottom: '24px',
-                            letterSpacing: '1px', boxShadow: '0 4px 15px rgba(4, 201, 166, 0.3)'
+                            background: 'var(--color-primary)',
+                            padding: '10px 20px',
+                            borderRadius: '8px',
+                            width: 'fit-content',
+                            marginBottom: '24px',
+                            boxShadow: '0 4px 15px rgba(4, 201, 166, 0.3)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
                         }}>
-                            4 NEXUS
+                            <img
+                                src={isLight
+                                    ? 'https://storage.googleapis.com/cursopractica-imagenes-2026/img-logos/Logo_modo_claro.png'
+                                    : 'https://storage.googleapis.com/cursopractica-imagenes-2026/img-logos/Logo_modo_oscuro.png'}
+                                alt="4 Nexus Logo"
+                                style={{ height: '40px', objectFit: 'contain' }}
+                            />
                         </div>
 
                         <h1 style={{ color: 'var(--white)', fontSize: '28px', fontWeight: '800', lineHeight: '1.2', marginBottom: '12px' }}>
@@ -270,7 +286,7 @@ const FormularioContacto = () => {
                                 </div>
                                 <div>
                                     <span style={{ display: 'block', fontSize: '11px', color: 'var(--light-gray)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '2px' }}>Escríbenos</span>
-                                    <span style={{ fontSize: '14px', fontWeight: '500' }}>soporte@4nexus.com</span>
+                                    <span style={{ fontSize: '14px', fontWeight: '500' }}>4nexus.contact@gmail.com</span>
                                 </div>
                             </div>
 

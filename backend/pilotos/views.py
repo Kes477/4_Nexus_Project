@@ -84,7 +84,7 @@ class MisionViewSet(
 
     def perform_create(self, serializer):
         usuario = self.request.user
-        tipo_mision = self.request.data.get('tipo_mision', Mision.TipoMision.TERCEROS)
+        tipo_mision = serializer.validated_data.get('tipo_mision', Mision.TipoMision.TERCEROS)
 
         if tipo_mision == Mision.TipoMision.PERSONAL:
             if not hasattr(usuario, 'perfil_piloto'):
@@ -114,8 +114,15 @@ class MisionViewSet(
         nuevo_estado = serializer.validated_data['estado']
 
         if mision.piloto_id is None and nuevo_estado == Mision.Estado.ACEPTADA and hasattr(request.user, 'perfil_piloto'):
-            mision.piloto = request.user.perfil_piloto
-            mision.save()
+            asignadas = Mision.objects.filter(
+                pk=mision.pk, piloto__isnull=True
+            ).update(piloto=request.user.perfil_piloto)
+            if asignadas == 0:
+                return Response(
+                    {'detail': 'La misión ya fue asignada a otro piloto.'},
+                    status=status.HTTP_409_CONFLICT,
+                )
+            mision.refresh_from_db()
 
         politica = SelectorPoliticas.obtener(request.user, nuevo_estado)
         politica.autorizar(request.user, mision)
@@ -142,7 +149,7 @@ class MisionViewSet(
             piloto=piloto,
             estado=Mision.Estado.COMPLETADA,
             tipo_mision=Mision.TipoMision.TERCEROS
-        ).order_by('-fecha_programada')
+        ).prefetch_related('resenias').order_by('-fecha_programada')
 
         filtro_categoria = request.query_params.get('categoria')
         if filtro_categoria:
@@ -153,7 +160,9 @@ class MisionViewSet(
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def _calcular_metricas_para(self, piloto, modo, categoria):
-        qs = Mision.objects.filter(piloto=piloto, tipo_mision=modo, categoria=categoria)
+        qs = Mision.objects.filter(
+            piloto=piloto, tipo_mision=modo, categoria=categoria
+        ).prefetch_related('resenias')
         completadas = qs.filter(estado=Mision.Estado.COMPLETADA)
         activas = qs.filter(estado__in=[Mision.Estado.ACEPTADA, Mision.Estado.EN_CURSO])
 
@@ -301,9 +310,9 @@ class MisionViewSet(
             monto = 0
 
             if m.producto:
-                primera_variante = m.producto.variantes.first()
-                if primera_variante:
-                    monto = float(primera_variante.precio)
+                variantes = list(m.producto.variantes.all())
+                if variantes:
+                    monto = float(variantes[0].precio)
 
             if monto == 0:
                 tarifa_respaldo = TARIFA_RESPALDO.get(m.categoria, 0)
