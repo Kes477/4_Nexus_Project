@@ -6,6 +6,8 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.db.models import ProtectedError
+from django.http.response import HttpResponse
+from .factura import generar_factura_pdf, numero_factura, puede_facturar
 
 from .models import Carrito, CarritoDetalle, MetodoPago, Pedido
 from .pagos import ESTRATEGIAS
@@ -185,6 +187,18 @@ class PedidoViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.G
             },
             'pedido': PedidoSerializer(pedido).data,
         })
+
+    @action(detail=True, methods=['get'])
+    def factura(self, request, pk=None):
+        "Descarga la factura en PDF. Solo de pedidos propios y ya cobrados."
+        pedido = self.get_object()  
+        if not puede_facturar(pedido):
+            raise ValidationError({'detail': ['La factura estará disponible cuando el pedido esté pagado.']})
+
+        respuesta = HttpResponse(generar_factura_pdf(pedido), content_type='application/pdf')
+        respuesta['Content-Disposition'] = f'attachment; filename="{numero_factura(pedido)}.pdf"'
+        return respuesta
+    
 
 class FormasPagoView(APIView):
     """Las formas de pago salen del registro de estrategias, no de una lista escrita a mano."""

@@ -749,3 +749,40 @@ class GestionEnvioTests(PagoBaseTest):
 
         with self.assertRaises(ValidationError):
             procesar_pedido(Pedido.objects.get(pk=pedido_id))
+
+############################       8. FACTURA       ############################
+
+
+class FacturaTests(PagoBaseTest):
+
+    def url_factura(self, pedido_id=None):
+        return reverse('pedido-factura', args=[pedido_id or self.pedido_id])
+
+    def test_pedido_pagado_descarga_el_pdf(self):
+        self.pagar(forma_pago='TARJETA', metodo_pago=self.tarjeta.id)
+
+        respuesta = self.client.get(self.url_factura())
+        self.assertEqual(respuesta.status_code, status.HTTP_200_OK)
+        self.assertEqual(respuesta['Content-Type'], 'application/pdf')
+        self.assertIn(f'FAC-{self.pedido_id:06d}.pdf', respuesta['Content-Disposition'])
+        self.assertTrue(respuesta.content.startswith(b'%PDF'))
+
+    def test_sin_pagar_no_hay_factura(self):
+        self.assertEqual(self.client.get(self.url_factura()).status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_transferencia_pendiente_no_factura(self):
+        self.pagar(forma_pago='TRANSFERENCIA')
+        self.assertEqual(self.client.get(self.url_factura()).status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_factura_disponible_en_el_pedido(self):
+        self.assertFalse(self.client.get(reverse('pedido-detail', args=[self.pedido_id])).data['factura_disponible'])
+
+        self.pagar(forma_pago='TARJETA', metodo_pago=self.tarjeta.id)
+        self.assertTrue(self.client.get(reverse('pedido-detail', args=[self.pedido_id])).data['factura_disponible'])
+
+    def test_no_descarga_facturas_ajenas(self):
+        self.pagar(forma_pago='TARJETA', metodo_pago=self.tarjeta.id)
+        otro = self.crear_usuario('otro.factura@nexus.com', '0801199900803')
+        self.client.force_authenticate(user=otro)
+
+        self.assertEqual(self.client.get(self.url_factura()).status_code, status.HTTP_404_NOT_FOUND)

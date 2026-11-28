@@ -125,6 +125,18 @@ def buscar_cupon(codigo):
     return cupon
 
 
+def _totales(subtotal, descuento=Decimal('0'), envio=Decimal('0')):
+    "La fórmula de db.sql (CHK_PED_TOTAL): total = subtotal - descuento + envío + ISV."
+    impuestos = _redondear((subtotal - descuento) * settings.VENTAS_TASA_ISV)
+    return {
+        'subtotal': _redondear(subtotal),
+        'total_descuento': descuento,
+        'costo_envio': _redondear(envio),
+        'total_impuestos': impuestos,
+        'total_final': _redondear(subtotal - descuento + envio + impuestos),
+    }
+
+
 def calcular_totales(lineas, cupon=None):
     """
     lineas: lista de (variante, cantidad).
@@ -134,16 +146,7 @@ def calcular_totales(lineas, cupon=None):
     descuento = cupon.calcular_descuento(subtotal) if cupon else Decimal('0')
     lleva_articulos = any(_es_articulo(variante) for variante, _ in lineas)
     envio = settings.VENTAS_COSTO_ENVIO if lleva_articulos else Decimal('0')
-    impuestos = _redondear((subtotal - descuento) * settings.VENTAS_TASA_ISV)
-
-    return {
-        'subtotal': _redondear(subtotal),
-        'total_descuento': descuento,
-        'costo_envio': _redondear(envio),
-        'total_impuestos': impuestos,
-        'total_final': _redondear(subtotal - descuento + envio + impuestos),
-    }
-
+    return _totales(subtotal, descuento, envio)
 
 def _reservar_en_almacenes(detalle, usuario):
     """Aparta las unidades de la línea, empezando por el almacén con más stock."""
@@ -392,3 +395,28 @@ def marcar_entregado(pedido):
         activar_suscripciones(pedido)
 
     return _cambiar_estado(pedido, Pedido.Estado.ENTREGADO)
+
+
+@transaction.atomic
+def crear_pedido_de_servicio(usuario, variante, precio):
+    """
+    Pedido de UN servicio con precio cotizado (no el del catálogo).
+    Lo usa reparaciones: el técnico pone el precio y el cliente lo paga como cualquier pedido.
+    """
+    if variante.producto.tipo_producto != Producto.Tipo.SERVICIO:
+        raise ValidationError('Solo se pueden cotizar servicios.')
+
+    precio = _redondear(Decimal(precio))
+    if precio <= 0:
+        raise ValidationError('El costo debe ser mayor que cero.')
+
+    pedido = Pedido.objects.create(usuario=usuario, **_totales(precio))
+    DetallePedido.objects.create(
+        pedido=pedido,
+        variante=variante,
+        tipo_producto=Producto.Tipo.SERVICIO,
+        cantidad=1,
+        precio_unitario=precio,
+        subtotal_linea=precio,
+    )
+    return pedido

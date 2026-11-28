@@ -1,10 +1,8 @@
 from django.urls import path
-
 from .views import (
     EquipoClienteViewSet,
     OrdenServicioViewSet,
 )
-
 
 # ======================================================
 # EQUIPOS DE CLIENTES
@@ -55,6 +53,9 @@ orden_cambiar_estado = OrdenServicioViewSet.as_view({
     'patch': 'cambiar_estado'
 })
 
+orden_cotizar = OrdenServicioViewSet.as_view({
+    'post':'cotizar'
+})
 
 # ======================================================
 # RUTAS DEL MODULO
@@ -102,6 +103,12 @@ urlpatterns = [
         'ordenes/<int:pk>/cambiar-estado/',
         orden_cambiar_estado,
         name='orden-cambiar-estado'
+    ),
+
+    path(
+        'ordenes/<int:pk>/cotizar/',
+        orden_cotizar,
+        name='orden-cotizar'
     ),
 
 ]

@@ -65,7 +65,7 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
-
+from .politicas import PoliticaTecnicoAsignado, SelectorPoliticas
 from rest_framework import (
     mixins,
     permissions,
@@ -85,6 +85,7 @@ from .serializers import (
     SolicitudReparacionSerializer,
     AsignarTecnicoSerializer,
     CambiarEstadoSerializer,
+    CotizarSerializer,
 )
 
 from .servicios import ServicioOrdenReparacion
@@ -653,6 +654,44 @@ class OrdenServicioViewSet(
         # --------------------------------------------------
         # 8. RESPUESTA HTTP
         # --------------------------------------------------
+
+        return Response(
+            OrdenServicioSerializer(orden).data,
+            status=status.HTTP_200_OK
+        )
+    # ======================================================
+    # COTIZACIÓN (genera el pedido que paga el cliente)
+    # ======================================================
+
+    def cotizar(self, request, pk=None):
+        """
+        El técnico asignado (o un admin) fija el costo de la reparación.
+
+        SERVICE LAYER:
+            ServicioOrdenReparacion.cotizar crea el Pedido en ventas.
+
+        STRATEGY:
+            Reutiliza PoliticaTecnicoAsignado para autorizar.
+        """
+        serializer = CotizarSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        # get_queryset: un técnico solo ve sus órdenes (otra orden → 404)
+        orden = get_object_or_404(self.get_queryset(), pk=pk)
+
+        if not request.user.has_perm("reparaciones.change_ordenservicio"):
+            PoliticaTecnicoAsignado().autorizar(request.user, orden)
+
+        try:
+            orden = ServicioOrdenReparacion.cotizar(
+                orden,
+                serializer.validated_data["costo"]
+            )
+        except ValidationError as error:
+            return Response(
+                {"detail": error.messages},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         return Response(
             OrdenServicioSerializer(orden).data,
