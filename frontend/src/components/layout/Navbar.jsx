@@ -9,7 +9,6 @@ import { useTheme } from '../../context/useTheme';
 
 // CONFIGURACION DE VARIABLES DE ENTORNO
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
-const API_BASE_URL = API_URL.replace('/api', '');
 
 // CONFIGURACION DE NAVEGACION PUBLICA
 
@@ -852,8 +851,8 @@ const Navbar = () => {
                   gap: '10px',
                   background: hoveredPath === 'user' ? 'rgba(4, 201, 166, 0.05)' : 'var(--bg-color)',
                   border: hoveredPath === 'user' ? '1px solid var(--color-primary)' : '1px solid var(--light-gray)',
-                  padding: '4px 16px 4px 6px', // Ajustado para equilibrar el avatar más grande
-                  borderRadius: '24px', // Más redondeado para acompañar el avatar de 40px
+                  padding: '4px 16px 4px 6px',
+                  borderRadius: '24px',
                   cursor: 'pointer',
                   transition: 'all 0.2s ease',
                 }}
@@ -861,24 +860,24 @@ const Navbar = () => {
                 {/* AVATAR CON FOTO DE PERFIL MÁS GRANDE */}
                 <div
                   style={{
-                    background: usuario?.foto_perfil ? 'transparent' : 'var(--color-primary)',
+                    background: usuario?.foto_perfil_url ? 'transparent' : 'var(--color-primary)', // Usamos foto_perfil_url
                     color: 'white',
-                    width: '40px', // Aumentado de 28px a 40px
-                    height: '40px', // Aumentado de 28px a 40px
+                    width: '40px',
+                    height: '40px',
                     borderRadius: '50%',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     fontWeight: 'bold',
-                    fontSize: '18px', // Aumentado para que la inicial se vea bien
+                    fontSize: '18px',
                     textTransform: 'uppercase',
                     overflow: 'hidden',
                     flexShrink: 0
                   }}
                 >
-                  {usuario?.foto_perfil ? (
+                  {usuario?.foto_perfil_url ? (
                     <img
-                      src={usuario.foto_perfil.startsWith('http') ? usuario.foto_perfil : `${API_BASE_URL}${usuario.foto_perfil}`}
+                      src={usuario.foto_perfil_url}
                       alt="Foto de perfil"
                       style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     />

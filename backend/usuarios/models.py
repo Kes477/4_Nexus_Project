@@ -46,7 +46,6 @@ class Usuario(AbstractUser):
         max_length=1, choices=EstadoCuenta.choices, default=EstadoCuenta.ACTIVA
     )
     
-    # Campo modificado para subir archivos
     foto_perfil = models.ImageField(upload_to='avatares/', null=True, blank=True)
 
     USERNAME_FIELD = 'email'

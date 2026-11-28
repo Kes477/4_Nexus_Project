@@ -3,6 +3,7 @@ import { Edit2, Phone, Mail, LogOut, Save, MapPin, CheckCircle, Plane, Loader, S
 
 import { Button, Badge, Modal, Input, SectionHeading, Alert } from '../../components/ui';
 import MisDirecciones from '../../components/cliente/MisDirecciones';
+import { useSesion } from '../../hooks/useSesion';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 const API_BASE_URL = API_URL.replace('/api', '');
@@ -43,6 +44,8 @@ const CheckItem = ({ label, isValid }) => (
 );
 
 export default function PilotoPerfil({ onLogout }) {
+  const { actualizarUsuario } = useSesion();
+
   const [modal, setModal] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -67,7 +70,6 @@ export default function PilotoPerfil({ onLogout }) {
   const [copiedField, setCopiedField] = useState(null);
   const [direccionPrincipal, setDireccionPrincipal] = useState(null);
 
-  // Estados para el encabezado y la foto
   const [isPatternModalOpen, setIsPatternModalOpen] = useState(false);
   const [selectedPattern, setSelectedPattern] = useState(() => {
     const guardado = localStorage.getItem('nexus_header_pattern');
@@ -138,9 +140,11 @@ export default function PilotoPerfil({ onLogout }) {
         const perfilPiloto = data.perfil_piloto || {};
 
         let avatarUrl = null;
-        if (data.foto_perfil) {
-          avatarUrl = data.foto_perfil.startsWith('http') 
-            ? data.foto_perfil 
+        if (data.foto_perfil_url) {
+          avatarUrl = data.foto_perfil_url;
+        } else if (data.foto_perfil) {
+          avatarUrl = data.foto_perfil.startsWith('http')
+            ? data.foto_perfil
             : `${API_BASE_URL}${data.foto_perfil}`;
         }
 
@@ -181,6 +185,37 @@ export default function PilotoPerfil({ onLogout }) {
     fetchPerfil();
   }, []);
 
+  useEffect(() => {
+    const fetchHorasReales = async () => {
+      try {
+        const token = localStorage.getItem('access_token');
+        if (!token) return;
+
+        const res = await fetch(`${API_URL}/pilotos/misiones/facturacion/`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!res.ok) return;
+
+        const data = await res.json();
+        const lista = Array.isArray(data) ? data : (data.results ?? []);
+        const completadas = lista.filter(
+          (r) => r.estado === 'COMPLETADA' || r.estado === undefined
+        );
+        const total = completadas.reduce((s, r) => s + (Number(r.horas) || 0), 0);
+
+        setProfileData((prev) => ({ ...prev, horasVuelo: total }));
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
+    fetchHorasReales();
+  }, []);
+
   const handlePatternChange = (patronId) => {
     setSelectedPattern(patronId);
     localStorage.setItem('nexus_header_pattern', patronId);
@@ -211,8 +246,22 @@ export default function PilotoPerfil({ onLogout }) {
 
       if (!res.ok) throw new Error('Error al subir la imagen');
 
+      const data = await res.json();
+
+      const nuevaFotoUrl = data.foto_perfil_url || (data.foto_perfil
+        ? (data.foto_perfil.startsWith('http') ? data.foto_perfil : `${API_BASE_URL}${data.foto_perfil}`)
+        : null);
+
+      if (typeof actualizarUsuario === 'function') {
+        actualizarUsuario({ foto_perfil_url: nuevaFotoUrl });
+      } else {
+        const userStored = JSON.parse(localStorage.getItem('usuario') || '{}');
+        localStorage.setItem('usuario', JSON.stringify({ ...userStored, foto_perfil_url: nuevaFotoUrl }));
+      }
+
+      setProfileData(prev => ({ ...prev, avatar: nuevaFotoUrl }));
       setSuccessMsg('Foto de perfil actualizada correctamente.');
-      
+
     } catch (error) {
       console.error(error);
       setErrorMsg('No se pudo subir la foto. Intenta de nuevo.');
@@ -299,7 +348,6 @@ export default function PilotoPerfil({ onLogout }) {
       setProfileData(prev => ({
         ...prev,
         disponible: data.disponible,
-        horasVuelo: Number(data.horas_vuelo_acumuladas ?? prev.horasVuelo),
         numeroLicencia: data.numero_licencia_aeronautica ?? prev.numeroLicencia,
         tipoCertificacion: data.tipo_certificacion ?? prev.tipoCertificacion,
       }));
@@ -406,6 +454,14 @@ export default function PilotoPerfil({ onLogout }) {
         name: `${data.first_name || ''} ${data.last_name || ''}`.trim() || prev.name,
         phone: data.telefono || '',
       }));
+
+      if (typeof actualizarUsuario === 'function') {
+        actualizarUsuario({
+          first_name: data.first_name,
+          last_name: data.last_name,
+          telefono: data.telefono || '',
+        });
+      }
 
       cerrarModal();
       setSuccessMsg('Datos personales actualizados correctamente.');
