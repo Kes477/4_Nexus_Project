@@ -1,42 +1,154 @@
-import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useSesion } from '../../hooks/useSesion';
-import { Loader } from '../ui';
+import { Loader, Button } from '../ui';
+import { obtenerPaneles } from '../../config/paneles';
 
-export default function RutaProtegida({ rol }) {
-    const { usuario, rol: rolActual, cargando } = useSesion();
+export default function RutaProtegida({
+    rol,
+    permiso,
+    permisos = [],
+    requiereTodos = false,
+    rolOPermisos = false,
+    children
+}) {
+
+    const {
+        usuario,
+        rol: rolActual,
+        cargando,
+        tieneRol,
+        tienePermiso,
+        tieneAlgunPermiso,
+        tieneTodosLosPermisos
+    } = useSesion();
+
     const location = useLocation();
-
-    // 1. Recuperamos el rol guardado en localStorage
-    const rolLocalStorage = localStorage.getItem('user_role');
+    const navigate = useNavigate();
+    const { cerrarSesion } = useSesion();
 
     if (cargando) {
         return <Loader text="Verificando sesión..." />;
     }
 
     if (!usuario) {
+
         return (
             <Navigate
                 to="/login"
                 replace
-                state={{ from: location.pathname, message: 'Inicia sesión para continuar.' }}
+                state={{
+                    from: location.pathname,
+                    message: 'Inicia sesión para continuar.'
+                }}
             />
         );
     }
 
-    // 2. Determinamos el rol efectivo (priorizando el de localStorage si existe)
-    const rolEfectivo = rolLocalStorage || rolActual;
+    const rolesEquivalentes = {
+        admin: 'Administrador',
+        cliente: 'Cliente',
+        tecnico: 'Tecnico',
+        piloto: 'Piloto',
+        vendedor: 'Vendedor'
+    };
 
-    // 3. Validamos si el usuario tiene permiso para entrar a esta ruta
-    if (rol && rolEfectivo !== rol) {
-        // 4. Redirigimos a su panel correspondiente según su rol efectivo
-        let destino = '/cliente';
-        
-        if (rolEfectivo === 'admin') destino = '/admin';
-        else if (rolEfectivo === 'piloto') destino = '/piloto';
-        else if (rolEfectivo === 'tecnico') destino = '/tecnico';
+    const cuentaActiva = usuario.is_active === true;
 
-        return <Navigate to={destino} replace />;
+    const nombreRol = rolesEquivalentes[rol] || rol;
+
+    const cumpleRol = !rol || (
+        tieneRol(nombreRol)
+        || (
+            usuario.is_superuser === true
+            && rol === 'admin'
+        )
+    );
+
+    const cumplePermiso =
+        !permiso || tienePermiso(permiso);
+
+    const cumpleLista =
+        permisos.length === 0
+        || (
+            requiereTodos
+                ? tieneTodosLosPermisos(permisos)
+                : tieneAlgunPermiso(permisos)
+        );
+
+    const exigePermisos =
+        Boolean(permiso) || permisos.length > 0;
+
+    const cumplePermisos =
+        cumplePermiso && cumpleLista;
+
+    const autorizado = cuentaActiva && (
+        rolOPermisos && rol && exigePermisos
+            ? cumpleRol || cumplePermisos
+            : cumpleRol && cumplePermisos
+    );
+
+    if (!autorizado) {
+
+        const paneles = obtenerPaneles(usuario);
+
+        function regresar() {
+            if (!cuentaActiva || paneles.length === 0) {
+                cerrarSesion();
+                navigate('/login', {
+                    replace: true,
+                    state: {
+                        message: 'No tienes acceso habilitado. Contacta al administrador.'
+                    }
+                });
+                return;
+            }
+
+            navigate(
+                paneles.length === 1
+                    ? paneles[0].ruta
+                    : '/seleccionar-panel',
+                { replace: true }
+            );
+        }
+
+        return (
+            <main style={{
+                minHeight: '45vh',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '30px'
+            }}>
+                <section role="alert" style={{
+                    width: '100%',
+                    maxWidth: '480px',
+                    padding: '32px',
+                    textAlign: 'center',
+                    border: '1px solid var(--light-gray)',
+                    borderRadius: '12px'
+                }}>
+                    <h2 style={{ marginBottom: '16px' }}>
+                        Acceso restringido
+                    </h2>
+
+                    <p style={{ marginBottom: '24px' }}>
+                        {cuentaActiva
+                            ? 'No tienes permisos para acceder a esta funcionalidad.'
+                            : 'Tu cuenta no se encuentra activa.'}
+                    </p>
+
+                    <Button
+                        variant="primary"
+                        onClick={regresar}
+                    >
+                        {cuentaActiva && paneles.length > 0
+                            ? 'Volver a mis paneles'
+                            : 'Volver al inicio de sesi\u00f3n'}
+                    </Button>
+                </section>
+            </main>
+        );
     }
 
-    return <Outlet />;
+    return children ?? <Outlet />;
 }

@@ -13,7 +13,32 @@ from .views import (
     PasswordResetConfirmView,
 )
 
+from .activacion_views import ConfirmarActivacionView
+
+from .recuperacion_views import (
+    SolicitarRecuperacionView,
+    RestablecerPasswordView,
+)
+
 urlpatterns = [
+    path(
+        "restablecer-password/",
+        RestablecerPasswordView.as_view(),
+        name="restablecer-password"
+    ),
+
+    path(
+        "recuperar-password/",
+        SolicitarRecuperacionView.as_view(),
+        name="recuperar-password"
+    ),
+
+    path(
+        "activar/",
+        ConfirmarActivacionView.as_view(),
+        name="confirmar-activacion"
+    ),
+
     path('login/', LoginView.as_view(), name='login'),
     path('registro/', RegistroView.as_view(), name='registro'),
     path('token/refrescar/', TokenRefreshView.as_view(), name='token_refrescar'),

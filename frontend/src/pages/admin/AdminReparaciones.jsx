@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import AsignacionTecnico from './AsignacionTecnico';
+import { useSesion } from '../../hooks/useSesion';
+import { PERMISOS } from '../../config/permisos';
 import CerrarOrdenServicio from './CerrarOrdenServicio';
 
 import {
@@ -194,6 +196,11 @@ function Indicador({ titulo, cantidad, icono: Icono, color }) {
 // ======================================================
 
 export default function AdminReparaciones() {
+
+  const { tienePermiso } = useSesion();
+
+  const puedeEditarOrden =
+    tienePermiso(PERMISOS.EDITAR_REPARACIONES);
 
   const [ordenes, setOrdenes] = useState([]);
   const [cargando, setCargando] = useState(true);
@@ -639,7 +646,8 @@ export default function AdminReparaciones() {
 
               {/* HU-014: ASIGNACION DE TECNICOS */}
 
-              <fieldset
+              {puedeEditarOrden && (
+<fieldset
                 disabled={cerrandoOrden}
                 style={{
                   border: 'none',
@@ -655,16 +663,19 @@ export default function AdminReparaciones() {
                   onOcupado={setAsignandoTecnico}
                 />
               </fieldset>
+)}
 
               {/* CIERRE ADMINISTRATIVO */}
 
-              <CerrarOrdenServicio
+              {puedeEditarOrden && (
+<CerrarOrdenServicio
                 key={`${ordenSeleccionada.id}-${ordenSeleccionada.estado}`}
                 orden={ordenSeleccionada}
                 onActualizada={actualizarOrdenAsignada}
                 onOcupado={setCerrandoOrden}
                 bloqueado={ocupadoAsignacion}
               />
+)}
 
             </>
 
