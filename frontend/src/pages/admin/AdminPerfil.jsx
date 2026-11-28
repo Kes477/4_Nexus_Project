@@ -3,6 +3,7 @@ import { Edit2, Phone, Mail, LogOut, Save, MapPin, CheckCircle, Shield, Loader, 
 
 import { Button, Badge, Modal, Input, SectionHeading, Alert } from '../../components/ui';
 import MisDirecciones from '../../components/cliente/MisDirecciones';
+import { useSesion } from '../../hooks/useSesion';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 const API_BASE_URL = API_URL.replace('/api', '');
@@ -43,6 +44,8 @@ const CheckItem = ({ label, isValid }) => (
 );
 
 export default function AdminPerfil({ onLogout }) {
+  const { actualizarUsuario } = useSesion();
+
   const [modal, setModal] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -70,7 +73,7 @@ export default function AdminPerfil({ onLogout }) {
     const guardado = localStorage.getItem('nexus_header_pattern');
     return guardado || 'patron-15';
   });
-  
+
   const [fotoPreview, setFotoPreview] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef(null);
@@ -131,9 +134,11 @@ export default function AdminPerfil({ onLogout }) {
         const data = await response.json();
 
         let avatarUrl = null;
-        if (data.foto_perfil) {
-          avatarUrl = data.foto_perfil.startsWith('http') 
-            ? data.foto_perfil 
+        if (data.foto_perfil_url) {
+          avatarUrl = data.foto_perfil_url;
+        } else if (data.foto_perfil) {
+          avatarUrl = data.foto_perfil.startsWith('http')
+            ? data.foto_perfil
             : `${API_BASE_URL}${data.foto_perfil}`;
         }
 
@@ -200,8 +205,22 @@ export default function AdminPerfil({ onLogout }) {
 
       if (!res.ok) throw new Error('Error al subir la imagen');
 
+      const data = await res.json();
+
+      const nuevaFotoUrl = data.foto_perfil_url || (data.foto_perfil
+        ? (data.foto_perfil.startsWith('http') ? data.foto_perfil : `${API_BASE_URL}${data.foto_perfil}`)
+        : null);
+
+      if (typeof actualizarUsuario === 'function') {
+        actualizarUsuario({ foto_perfil_url: nuevaFotoUrl });
+      } else {
+        const userStored = JSON.parse(localStorage.getItem('usuario') || '{}');
+        localStorage.setItem('usuario', JSON.stringify({ ...userStored, foto_perfil_url: nuevaFotoUrl }));
+      }
+
+      setProfileData(prev => ({ ...prev, avatar: nuevaFotoUrl }));
       setSuccessMsg('Foto de perfil actualizada correctamente.');
-      
+
     } catch (error) {
       console.error(error);
       setErrorMsg('No se pudo subir la foto. Intenta de nuevo.');
@@ -350,6 +369,14 @@ export default function AdminPerfil({ onLogout }) {
         name: `${data.first_name || ''} ${data.last_name || ''}`.trim() || prev.name,
         phone: data.telefono || '',
       }));
+
+      if (typeof actualizarUsuario === 'function') {
+        actualizarUsuario({
+          first_name: data.first_name,
+          last_name: data.last_name,
+          telefono: data.telefono || '',
+        });
+      }
 
       cerrarModal();
       setSuccessMsg('Datos personales actualizados correctamente.');

@@ -16,3 +16,5 @@ media/
 
 # Archivos locales de revision y diagnostico
 /revision/
+
+gcp-credentials.json

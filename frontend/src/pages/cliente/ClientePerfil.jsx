@@ -55,20 +55,20 @@ const CheckItem = ({ label, isValid }) => (
 );
 
 export default function ClientePerfil({ onLogout }) {
-  const { usuario, cargando, actualizarPerfil, cambiarPassword } = useSesion();
+  const { usuario, cargando, actualizarPerfil, cambiarPassword, actualizarUsuario } = useSesion();
 
   const [modal, setModal] = useState(null);
   const [isPatternModalOpen, setIsPatternModalOpen] = useState(false);
-  
+
   const [selectedPattern, setSelectedPattern] = useState(() => {
     const guardado = localStorage.getItem('nexus_header_pattern');
     return guardado || 'patron-15';
   });
-  
+
   const [errorMsg, setErrorMsg] = useState(null);
   const [exitoMsg, setExitoMsg] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
-  
+
   const [fotoPreview, setFotoPreview] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef(null);
@@ -133,8 +133,21 @@ export default function ClientePerfil({ onLogout }) {
 
       if (!res.ok) throw new Error('Error al subir la imagen');
 
+      const data = await res.json();
+
+      const nuevaFotoUrl = data.foto_perfil_url || (data.foto_perfil
+        ? (data.foto_perfil.startsWith('http') ? data.foto_perfil : `${API_BASE_URL}${data.foto_perfil}`)
+        : null);
+
+      if (typeof actualizarUsuario === 'function') {
+        actualizarUsuario({ foto_perfil_url: nuevaFotoUrl });
+      } else {
+        const userStored = JSON.parse(localStorage.getItem('usuario') || '{}');
+        localStorage.setItem('usuario', JSON.stringify({ ...userStored, foto_perfil_url: nuevaFotoUrl }));
+      }
+
       setExitoMsg('Foto de perfil actualizada correctamente.');
-      
+
     } catch (error) {
       console.error(error);
       setErrorMsg('No se pudo subir la foto. Intenta de nuevo.');
@@ -295,16 +308,16 @@ export default function ClientePerfil({ onLogout }) {
     letterSpacing: '0.5px'
   };
 
-  const toggleEyeStyle = { 
-    position: 'absolute', 
-    right: '15px', 
-    top: '50%', 
-    transform: 'translateY(-50%)', 
-    background: 'none', 
-    border: 'none', 
-    cursor: 'pointer', 
-    color: 'var(--text-light)', 
-    zIndex: 10 
+  const toggleEyeStyle = {
+    position: 'absolute',
+    right: '15px',
+    top: '50%',
+    transform: 'translateY(-50%)',
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    color: 'var(--text-light)',
+    zIndex: 10
   };
 
   const copyButtonStyle = {
@@ -333,9 +346,8 @@ export default function ClientePerfil({ onLogout }) {
 
   const getAvatarUrl = () => {
     if (fotoPreview) return fotoPreview;
-    if (!usuario.foto_perfil) return null;
-    if (usuario.foto_perfil.startsWith('http')) return usuario.foto_perfil;
-    return `${API_BASE_URL}${usuario.foto_perfil}`;
+    if (!usuario.foto_perfil_url) return null;
+    return usuario.foto_perfil_url;
   };
 
   const profileData = {
@@ -350,10 +362,10 @@ export default function ClientePerfil({ onLogout }) {
   };
 
   return (
-    <div style={{ 
-      width: '100%', 
-      minHeight: '100vh', 
-      padding: '0px 48px 32px 48px', 
+    <div style={{
+      width: '100%',
+      minHeight: '100vh',
+      padding: '0px 48px 32px 48px',
       boxSizing: 'border-box',
       backgroundColor: 'var(--bg-color)',
       color: 'var(--color-dark)',
@@ -362,7 +374,7 @@ export default function ClientePerfil({ onLogout }) {
       flexDirection: 'column',
       alignItems: 'center'
     }}>
-      
+
       <style>{`
         .patron-1 { --s: 72px; --c1: var(--white); --c2: var(--light-gray); --c3: var(--text-light); --_g: 0 120deg,#0000 0; background: conic-gradient(at calc(250%/3) calc(100%/3),var(--c3) var(--_g)), conic-gradient(from -120deg at calc( 50%/3) calc(100%/3),var(--c2) var(--_g)), conic-gradient(from  120deg at calc(100%/3) calc(250%/3),var(--c1) var(--_g)), conic-gradient(from  120deg at calc(200%/3) calc(250%/3),var(--c1) var(--_g)), conic-gradient(from -180deg at calc(100%/3) 50%,var(--c2)  60deg,var(--c1) var(--_g)), conic-gradient(from   60deg at calc(200%/3) 50%,var(--c1)  60deg,var(--c3) var(--_g)), conic-gradient(from  -60deg at 50% calc(100%/3),var(--c1) 120deg,var(--c2) 0 240deg,var(--c3) 0); background-size: calc(var(--s)*1.732) var(--s); }
         .patron-2 { --s: 200px; --c1: var(--color-dark); --c2: var(--text-light); --c3: var(--color-primary); background: repeating-conic-gradient(from 30deg,#0000 0 120deg,var(--c3) 0 50%) calc(var(--s)/2) calc(var(--s)*0.577/2), repeating-conic-gradient(from 30deg,var(--c1) 0 60deg,var(--c2) 0 120deg,var(--c3) 0 50%); background-size: var(--s) calc(var(--s)*0.577); }
@@ -398,23 +410,23 @@ export default function ClientePerfil({ onLogout }) {
         </div>
       )}
 
-      <div style={{ 
-        width: '100%', 
-        maxWidth: '1200px', 
-        backgroundColor: 'var(--white)', 
-        borderRadius: '16px', 
-        overflow: 'hidden', 
+      <div style={{
+        width: '100%',
+        maxWidth: '1200px',
+        backgroundColor: 'var(--white)',
+        borderRadius: '16px',
+        overflow: 'hidden',
         boxShadow: '0 10px 30px rgba(0,0,0,0.05)',
         border: '1px solid var(--light-gray)'
       }}>
-        
-        <div 
-          className={selectedPattern} 
-          style={{ 
-            height: '150px', 
+
+        <div
+          className={selectedPattern}
+          style={{
+            height: '150px',
             position: 'relative',
             transition: 'background 0.5s ease'
-          }} 
+          }}
         >
           <button
             onClick={() => setIsPatternModalOpen(true)}
@@ -445,13 +457,13 @@ export default function ClientePerfil({ onLogout }) {
         </div>
 
         <div style={{ padding: '0 40px', position: 'relative', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '24px' }}>
-          
+
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: '20px' }}>
-            
+
             <div style={{ position: 'relative', marginTop: '-80px', zIndex: 2 }}>
-              <div style={{ 
-                borderRadius: '50%', 
-                border: '6px solid var(--white)', 
+              <div style={{
+                borderRadius: '50%',
+                border: '6px solid var(--white)',
                 backgroundColor: 'var(--white)',
                 boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
                 position: 'relative',
@@ -463,16 +475,16 @@ export default function ClientePerfil({ onLogout }) {
                 overflow: 'hidden'
               }}>
                 {profileData.avatar ? (
-                  <img 
-                    src={profileData.avatar} 
-                    alt="Foto de perfil" 
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                  <img
+                    src={profileData.avatar}
+                    alt="Foto de perfil"
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                   />
                 ) : (
                   <i className="fas fa-user" style={{ fontSize: '64px', color: 'var(--text-light)' }}></i>
                 )}
               </div>
-              
+
               <button
                 onClick={() => fileInputRef.current.click()}
                 disabled={isUploading}
@@ -497,29 +509,29 @@ export default function ClientePerfil({ onLogout }) {
               >
                 {isUploading ? <Loader size={16} className="animate-spin" /> : <Camera size={16} />}
               </button>
-              
-              <input 
-                type="file" 
-                accept="image/*" 
-                ref={fileInputRef} 
-                onChange={handleFotoChange} 
-                style={{ display: 'none' }} 
+
+              <input
+                type="file"
+                accept="image/*"
+                ref={fileInputRef}
+                onChange={handleFotoChange}
+                style={{ display: 'none' }}
               />
             </div>
-            
+
             <div style={{ paddingBottom: '16px' }}>
               <h1 style={{ margin: 0, fontSize: '24px', fontWeight: '900', color: 'var(--color-dark)', display: 'flex', alignItems: 'center', gap: '12px' }}>
                 {profileData.name}
                 <Badge text={profileData.roleLabel} color="success" />
               </h1>
               <p style={{ margin: '6px 0 0 0', fontSize: '14px', color: 'var(--text-light)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '16px' }}>
-                
-                <span 
+
+                <span
                   onClick={scrollToDirecciones}
                   title="Haz clic para gestionar tus direcciones"
-                  style={{ 
-                    display: 'flex', alignItems: 'center', gap: '6px', 
-                    cursor: 'pointer', 
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '6px',
+                    cursor: 'pointer',
                     color: 'var(--color-primary)', fontWeight: '500'
                   }}
                 >
@@ -549,11 +561,11 @@ export default function ClientePerfil({ onLogout }) {
         </div>
 
         <div style={{ padding: '0 40px 32px 40px' }}>
-          
+
           <SectionHeading title="Datos de Contacto" />
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginBottom: '32px' }}>
-            
+
             <div style={infoBoxStyle}>
               <button
                 type="button"
@@ -591,7 +603,7 @@ export default function ClientePerfil({ onLogout }) {
             </div>
 
           </div>
-          
+
           <MisDirecciones onPrincipalChange={setDireccionPrincipal} />
 
         </div>
@@ -607,22 +619,22 @@ export default function ClientePerfil({ onLogout }) {
 
       </div>
 
-      <Modal 
-        isOpen={isPatternModalOpen} 
-        onClose={() => setIsPatternModalOpen(false)} 
+      <Modal
+        isOpen={isPatternModalOpen}
+        onClose={() => setIsPatternModalOpen(false)}
         title="Seleccionar Fondo de Cabecera"
         style={{ width: '800px', maxWidth: '95vw' }}
       >
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', 
-          gap: '15px', 
-          maxHeight: '60vh', 
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))',
+          gap: '15px',
+          maxHeight: '60vh',
           overflowY: 'auto',
           paddingRight: '10px'
         }}>
           {PATRONES.map((patron) => (
-            <div 
+            <div
               key={patron.id}
               onClick={() => handlePatternChange(patron.id)}
               style={{
@@ -633,7 +645,7 @@ export default function ClientePerfil({ onLogout }) {
                 alignItems: 'center'
               }}
             >
-              <div 
+              <div
                 className={patron.id}
                 style={{
                   width: '100%',
@@ -664,50 +676,50 @@ export default function ClientePerfil({ onLogout }) {
 
           <div>
             <label style={labelStyle}>Nombre</label>
-            <Input 
+            <Input
               name="first_name"
-              value={editForm.first_name} 
-              onChange={handleEditChange} 
+              value={editForm.first_name}
+              onChange={handleEditChange}
               onBlur={handleEditBlur}
               error={editTouched.first_name && editErrors.first_name}
-              icon="fa-user" 
+              icon="fa-user"
             />
           </div>
 
           <div>
             <label style={labelStyle}>Apellido</label>
-            <Input 
+            <Input
               name="last_name"
-              value={editForm.last_name} 
-              onChange={handleEditChange} 
+              value={editForm.last_name}
+              onChange={handleEditChange}
               onBlur={handleEditBlur}
               error={editTouched.last_name && editErrors.last_name}
-              icon="fa-user" 
+              icon="fa-user"
             />
           </div>
 
           <div>
             <label style={labelStyle}>Teléfono</label>
-            <Input 
+            <Input
               name="telefono"
-              type="tel" 
-              value={editForm.telefono} 
-              onChange={handleEditChange} 
+              type="tel"
+              value={editForm.telefono}
+              onChange={handleEditChange}
               onBlur={handleEditBlur}
               error={editTouched.telefono && editErrors.telefono}
-              icon="fa-phone" 
-              maxLength={20} 
+              icon="fa-phone"
+              maxLength={20}
             />
           </div>
 
           <div>
             <label style={labelStyle}>Fecha de Nacimiento</label>
-            <Input 
+            <Input
               name="fecha_nacimiento"
-              type="date" 
-              value={editForm.fecha_nacimiento} 
-              onChange={handleEditChange} 
-              icon="fa-calendar" 
+              type="date"
+              value={editForm.fecha_nacimiento}
+              onChange={handleEditChange}
+              icon="fa-calendar"
             />
           </div>
 
@@ -760,7 +772,7 @@ export default function ClientePerfil({ onLogout }) {
                 <i className={`fas ${showNueva ? 'fa-eye-slash' : 'fa-eye'}`}></i>
               </button>
             </div>
-            
+
             <div style={{ marginTop: '8px', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
               <CheckItem label="8+ caracteres" isValid={passChecks.length} />
               <CheckItem label="Mayúscula" isValid={passChecks.upper} />

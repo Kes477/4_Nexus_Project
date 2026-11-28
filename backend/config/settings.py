@@ -14,6 +14,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from datetime import timedelta
 from decimal import Decimal
+from google.oauth2 import service_account
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -53,6 +54,8 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'corsheaders',
     'django_filters',
+    'storages',
+    
     # Aplicaciones del Proyecto
     'usuarios',
     'catalogo',
@@ -99,7 +102,6 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
-# Variables para Django y Cloude Run, y credenciales locales  
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
@@ -148,19 +150,59 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-# 2. Archivos multimedia (Fotos de perfil, etc.)
-MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+# 2. Configuración de Google Cloud Storage (GCS)
+GS_BUCKET_NAME = os.environ.get('GS_BUCKET_NAME', 'cursopractica-imagenes-2026')
+GS_PROJECT_ID = os.environ.get('GS_PROJECT_ID', 'cursopractica-512803')
 
-# 3. Configuración de Storages (WhiteNoise para producción)
-STORAGES = {
-    "default": {
-        "BACKEND": "django.core.files.storage.FileSystemStorage",
-    },
-    "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
-    },
-}
+# 3. Autenticación con el archivo JSON descargado
+GS_CREDENTIALS = None
+_GCP_JSON_ENV = os.environ.get('GCP_CREDENTIALS_JSON', '').strip()
+_GCP_FILE_PATH = os.path.join(BASE_DIR, 'gcp-credentials.json')
+
+if _GCP_JSON_ENV:
+    try:
+        import json
+        GS_CREDENTIALS = service_account.Credentials.from_service_account_info(
+            json.loads(_GCP_JSON_ENV)
+        )
+    except Exception:
+        GS_CREDENTIALS = None
+elif os.path.exists(_GCP_FILE_PATH):
+    try:
+        GS_CREDENTIALS = service_account.Credentials.from_service_account_file(
+            _GCP_FILE_PATH
+        )
+    except Exception:
+        GS_CREDENTIALS = None
+
+# 4. Configuración de Storages
+if GS_CREDENTIALS is not None and GS_BUCKET_NAME:
+    MEDIA_URL = f'https://storage.googleapis.com/{GS_BUCKET_NAME}/'
+    STORAGES = {
+        "default": {
+            "BACKEND": "storages.backends.gcloud.GoogleCloudStorage",
+            "OPTIONS": {
+                "bucket_name": GS_BUCKET_NAME,
+                "project_id": GS_PROJECT_ID,
+                "default_acl": "publicRead",
+                "credentials": GS_CREDENTIALS,
+            },
+        },
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        },
+    }
+else:
+    MEDIA_URL = '/media/'
+    MEDIA_ROOT = BASE_DIR / 'media'
+    STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        },
+    }
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'usuarios.Usuario'
@@ -174,7 +216,6 @@ EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 
-# Estas variables se cargarán desde tu archivo .env
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '4nexus.contact@gmail.com')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '') 
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', '4 Nexus <4nexus.contact@gmail.com>')
@@ -213,4 +254,3 @@ SIMPLE_JWT = {
 
 VENTAS_TASA_ISV = Decimal(os.environ.get('VENTAS_TASA_ISV', '0.15'))
 VENTAS_COSTO_ENVIO = Decimal(os.environ.get('VENTAS_COSTO_ENVIO', '150.00'))
-

@@ -19,3 +19,6 @@ whitenoise[brotli]==6.7.0
 
 # Para generar PDF:
 reportlab
+
+# Para las fotos de los perfiles.
+django-storages[google]

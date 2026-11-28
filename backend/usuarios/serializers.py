@@ -65,14 +65,23 @@ class UsuarioSerializer(serializers.ModelSerializer):
     fecha_nacimiento = serializers.DateField(
         required=False, allow_null=True, input_formats=['%d-%m-%Y', '%Y-%m-%d']
     )
+    foto_perfil_url = serializers.SerializerMethodField() # <-- NUEVO CAMPO
 
     class Meta:
         model = Usuario
         fields = ['id', 'email', 'first_name', 'last_name', 'no_identificacion', 'telefono',
-                  'fecha_nacimiento', 'foto_perfil', 'estado_cuenta', 'is_active', 'is_staff',
+                  'fecha_nacimiento', 'foto_perfil', 'foto_perfil_url', 'estado_cuenta', 'is_active', 'is_staff',
                   'date_joined', 'rol', 'perfil_piloto', 'perfil_tecnico']
         read_only_fields = ['id', 'email', 'no_identificacion', 'estado_cuenta',
                             'is_active', 'is_staff', 'date_joined', 'rol']
+
+    def get_foto_perfil_url(self, obj):
+        if obj.foto_perfil:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.foto_perfil.url)
+            return obj.foto_perfil.url
+        return None
 
     def get_perfil_piloto(self, obj):
         try:
@@ -129,7 +138,7 @@ class CambiarPasswordSerializer(serializers.Serializer):
 class LoginSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
         data = super().validate(attrs)
-        data['usuario'] = UsuarioSerializer(self.user).data
+        data['usuario'] = UsuarioSerializer(self.user, context=self.context).data
         return data
 
 
