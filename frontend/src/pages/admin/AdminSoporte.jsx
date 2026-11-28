@@ -1,342 +1,317 @@
-import React, { useState } from 'react';
-import { FileText, CheckCircle2, Search, Send } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Input, Modal, Alert, Loader, Button } from '../../components/ui';
+import ChatSidebar from '../../components/chat/ChatSidebar';
+import ChatWindow from '../../components/chat/ChatWindow';
 
-import { Button, Input, Select, Modal, Avatar, Badge, IconButton } from '../../components/ui';
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function AdminSoporte() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isSubmitted, setIsSubmitted] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeChatId, setActiveChatId] = useState(1);
-  const [messageInput, setMessageInput] = useState("");
+  const [activeRoomId, setActiveRoomId] = useState(null);
+  const [activeTab, setActiveTab] = useState(0);
+  
+  const [requests, setRequests] = useState([]);
+  const [rooms, setRooms] = useState([]);
+  const [messages, setMessages] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState(null);
+  const [successMsg, setSuccessMsg] = useState(null);
+  const [warningMsg, setWarningMsg] = useState(null);
 
-  const [chats, setChats] = useState([
-    {
-      id: 1,
-      name: "Carlos Sosa",
-      role: "Granjero - Finca El Naranjal",
-      online: true,
-      avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80",
-      messages: [
-        { id: 1, sender: "client", text: "Buenas tardes, tengo una duda con la calibración del sensor NDVI en el dron.", time: "10:30 AM" },
-        { id: 2, sender: "admin", text: "¡Hola Carlos! Claro que sí, ¿qué problema estás experimentando exactamente?", time: "10:32 AM" },
-        { id: 3, sender: "client", text: "Los valores de biomasa me están saliendo muy bajos en la Parcela 3.", time: "10:35 AM" }
-      ]
-    },
-    {
-      id: 2,
-      name: "María Rodríguez",
-      role: "Granjera - Finca Los Pinos",
-      online: false,
-      avatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=100&auto=format&fit=crop&q=80",
-      messages: [
-        { id: 1, sender: "client", text: "Estimados, recibí la notificación sobre la renovación del Plan Profesional.", time: "09:10 AM" },
-        { id: 2, sender: "admin", text: "Hola María, así es. ¿Deseas que te envíe la factura proforma?", time: "09:15 AM" }
-      ]
-    },
-    {
-      id: 3,
-      name: "Javier Reyes",
-      role: "Piloto Certificado",
-      online: true,
-      avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&auto=format&fit=crop&q=80",
-      messages: [
-        { id: 1, sender: "client", text: "Reporto llegada a la base. Misión #MIS-902 completada.", time: "Ayer" }
-      ]
+  const [targetEmail, setTargetEmail] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+  const token = localStorage.getItem('access_token');
+  const currentUserEmail = localStorage.getItem('user_email') || '';
+
+  const fetchDatos = useCallback(async () => {
+    if (!token) {
+      setLoading(false);
+      return;
     }
-  ]);
 
-  const activeChat = chats.find(c => c.id === activeChatId) || chats[0];
+    try {
+      setLoading(true);
+      const headers = { 'Authorization': `Bearer ${token}` };
+      
+      const [reqRes, roomsRes] = await Promise.all([
+        fetch(`${API_URL}/mensajeria/requests/`, { headers }),
+        fetch(`${API_URL}/mensajeria/rooms/`, { headers })
+      ]);
 
-  const filteredChats = chats.filter(chat => 
-    chat.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    chat.role.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+      if (reqRes.ok) {
+        const data = await reqRes.json();
+        setRequests(Array.isArray(data) ? data : data.results || []);
+      }
+      if (roomsRes.ok) {
+        const data = await roomsRes.json();
+        const roomsList = Array.isArray(data) ? data : data.results || [];
+        setRooms(roomsList);
+      }
+    } catch {
+      setErrorMsg('Error al cargar los datos.');
+    } finally {
+      setLoading(false);
+    }
+  }, [API_URL, token]);
 
-  const handleSendMessage = (e) => {
-    e.preventDefault();
-    if (!messageInput.trim()) return;
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchDatos();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [fetchDatos]);
 
-    const newMessage = {
-      id: Date.now(),
-      sender: "admin",
-      text: messageInput,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    };
-
-    setChats(prevChats => prevChats.map(chat => 
-      chat.id === activeChatId ? { ...chat, messages: [...chat.messages, newMessage] } : chat
-    ));
-    setMessageInput("");
+  const handleSetActiveRoom = (roomId) => {
+    setActiveRoomId(roomId);
+    if (roomId) {
+      setRooms(prevRooms => 
+        prevRooms.map(room => 
+          room.id === roomId ? { ...room, unread_count: 0 } : room
+        )
+      );
+    }
   };
 
-  return (
-    <div style={{ 
-      display: 'flex', 
-      width: '100%', 
-      height: 'calc(100vh - 100px)',
-      backgroundColor: 'var(--bg-color)',
-      fontFamily: "'Roboto', sans-serif",
-      overflow: 'hidden',
-      borderRadius: '12px',
-      border: '1px solid var(--light-gray)',
-      margin: '0 auto',
-      maxWidth: '1400px',
-      boxShadow: '0 4px 20px rgba(0,0,0,0.03)'
-    }}>
-      
-      <aside style={{ 
-        width: '350px', 
-        backgroundColor: 'var(--white)', 
-        borderRight: '1px solid var(--light-gray)',
-        display: 'flex',
-        flexDirection: 'column',
-        flexShrink: 0
-      }}>
-        
-        <div style={{ padding: '20px', borderBottom: '1px solid var(--light-gray)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <div>
-              <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '900', color: 'var(--color-dark)' }}>Panel de Soporte</h2>
-              <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: 'var(--text-light)' }}>Atención a granjeros y pilotos</p>
-            </div>
-            <Button variant="primary" size="sm" onClick={() => setIsModalOpen(true)} style={{ padding: '8px 12px', borderRadius: '8px' }}>
-              <FileText size={14} style={{ marginRight: '6px' }} /> Ticket
-            </Button>
-          </div>
+  useEffect(() => {
+    if (!activeRoomId || !token) return;
 
-          <div style={{ position: 'relative' }}>
-            <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)' }} />
-            <input 
-              type="text"
-              placeholder="Buscar cliente o rol..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              style={{ 
-                width: '100%', padding: '10px 12px 10px 36px', 
-                border: '1px solid var(--light-gray)', borderRadius: '8px', 
-                fontSize: '13px', outline: 'none', transition: 'border-color 0.2s' 
-              }}
-              onFocus={(e) => e.target.style.borderColor = 'var(--color-primary)'}
-              onBlur={(e) => e.target.style.borderColor = 'var(--light-gray)'}
+    const fetchMessages = async () => {
+      try {
+        const response = await fetch(`${API_URL}/mensajeria/messages/?room=${activeRoomId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setMessages(Array.isArray(data) ? data : data.results || []);
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
+    fetchMessages();
+    const interval = setInterval(fetchMessages, 3000);
+    return () => clearInterval(interval);
+  }, [activeRoomId, API_URL, token]);
+
+  const handleSendRequest = async (e) => {
+    e.preventDefault();
+    setErrorMsg(null);
+    setSuccessMsg(null);
+    setWarningMsg(null);
+
+    if (!EMAIL_REGEX.test(targetEmail)) {
+      setErrorMsg('Por favor, ingresa un correo electrónico válido.');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch(`${API_URL}/mensajeria/requests/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ receiver_email: targetEmail })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.receiver_email ? data.receiver_email[0] : 'Error al enviar la solicitud.');
+      }
+
+      if (data.status === 'exists') {
+        setWarningMsg('Ya tienes un chat activo con este usuario.');
+        setIsModalOpen(false);
+        setTargetEmail('');
+        await fetchDatos();
+        if (data.room_id) handleSetActiveRoom(data.room_id);
+        return;
+      }
+
+      if (data.status === 'pending') {
+        setWarningMsg('Ya enviaste una solicitud pendiente a este usuario.');
+        setIsModalOpen(false);
+        setTargetEmail('');
+        return;
+      }
+
+      setSuccessMsg('Solicitud de chat enviada correctamente.');
+      setIsModalOpen(false);
+      setTargetEmail('');
+      fetchDatos();
+    } catch (err) {
+      setErrorMsg(err.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleRequestAction = async (id, action) => {
+    try {
+      const response = await fetch(`${API_URL}/mensajeria/requests/${id}/${action}/`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (!response.ok) throw new Error('Error al procesar la solicitud.');
+
+      setSuccessMsg(`Solicitud ${action === 'accept' ? 'aceptada' : 'rechazada'} correctamente.`);
+      await fetchDatos();
+    } catch (err) {
+      setErrorMsg(err.message);
+    }
+  };
+
+  const handleSendMessage = async (text) => {
+    if (!text.trim() || !activeRoomId) return;
+
+    try {
+      const response = await fetch(`${API_URL}/mensajeria/messages/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          room: activeRoomId,
+          content: text
+        })
+      });
+
+      if (response.ok) {
+        const res = await fetch(`${API_URL}/mensajeria/messages/?room=${activeRoomId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setMessages(Array.isArray(data) ? data : data.results || []);
+        }
+      }
+    } catch {
+      setErrorMsg('Error al enviar el mensaje.');
+    }
+  };
+
+  const handleEditMessage = async (messageId, newText) => {
+    try {
+      const response = await fetch(`${API_URL}/mensajeria/messages/${messageId}/`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ content: newText })
+      });
+
+      if (response.ok) {
+        setMessages(prev => prev.map(msg => 
+          msg.id === messageId ? { ...msg, content: newText, is_editable: true } : msg
+        ));
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  };
+
+  const activeRoom = rooms.find(r => r.id === activeRoomId);
+  const pendingRequests = requests.filter(r => r.status === 'PENDING' && r.sender_email !== currentUserEmail);
+
+  if (loading && rooms.length === 0) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: 'var(--bg-color)' }}>
+        <Loader text="Cargando mensajería..." />
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', width: '100%', height: 'calc(100vh - 100px)', backgroundColor: 'var(--bg-color)', fontFamily: "'Roboto', sans-serif", overflow: 'hidden', borderRadius: '12px', border: '1px solid var(--light-gray)', margin: '0 auto', maxWidth: '1400px', boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
+      
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 6px;
+          height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background-color: #cbd5e1;
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background-color: #94a3b8;
+        }
+        .custom-scrollbar {
+          scrollbar-width: thin;
+          scrollbar-color: #cbd5e1 transparent;
+        }
+      `}</style>
+
+      <ChatSidebar
+        rooms={rooms}
+        pendingRequests={pendingRequests}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        activeRoomId={activeRoomId}
+        setActiveRoomId={handleSetActiveRoom}
+        onNewChat={() => setIsModalOpen(true)}
+        onRequestAction={handleRequestAction}
+      />
+
+      <ChatWindow
+        activeRoom={activeRoom}
+        messages={messages}
+        currentUserEmail={currentUserEmail}
+        onSendMessage={handleSendMessage}
+        onEditMessage={handleEditMessage}
+      />
+
+      <Modal isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); setTargetEmail(''); setErrorMsg(null); setSuccessMsg(null); setWarningMsg(null); }} title="Nuevo Chat">
+        <form onSubmit={handleSendRequest} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {errorMsg && <Alert type="danger" message={errorMsg} onClose={() => setErrorMsg(null)} />}
+          
+          <div>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--text-light)', marginBottom: '6px', textTransform: 'uppercase' }}>Correo del Usuario</label>
+            <Input 
+              type="email" 
+              placeholder="ejemplo@correo.com" 
+              value={targetEmail}
+              onChange={(e) => setTargetEmail(e.target.value)}
+              required 
             />
           </div>
-        </div>
-
-        <div style={{ flex: 1, overflowY: 'auto' }}>
-          {filteredChats.length > 0 ? (
-            filteredChats.map(chat => {
-              const lastMsg = chat.messages[chat.messages.length - 1];
-              const isActive = activeChatId === chat.id;
-              return (
-                <div 
-                  key={chat.id}
-                  onClick={() => setActiveChatId(chat.id)}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: '12px', padding: '16px 20px', cursor: 'pointer',
-                    backgroundColor: isActive ? 'rgba(4, 201, 166, 0.05)' : 'transparent',
-                    borderLeft: isActive ? '3px solid var(--color-primary)' : '3px solid transparent',
-                    borderBottom: '1px solid var(--light-gray)', transition: 'all 0.2s'
-                  }}
-                >
-                  <div style={{ position: 'relative' }}>
-                    <Avatar size="sm" imageUrl={chat.avatar} />
-                    <div style={{ 
-                      position: 'absolute', bottom: 0, right: 0, 
-                      width: '12px', height: '12px', 
-                      backgroundColor: chat.online ? 'var(--color-success)' : 'var(--light-gray)', 
-                      borderRadius: '50%', border: '2px solid var(--white)' 
-                    }} />
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
-                      <span style={{ fontWeight: 'bold', fontSize: '14px', color: 'var(--color-dark)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{chat.name}</span>
-                      <span style={{ fontSize: '11px', color: 'var(--text-light)', fontWeight: '500' }}>{lastMsg?.time}</span>
-                    </div>
-                    <p style={{ margin: 0, fontSize: '12px', color: 'var(--color-primary)', fontWeight: '600', marginBottom: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{chat.role}</p>
-                    <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-light)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {lastMsg?.sender === 'admin' ? 'Tú: ' : ''}
-                      {lastMsg?.text}
-                    </p>
-                  </div>
-                </div>
-              );
-            })
-          ) : (
-            <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-light)', fontSize: '13px' }}>No se encontraron chats.</div>
-          )}
-        </div>
-      </aside>
-
-      <main style={{ 
-        flex: 1, 
-        display: 'flex', 
-        flexDirection: 'column',
-        backgroundColor: 'var(--bg-color)',
-        position: 'relative'
-      }}>
-        
-        <header style={{ 
-          padding: '16px 24px', 
-          backgroundColor: 'var(--white)', 
-          borderBottom: '1px solid var(--light-gray)',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexShrink: 0
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-            <Avatar size="sm" imageUrl={activeChat.avatar} />
-            <div>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800', color: 'var(--color-dark)' }}>{activeChat.name}</h3>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
-                <span style={{ fontSize: '12px', color: 'var(--text-light)' }}>{activeChat.role}</span>
-                {activeChat.online ? (
-                  <Badge text="En línea" color="success" />
-                ) : (
-                  <Badge text="Desconectado" color="warning" />
-                )}
-              </div>
-            </div>
-          </div>
-          
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <IconButton icon="fa-phone" variant="outline" onClick={() => {}} />
-            <IconButton icon="fa-video" variant="outline" onClick={() => {}} />
-            <IconButton icon="fa-ellipsis-v" variant="outline" onClick={() => {}} />
-          </div>
-        </header>
-
-        <div style={{ 
-          flex: 1, 
-          overflowY: 'auto', 
-          padding: '24px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '16px',
-          backgroundImage: 'radial-gradient(var(--light-gray) 1px, transparent 1px)',
-          backgroundSize: '20px 20px'
-        }}>
-          {activeChat.messages.map(msg => {
-            const isAdmin = msg.sender === 'admin';
-            return (
-              <div key={msg.id} style={{ display: 'flex', justifyContent: isAdmin ? 'flex-end' : 'flex-start' }}>
-                {!isAdmin && (
-                  <Avatar size="sm" imageUrl={activeChat.avatar} style={{ marginRight: '8px', width: '28px', height: '28px', alignSelf: 'flex-end', marginBottom: '4px' }} />
-                )}
-                <div style={{ 
-                  maxWidth: '70%', 
-                  padding: '12px 16px', 
-                  borderRadius: '12px',
-                  backgroundColor: isAdmin ? 'var(--color-primary)' : 'var(--white)',
-                  color: isAdmin ? 'var(--white)' : 'var(--color-dark)',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-                  border: isAdmin ? 'none' : '1px solid var(--light-gray)',
-                  borderBottomRightRadius: isAdmin ? '2px' : '12px',
-                  borderBottomLeftRadius: isAdmin ? '12px' : '2px'
-                }}>
-                  <p style={{ margin: 0, fontSize: '14px', lineHeight: '1.5' }}>{msg.text}</p>
-                  <span style={{ 
-                    display: 'block', textAlign: 'right', fontSize: '10px', marginTop: '6px', fontWeight: '500',
-                    color: isAdmin ? 'rgba(255,255,255,0.8)' : 'var(--text-light)'
-                  }}>
-                    {msg.time}
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        <footer style={{ 
-          padding: '16px 24px', 
-          backgroundColor: 'var(--white)', 
-          borderTop: '1px solid var(--light-gray)',
-          flexShrink: 0
-        }}>
-          <form onSubmit={handleSendMessage} style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-            <IconButton icon="fa-paperclip" variant="outline" onClick={() => {}} />
-            <div style={{ flex: 1, position: 'relative' }}>
-              <input 
-                type="text"
-                placeholder="Escribe una respuesta como administrador..." 
-                value={messageInput}
-                onChange={(e) => setMessageInput(e.target.value)}
-                style={{ 
-                  width: '100%', padding: '12px 16px', 
-                  border: '1px solid var(--light-gray)', borderRadius: '24px', 
-                  fontSize: '14px', outline: 'none', backgroundColor: 'var(--bg-color)',
-                  transition: 'border-color 0.2s'
-                }}
-                onFocus={(e) => e.target.style.borderColor = 'var(--color-primary)'}
-                onBlur={(e) => e.target.style.borderColor = 'var(--light-gray)'}
-              />
-            </div>
-            <Button variant="primary" type="submit" style={{ padding: '10px 20px', borderRadius: '24px' }}>
-              <Send size={16} style={{ marginRight: '6px' }} /> Enviar
-            </Button>
-          </form>
-        </footer>
-      </main>
-
-      <Modal isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); setIsSubmitted(false); }} title="Registrar Ticket Interno">
-        {!isSubmitted ? (
-          <form onSubmit={(e) => { e.preventDefault(); setIsSubmitted(true); }} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            
-            <div>
-              <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--text-light)', marginBottom: '6px', textTransform: 'uppercase' }}>Cliente / Granjero</label>
-              <Input placeholder="Nombre del cliente..." required />
-            </div>
-            
-            <div>
-              <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--text-light)', marginBottom: '6px', textTransform: 'uppercase' }}>Categoría del Problema</label>
-              <Select 
-                options={[
-                  { value: "soporte", label: "Soporte Técnico - Drones" },
-                  { value: "telemetria", label: "Falla en Telemetría IoT" },
-                  { value: "facturacion", label: "Facturación y Licencias" }
-                ]} 
-              />
-            </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--text-light)', marginBottom: '6px', textTransform: 'uppercase' }}>Descripción del problema</label>
-              <textarea 
-                rows={4}
-                placeholder="Escribe los detalles aquí..."
-                required
-                style={{
-                  width: '100%', padding: '12px 15px',
-                  border: '1px solid var(--light-gray)', borderRadius: '8px',
-                  fontSize: '14px', color: 'var(--color-dark)',
-                  fontFamily: "'Roboto', sans-serif", outline: 'none',
-                  resize: 'vertical', minHeight: '100px',
-                  transition: 'border-color 0.2s'
-                }}
-                onFocus={(e) => e.target.style.borderColor = 'var(--color-primary)'}
-                onBlur={(e) => e.target.style.borderColor = 'var(--light-gray)'}
-              />
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', paddingTop: '16px', borderTop: '1px solid var(--light-gray)', marginTop: '8px' }}>
-              <Button variant="outline-dark" type="button" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
-              <Button variant="primary" type="submit">Guardar Ticket</Button>
-            </div>
-          </form>
-        ) : (
-          <div style={{ padding: '24px 0', textAlign: 'center' }}>
-            <div style={{ background: 'rgba(4, 201, 166, 0.1)', width: '64px', height: '64px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-              <CheckCircle2 size={32} color="var(--color-primary)" />
-            </div>
-            <h4 style={{ margin: '0 0 8px 0', fontSize: '18px', color: 'var(--color-dark)' }}>¡Ticket Registrado!</h4>
-            <p style={{ margin: '0 0 24px 0', fontSize: '13px', color: 'var(--text-light)' }}>El ticket ha sido asignado al equipo técnico.</p>
-            <Button variant="primary" onClick={() => { setIsModalOpen(false); setIsSubmitted(false); }}>
-              Cerrar Ventana
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', paddingTop: '16px', marginTop: '8px' }}>
+            <Button variant="outline-dark" size="sm" type="button" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
+            <Button variant="primary" size="sm" type="submit" disabled={isSubmitting || !targetEmail}>
+              {isSubmitting ? 'Enviando...' : 'Enviar Solicitud'}
             </Button>
           </div>
-        )}
+        </form>
       </Modal>
 
+      {successMsg && (
+        <div style={{ position: 'fixed', bottom: '24px', right: '24px', zIndex: 1000, width: '350px' }}>
+          <Alert type="success" title="Éxito" message={successMsg} onClose={() => setSuccessMsg(null)} />
+        </div>
+      )}
+
+      {warningMsg && (
+        <div style={{ position: 'fixed', bottom: '90px', right: '24px', zIndex: 1000, width: '350px' }}>
+          <Alert type="warning" title="Aviso" message={warningMsg} onClose={() => setWarningMsg(null)} />
+        </div>
+      )}
     </div>
   );
 }

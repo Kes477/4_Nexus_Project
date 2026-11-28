@@ -179,6 +179,7 @@ const Login = () => {
         setIsLoading(true);
         try {
             const usuario = await iniciarSesion(formData.email, formData.password);
+            localStorage.setItem('user_email', usuario.email);
             irAlPanel(usuario);
         } catch (error) {
             const respuesta = error.response?.data;
@@ -310,6 +311,7 @@ const Login = () => {
                         no_identificacion: formData.identificacion,
                         telefono: formData.telefono,
                     });
+                    localStorage.setItem('user_email', usuario.email);
                     irAlPanel(usuario);
                 } catch (error) {
                     const errores = error.response?.data;

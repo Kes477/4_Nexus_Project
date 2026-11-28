@@ -3,16 +3,9 @@ import { Routes, Route } from 'react-router-dom';
 import RutaProtegida from './components/auth/RutaProtegida';
 import { useSesion } from './hooks/useSesion';
 
-import {
-    PERMISOS,
-    PERMISOS_PANEL_GESTION
-} from './config/permisos';
+import { PERMISOS, PERMISOS_PANEL_GESTION } from './config/permisos';
 
-
-// ======================================================
 // PÁGINAS PÚBLICAS
-// ======================================================
-
 import LandingPage from './pages/LandingPage';
 import Login from './pages/Login';
 import SeleccionarPanel from './pages/SeleccionarPanel';
@@ -21,21 +14,13 @@ import Suscription from './pages/Suscription';
 import FormularioContacto from './pages/FormularioContacto';
 import NotFound from './pages/NotFound';
 
-// ======================================================
 // LAYOUTS
-// ======================================================
-
 import { ClienteLayout } from './layouts/ClienteLayout';
 import AdminLayout from './layouts/AdminLayout';
 import { PilotoLayout } from './layouts/PilotoLayout';
 import TecnicoLayout from './layouts/TecnicoLayout';
 
-// Pendiente: Layout de vendedores.
-
-// ======================================================
 // PÁGINAS DEL CLIENTE
-// ======================================================
-
 import { ClienteDashboard } from './pages/cliente/ClienteDashboard';
 import { ClienteSuscripciones } from './pages/cliente/ClienteSuscripciones';
 import { ClienteDrones } from './pages/cliente/ClienteDrones';
@@ -50,11 +35,7 @@ import ClientePedidos from './pages/cliente/ClientePedidos';
 import ClienteReparaciones from './pages/cliente/ClienteReparaciones';
 import HistorialReparaciones from './pages/cliente/HistorialReparaciones';
 
-// ======================================================
 // PÁGINAS DEL ADMINISTRADOR
-// ======================================================
-
-
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminUsuarios from './pages/admin/AdminUsuarios';
 import AdminRoles from './pages/admin/AdminRoles';
@@ -68,10 +49,7 @@ import AdminConfigCarga from './pages/admin/AdminConfigCarga';
 import AdminCheckout from './pages/admin/AdminCheckout';
 import AdminTracking from './pages/admin/AdminTracking';
 
-// ======================================================
 // PÁGINAS DEL PILOTO
-// ======================================================
-
 import PilotoDashboard from './pages/piloto/PilotoDashboard';
 import PilotoMisiones from './pages/piloto/PilotoMisiones';
 import PilotoBitacora from './pages/piloto/PilotoBitacora';
@@ -80,40 +58,26 @@ import PilotoHistorial from './pages/piloto/PilotoHistorial';
 import PilotoSoporte from './pages/piloto/PilotoSoporte';
 import PilotoPerfil from './pages/piloto/PilotoPerfil';
 
-// ======================================================
 // PÁGINAS DEL TÉCNICO
-// ======================================================
-
 import TecnicoOrdenes from './pages/tecnico/TecnicoOrdenes';
 import TecnicoPerfil from './pages/tecnico/TecnicoPerfil';
+import TecnicoSoporte from './pages/tecnico/TecnicoSoporte';
 
-// ======================================================
-// PÁGINAS DEL VENDEDOR
-// ======================================================
-
-// Pendiente de implementación.
-
-// ======================================================
 // COMPONENTE PRINCIPAL
-// ======================================================
-
 function App() {
-
   const { cerrarSesion } = useSesion();
 
   return (
-
     <Routes>
-            <Route path="/activar-cuenta" element={<ActivarCuenta />} />
-
-      {/* ================================================= */}
-      {/* 1. RUTAS PÚBLICAS                                 */}
-      {/* ================================================= */}
-
+      {/* RUTAS PÚBLICAS */}
       <Route path="/" element={<LandingPage />} />
-
       <Route path="/login" element={<Login />} />
+      <Route path="/activar-cuenta" element={<ActivarCuenta />} />
+      <Route path="/catalog" element={<Catalog />} />
+      <Route path="/suscription" element={<Suscription />} />
+      <Route path="/formulario-contacto" element={<FormularioContacto />} />
 
+      {/* SELECCIÓN DE PANEL (PROTEGIDA) */}
       <Route
         path="/seleccionar-panel"
         element={
@@ -123,23 +87,9 @@ function App() {
         }
       />
 
-      <Route path="/catalog" element={<Catalog />} />
-
-      <Route path="/suscription" element={<Suscription />} />
-
-      <Route
-        path="/formulario-contacto"
-        element={<FormularioContacto />}
-      />
-
-      {/* ================================================= */}
-      {/* 2. RUTAS PRIVADAS DEL CLIENTE                     */}
-      {/* ================================================= */}
-
+      {/* RUTAS PRIVADAS DEL CLIENTE */}
       <Route element={<RutaProtegida rol="cliente" />}>
-
         <Route path="/cliente" element={<ClienteLayout />}>
-
           <Route index element={<ClienteDashboard />} />
           <Route path="suscripciones" element={<ClienteSuscripciones />} />
           <Route path="drones" element={<ClienteDrones />} />
@@ -147,40 +97,34 @@ function App() {
           <Route path="historial" element={<ClienteHistorial />} />
           <Route path="soporte" element={<ClienteSoporte />} />
           <Route path="perfil" element={<ClientePerfil onLogout={cerrarSesion} />} />
-
-          {/* HU-010, HU-011 y HU-012 */}
           <Route path="equipos" element={<ClienteEquipos />} />
-
-          {/* HU-016: SEGUIMIENTO DE REPARACIONES */}
           <Route path="reparaciones" element={<ClienteReparaciones />} />
-
-          {/* HU-017: HISTORIAL DE REPARACIONES */}
           <Route path="historial-reparaciones" element={<HistorialReparaciones />} />
-
-          {/* COMPRAS */}
           <Route path="carrito" element={<ClienteCarrito />} />
-
           <Route path="checkout" element={<ClienteCheckout />} />
-          
           <Route path="pedidos" element={<ClientePedidos />} />
         </Route>
-
       </Route>
 
-      {/* ================================================= */}
-      {/* 3. RUTAS PRIVADAS DEL ADMINISTRADOR               */}
-      {/* ================================================= */}
-
-      <Route element={
-        <RutaProtegida
-          rol="admin"
-          permisos={PERMISOS_PANEL_GESTION}
-          rolOPermisos={true}
-        />
-      }>
-
+      {/* RUTAS PRIVADAS DEL ADMINISTRADOR */}
+      <Route
+        element={
+          <RutaProtegida
+            rol="admin"
+            permisos={PERMISOS_PANEL_GESTION}
+            rolOPermisos={true}
+          />
+        }
+      >
         <Route path="/admin" element={<AdminLayout />}>
-
+          <Route
+            index
+            element={
+              <RutaProtegida rol="admin">
+                <AdminDashboard />
+              </RutaProtegida>
+            }
+          />
           <Route
             path="roles"
             element={
@@ -189,14 +133,6 @@ function App() {
               </RutaProtegida>
             }
           />
-
-
-          <Route index element={
-              <RutaProtegida rol="admin">
-                <AdminDashboard />
-              </RutaProtegida>
-            } />
-
           <Route
             path="usuarios"
             element={
@@ -205,7 +141,6 @@ function App() {
               </RutaProtegida>
             }
           />
-
           <Route
             path="precios"
             element={
@@ -214,7 +149,6 @@ function App() {
               </RutaProtegida>
             }
           />
-
           <Route
             path="historial"
             element={
@@ -223,7 +157,6 @@ function App() {
               </RutaProtegida>
             }
           />
-
           <Route
             path="soporte"
             element={
@@ -232,16 +165,7 @@ function App() {
               </RutaProtegida>
             }
           />
-
-          <Route
-            path="perfil"
-            element={
-              <AdminPerfil onLogout={cerrarSesion} />
-            }
-          />
-
-          {/* OPERACIONES GLOBALES */}
-
+          <Route path="perfil" element={<AdminPerfil onLogout={cerrarSesion} />} />
           <Route
             path="operaciones"
             element={
@@ -250,7 +174,6 @@ function App() {
               </RutaProtegida>
             }
           />
-
           <Route
             path="operaciones/config-carga"
             element={
@@ -259,7 +182,6 @@ function App() {
               </RutaProtegida>
             }
           />
-
           <Route
             path="operaciones/checkout"
             element={
@@ -268,7 +190,6 @@ function App() {
               </RutaProtegida>
             }
           />
-
           <Route
             path="operaciones/tracking"
             element={
@@ -277,9 +198,6 @@ function App() {
               </RutaProtegida>
             }
           />
-
-          {/* HU-013: GESTIÓN DE ÓRDENES DE SERVICIO */}
-
           <Route
             path="reparaciones"
             element={
@@ -288,96 +206,36 @@ function App() {
               </RutaProtegida>
             }
           />
-
         </Route>
-
       </Route>
 
-      {/* ================================================= */}
-      {/* 4. RUTAS PRIVADAS DEL PILOTO                      */}
-      {/* ================================================= */}
-
+      {/* RUTAS PRIVADAS DEL PILOTO */}
       <Route element={<RutaProtegida rol="piloto" />}>
-
         <Route path="/piloto" element={<PilotoLayout />}>
-
           <Route index element={<PilotoDashboard />} />
-
-          <Route
-            path="misiones"
-            element={<PilotoMisiones />}
-          />
-
-          <Route
-            path="bitacora"
-            element={<PilotoBitacora />}
-          />
-
-          <Route
-            path="facturacion"
-            element={<PilotoFacturacion />}
-          />
-
-          <Route
-            path="historial"
-            element={<PilotoHistorial />}
-          />
-
-          <Route
-            path="soporte"
-            element={<PilotoSoporte />}
-          />
-
-          <Route
-            path="perfil"
-            element={
-              <PilotoPerfil onLogout={cerrarSesion} />
-            }
-          />
-
+          <Route path="misiones" element={<PilotoMisiones />} />
+          <Route path="bitacora" element={<PilotoBitacora />} />
+          <Route path="facturacion" element={<PilotoFacturacion />} />
+          <Route path="historial" element={<PilotoHistorial />} />
+          <Route path="soporte" element={<PilotoSoporte />} />
+          <Route path="perfil" element={<PilotoPerfil onLogout={cerrarSesion} />} />
         </Route>
-
       </Route>
 
-      {/* ================================================= */}
-      {/* 5. RUTAS PRIVADAS DEL TÉCNICO                     */}
-      {/* ================================================= */}
-
+      {/* RUTAS PRIVADAS DEL TÉCNICO */}
       <Route element={<RutaProtegida rol="tecnico" />}>
-
         <Route path="/tecnico" element={<TecnicoLayout />}>
-
           <Route index element={<TecnicoOrdenes />} />
-
-          <Route
-            path="ordenes"
-            element={<TecnicoOrdenes />}
-          />
-
-          <Route
-            path="perfil"
-            element={
-              <TecnicoPerfil onLogout={cerrarSesion} />
-            }
-          />
-
+          <Route path="ordenes" element={<TecnicoOrdenes />} />
+          <Route path="soporte" element={<TecnicoSoporte />} />
+          <Route path="perfil" element={<TecnicoPerfil onLogout={cerrarSesion} />} />
         </Route>
-
       </Route>
 
-      {/* ================================================= */}
-      {/* 6. RUTAS PRIVADAS DEL VENDEDOR                    */}
-      {/* ================================================= */}
-
-      {/* Pendiente de implementación. */}
-
-      {/* 7. RUTA PARA ERRORES 404                          */}
+      {/* RUTA PARA ERRORES 404 */}
       <Route path="*" element={<NotFound />} />
-
     </Routes>
-
   );
-
 }
 
 export default App;
