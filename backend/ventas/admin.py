@@ -3,7 +3,7 @@ from django.core.exceptions import ValidationError
 
 
 from .models import Carrito, CarritoDetalle, Cupon, DetallePedido, MetodoPago, Pedido, TransaccionPago
-from .servicios import cancelar_pedido, confirmar_pago
+from .servicios import cancelar_pedido, confirmar_pago, marcar_entregado, marcar_enviado, procesar_pedido
 
 
 class CarritoDetalleInline(admin.TabularInline):
@@ -58,22 +58,38 @@ class PedidoAdmin(admin.ModelAdmin):
         'subtotal', 'total_descuento', 'costo_envio', 'total_impuestos', 'total_final',
     )
     inlines = [DetallePedidoInline, TransaccionPagoInline]
-    actions = ['cancelar_seleccionados']
+    actions = ['procesar_seleccionados', 'enviar_seleccionados', 'entregar_seleccionados', 'cancelar_seleccionados']
 
     def has_add_permission(self, request):
         return False
 
-    @admin.action(description='Cancelar pedidos pendientes (libera el stock)')
-    def cancelar_seleccionados(self, request, queryset):
-        cancelados = 0
+    def _aplicar(self, request, queryset, accion, texto_exito):
+        "Aplica la acción a cada pedido; los que no se pueden se reportan sin detener a los demás."
+        hechos = 0
         for pedido in queryset:
             try:
-                cancelar_pedido(pedido, usuario=request.user)
-                cancelados += 1
+                accion(pedido)
+                hechos += 1
             except ValidationError as error:
                 self.message_user(request, f'Pedido #{pedido.pk}: {error.messages[0]}', messages.WARNING)
-        if cancelados:
-            self.message_user(request, f'{cancelados} pedido(s) cancelado(s).', messages.SUCCESS)
+        if hechos:
+            self.message_user(request, f'{hechos} pedido(s) {texto_exito}.', messages.SUCCESS)
+
+    @admin.action(description='1. Procesar (el stock sale del almacén)')
+    def procesar_seleccionados(self, request, queryset):
+        self._aplicar(request, queryset, lambda p: procesar_pedido(p, usuario=request.user), 'en proceso')
+
+    @admin.action(description='2. Marcar como enviados')
+    def enviar_seleccionados(self, request, queryset):
+        self._aplicar(request, queryset, marcar_enviado, 'enviado(s)')
+
+    @admin.action(description='3. Marcar como entregados (cobra contra entrega)')
+    def entregar_seleccionados(self, request, queryset):
+        self._aplicar(request, queryset, marcar_entregado, 'entregado(s)')
+
+    @admin.action(description='Cancelar pedidos pendientes (libera el stock)')
+    def cancelar_seleccionados(self, request, queryset):
+        self._aplicar(request, queryset, lambda p: cancelar_pedido(p, usuario=request.user), 'cancelado(s)')
 
 @admin.register(MetodoPago)
 class MetodoPagoAdmin(admin.ModelAdmin):
@@ -97,7 +113,7 @@ class TransaccionPagoAdmin(admin.ModelAdmin):
     def has_add_permission(self, request):
         return False
 
-    @admin.action(description='Confirmar pagos pendientes (transferencia o contra entrega)')
+    @admin.action(description='Confirmar transferencias recibidas')
     def confirmar_seleccionados(self, request, queryset):
         confirmados = 0
         for transaccion in queryset:

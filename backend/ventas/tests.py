@@ -12,12 +12,12 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from catalogo.models import Articulo, Categoria, Producto, Variante
-from inventario.models import Almacen, Inventario
+from inventario.models import Almacen, Inventario, MovimientoInventario
 from ubicaciones.models import Direccion, Ubicacion
 
 from .models import CarritoDetalle, Cupon, MetodoPago, Pedido, ReservaPedido, TransaccionPago
 from .pagos import ESTRATEGIAS, EstrategiaPago, ResultadoPago
-from .servicios import confirmar_pago, pagar_pedido, stock_disponible
+from .servicios import confirmar_pago, marcar_entregado, marcar_enviado, pagar_pedido, procesar_pedido, stock_disponible
 
 Usuario = get_user_model()
 
@@ -676,3 +676,76 @@ class ComprarAhoraTests(PedidoBaseTest):
     def test_comprar_ahora_requiere_direccion(self):
         respuesta = self.client.post(self.url_pedidos, {'variante': self.dron.id}, format='json')
         self.assertEqual(respuesta.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+
+############################       7. GESTIÓN DEL PEDIDO (procesar, enviar, entregar)       ##################
+
+
+class GestionEnvioTests(PagoBaseTest):
+
+    def pagar_con_tarjeta(self):
+        self.pagar(forma_pago='TARJETA', metodo_pago=self.tarjeta.id)
+
+    def test_flujo_completo_descuenta_el_stock(self):
+        self.pagar_con_tarjeta()
+
+        procesar_pedido(self.pedido())
+        inventario = self.inventario()
+        self.assertEqual(self.pedido().estado_pedido, 'EN_PROCESO')
+        self.assertEqual(inventario.cantidad_reservada, 0)
+        self.assertEqual(inventario.cantidad_disponible, 2)
+        self.assertTrue(MovimientoInventario.objects.filter(tipo='SALIDA', inventario=inventario).exists())
+
+        marcar_enviado(self.pedido())
+        marcar_entregado(self.pedido())
+        self.assertEqual(self.pedido().estado_pedido, 'ENTREGADO')
+
+    def test_no_se_procesa_sin_pagar(self):
+        with self.assertRaises(ValidationError):
+            procesar_pedido(self.pedido())
+        self.assertEqual(self.inventario().cantidad_reservada, 1)
+
+    def test_no_se_saltan_estados(self):
+        self.pagar_con_tarjeta()
+        with self.assertRaises(ValidationError):
+            marcar_enviado(self.pedido())          # falta procesar
+
+        procesar_pedido(self.pedido())
+        with self.assertRaises(ValidationError):
+            marcar_entregado(self.pedido())        # falta enviar
+        with self.assertRaises(ValidationError):
+            procesar_pedido(self.pedido())         # no se descuenta dos veces
+
+    def test_contra_entrega_se_cobra_al_entregar(self):
+        self.pagar(forma_pago='CONTRA_ENTREGA')
+        transaccion = TransaccionPago.objects.get()
+
+        with self.assertRaises(ValidationError):
+            confirmar_pago(transaccion)            # no se confirma por adelantado
+
+        procesar_pedido(self.pedido())
+        marcar_enviado(self.pedido())
+        self.assertEqual(TransaccionPago.objects.get().estado_pago, 'PENDIENTE')
+
+        marcar_entregado(self.pedido())
+        self.assertEqual(TransaccionPago.objects.get().estado_pago, 'APROBADO')
+        self.assertEqual(self.pedido().estado_pedido, 'ENTREGADO')
+
+    def test_en_proceso_ya_no_se_cancela(self):
+        self.pagar(forma_pago='CONTRA_ENTREGA')
+        procesar_pedido(self.pedido())
+
+        respuesta = self.client.post(reverse('pedido-cancelar', args=[self.pedido_id]))
+        self.assertEqual(respuesta.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_solo_servicios_no_se_procesa(self):
+        self.agregar(self.servicio)
+        pedido_id = self.client.post(self.url_pedidos, {}, format='json').data['id']
+        self.client.post(
+            reverse('pedido-pagar', args=[pedido_id]),
+            {'forma_pago': 'TARJETA', 'metodo_pago': self.tarjeta.id}, format='json',
+        )
+
+        with self.assertRaises(ValidationError):
+            procesar_pedido(Pedido.objects.get(pk=pedido_id))
