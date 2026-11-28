@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { Edit2, Phone, Mail, LogOut, Save, MapPin, CheckCircle, Loader, KeyRound, Lock, Check, Copy, Settings, Camera } from 'lucide-react';
 
 import { Button, Badge, Modal, Input, SectionHeading, Alert } from '../../components/ui';
